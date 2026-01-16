@@ -1,0 +1,1 @@
+Full contents of the file

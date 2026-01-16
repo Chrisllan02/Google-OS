@@ -1,0 +1,5 @@
+{
+  "name": "Google OS",
+  "description": "A comprehensive Google Workspace-inspired dashboard featuring Drive, Gmail, and Gemini AI integration with a highly interactive UI.",
+  "requestFramePermissions": []
+}
