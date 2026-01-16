@@ -8,7 +8,6 @@ import AppViewer from './components/AppViewer';
 import Aurora from './components/Aurora';
 import GoogleLoader from './components/GoogleLoader';
 import { GoogleIcons, GeminiLogo } from './components/GoogleIcons';
-import { Tooltip } from './components/Tooltip';
 
 // Helper for file icons used in dashboard widgets
 const getFileIcon = (type: string) => {
@@ -233,37 +232,37 @@ export default function App() {
                           const hoverBg = isLightMode ? 'hover:bg-white/10' : 'hover:bg-white/10';
 
                           return (
-                            <React.Fragment key={app.id}>
-                              <Tooltip label={app.label} position="top">
-                                  <button 
-                                      onClick={() => app.id === 'search' ? toggleSearch() : openApp(app.id)}
-                                      className={`group relative flex items-center justify-center p-3 rounded-full transition-all duration-400 ease-[cubic-bezier(0.25,1,0.5,1)] active:scale-95 ${isActive ? '' : hoverBg}`}
-                                      style={{ backgroundColor: isActive ? 'rgba(255,255,255,0.15)' : undefined }}
-                                  >
-                                      <div 
-                                          className={`
-                                              transition-all duration-400 ease-[cubic-bezier(0.25,1,0.5,1)]
-                                              ${isActive ? 'scale-110 -translate-y-1' : 'scale-100 translate-y-0'} 
-                                              ${isActive 
-                                                  ? 'filter-none opacity-100 drop-shadow-[0_0_12px_rgba(255,255,255,0.3)]' 
-                                                  : 'grayscale brightness-[2.5] contrast-125 opacity-70 drop-shadow-[0_2px_4px_rgba(255,255,255,0.1)] group-hover:filter-none group-hover:grayscale-0 group-hover:brightness-100 group-hover:opacity-100 group-hover:drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] group-hover:scale-110 group-hover:-translate-y-1'
-                                              }
-                                          `}
-                                          style={{ color: iconColor }}
-                                      >
-                                          {app.id === 'search' ? (
-                                              <GoogleIcons.Search className="w-6 h-6" stroke={isActive || 'group-hover' ? app.color : "currentColor"} />
-                                          ) : (
-                                              React.cloneElement(app.icon as React.ReactElement<any>, { 
-                                                  size: 24, 
-                                                  color: iconColor, 
-                                                  className: `transition-colors duration-200`
-                                              })
-                                          )}
-                                      </div>
-                                  </button>
-                              </Tooltip>
-                            </React.Fragment>
+                            <button 
+                                key={app.id} 
+                                onClick={() => app.id === 'search' ? toggleSearch() : openApp(app.id)}
+                                className={`group relative flex items-center justify-center p-3 rounded-full transition-all duration-400 ease-[cubic-bezier(0.25,1,0.5,1)] active:scale-95 ${isActive ? '' : hoverBg}`}
+                                style={{ backgroundColor: isActive ? 'rgba(255,255,255,0.15)' : undefined }}
+                            >
+                                <div 
+                                    className={`
+                                        transition-all duration-400 ease-[cubic-bezier(0.25,1,0.5,1)]
+                                        ${isActive ? 'scale-110 -translate-y-1' : 'scale-100 translate-y-0'} 
+                                        ${isActive 
+                                            ? 'filter-none opacity-100 drop-shadow-[0_0_12px_rgba(255,255,255,0.3)]' 
+                                            : 'grayscale brightness-[2.5] contrast-125 opacity-70 drop-shadow-[0_2px_4px_rgba(255,255,255,0.1)] group-hover:filter-none group-hover:grayscale-0 group-hover:brightness-100 group-hover:opacity-100 group-hover:drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] group-hover:scale-110 group-hover:-translate-y-1'
+                                        }
+                                    `}
+                                    style={{ color: iconColor }}
+                                >
+                                    {app.id === 'search' ? (
+                                        <GoogleIcons.Search className="w-6 h-6" stroke={isActive || 'group-hover' ? app.color : "currentColor"} />
+                                    ) : (
+                                        React.cloneElement(app.icon as React.ReactElement<any>, { 
+                                            size: 24, 
+                                            color: iconColor, 
+                                            className: `transition-colors duration-200`
+                                        })
+                                    )}
+                                </div>
+                                <span className={`max-w-0 overflow-hidden whitespace-nowrap opacity-0 group-hover:max-w-[140px] group-hover:opacity-100 group-hover:ml-3 text-sm font-medium transition-all duration-300`} style={{ color: textColor }}>
+                                    {app.label}
+                                </span>
+                            </button>
                           );
                       })}
                   </>
@@ -283,20 +282,12 @@ export default function App() {
                 </div>
             </div>
             <div className="flex items-center gap-4 animate-in fade-in duration-300 relative z-10">
-                <Tooltip label="Clima Atual">
-                    <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-full text-xs font-medium text-[#E3E3E3] cursor-default">
-                        <CloudSun size={14} className="text-[#FBBC05]" />
-                        <span>{data.weather.temp}</span>
-                    </div>
-                </Tooltip>
-                
-                <Tooltip label="Google Apps">
-                    <button className="p-2 rounded-full hover:bg-white/10 border border-transparent hover:border-white/10 text-[#E3E3E3] backdrop-blur-sm"><LayoutGrid size={20} /></button>
-                </Tooltip>
-                
-                <Tooltip label="Perfil">
-                    <img src={data.user.avatar} alt="Profile" className="w-9 h-9 rounded-full border border-white/20 hover:ring-2 hover:ring-white/20 cursor-pointer transition-all" />
-                </Tooltip>
+                <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-full text-xs font-medium text-[#E3E3E3]">
+                    <CloudSun size={14} className="text-[#FBBC05]" />
+                    <span>{data.weather.temp}</span>
+                </div>
+                <button className="p-2 rounded-full hover:bg-white/10 border border-transparent hover:border-white/10 text-[#E3E3E3] backdrop-blur-sm"><LayoutGrid size={20} /></button>
+                <img src={data.user.avatar} alt="Profile" className="w-9 h-9 rounded-full border border-white/20 hover:ring-2 hover:ring-white/20 cursor-pointer transition-all" />
             </div>
         </header>
 
@@ -321,11 +312,9 @@ export default function App() {
                         </div>
                       ))}
                     </div>
-                    <Tooltip label="Novo E-mail">
-                        <button onClick={() => openApp('mail')} className="w-full mt-2 py-2 text-xs text-[#EA4335] font-medium hover:bg-[#EA4335]/10 rounded-xl transition bg-[#EA4335]/5 border border-[#EA4335]/20">
-                          Escrever Email
-                        </button>
-                    </Tooltip>
+                    <button onClick={() => openApp('mail')} className="w-full mt-2 py-2 text-xs text-[#EA4335] font-medium hover:bg-[#EA4335]/10 rounded-xl transition bg-[#EA4335]/5 border border-[#EA4335]/20">
+                      Escrever Email
+                    </button>
                 </div>
 
                 {/* 3. DRIVE (Expanded to fill row) */}
@@ -404,12 +393,10 @@ export default function App() {
         {/* --- CHAT OVERLAY --- */}
         <div className={`absolute inset-0 w-full flex flex-col z-20 pointer-events-none ${aiMode ? 'pointer-events-auto' : ''}`}>
             <div className={`flex justify-end p-2 transition-opacity duration-500 ${aiMode ? 'opacity-100' : 'opacity-0'}`}>
-                <Tooltip label="Fechar Assistente">
-                    <button onClick={() => setAiMode(false)} className="px-4 py-2 bg-black/60 backdrop-blur-xl border border-white/10 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition flex items-center gap-2 shadow-2xl">
-                        <span className="text-xs font-medium">Fechar Chat</span>
-                        <X size={16} />
-                    </button>
-                </Tooltip>
+                <button onClick={() => setAiMode(false)} className="px-4 py-2 bg-black/60 backdrop-blur-xl border border-white/10 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition flex items-center gap-2 shadow-2xl">
+                    <span className="text-xs font-medium">Fechar Chat</span>
+                    <X size={16} />
+                </button>
             </div>
             <div ref={chatContainerRef} className={`flex-1 overflow-y-auto px-4 md:px-20 py-4 scroll-smooth transition-all duration-700 ${aiMode ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
                 {/* Chat content... */}
@@ -437,16 +424,10 @@ export default function App() {
                     <div className="absolute top-1/2 left-1/2 w-[200%] h-[200%] -translate-x-1/2 -translate-y-1/2 animate-[spin_3s_linear_infinite]" style={{ background: 'conic-gradient(from 0deg, transparent 0 340deg, #4285F4 345deg, #EA4335 350deg, #FBBC05 355deg, #34A853 360deg)' }}></div>
                 </div>
                 <div className={`relative flex items-center w-full transition-all duration-300 bg-black/60 backdrop-blur-2xl rounded-full border border-white/10 h-16 px-2`}>
-                    <Tooltip label="Anexar">
-                        <button className={`p-3 rounded-full transition-colors bg-white/10 hover:bg-white/20 text-white ml-1`}><Plus size={24} /></button>
-                    </Tooltip>
+                    <button className={`p-3 rounded-full transition-colors bg-white/10 hover:bg-white/20 text-white ml-1`}><Plus size={24} /></button>
                     <input ref={inputRef} type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Digite uma mensagem para o Gemini..." className="flex-1 bg-transparent border-none outline-none text-[#E3E3E3] px-3 h-12 placeholder:text-white/40 text-base" onFocus={() => setIsInputFocused(true)} onBlur={() => setIsInputFocused(false)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} />
                     <div className="flex items-center gap-1 pr-1">
-                        {searchQuery && (
-                            <Tooltip label="Enviar">
-                                <button onClick={(e) => { e.stopPropagation(); handleSendMessage(); }} className="p-2.5 bg-white text-black hover:bg-gray-200 rounded-full transition shadow-lg mr-1"><ArrowRight size={20} /></button>
-                            </Tooltip>
-                        )}
+                        {searchQuery && <button onClick={(e) => { e.stopPropagation(); handleSendMessage(); }} className="p-2.5 bg-white text-black hover:bg-gray-200 rounded-full transition shadow-lg mr-1"><ArrowRight size={20} /></button>}
                     </div>
                 </div>
             </div>
