@@ -606,7 +606,7 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                                           </div>
                                           <div className="flex-1 flex flex-col gap-1 overflow-hidden">
                                               {dayEvents.slice(0, 3).map(ev => (
-                                                  <div key={ev.id} className={`text-[9px] px-1 py-0.5 rounded truncate ${ev.color} text-white font-medium`}>
+                                                  <div key={ev.id} onClick={(e) => { e.stopPropagation(); handleOpenEventForEdit(ev); }} className={`text-[9px] px-1 py-0.5 rounded truncate ${ev.color} text-white font-medium cursor-pointer hover:brightness-110 transition-all`} title={`Clique para editar: ${ev.title}`}>
                                                       {ev.title}
                                                   </div>
                                               ))}

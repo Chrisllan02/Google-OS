@@ -121,6 +121,7 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
   const [calendarViewMode, setCalendarViewMode] = useState<'day' | 'week' | 'month' | 'year'>('day');
   const [viewDate, setViewDate] = useState(new Date());
   const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<number | null>(null);
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventTime, setNewEventTime] = useState({ start: '09:00', end: '10:00' });
   const [showViewMenu, setShowViewMenu] = useState(false);
@@ -368,6 +369,80 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
       setReplyText('');
   }
 
+  // === CALENDAR HANDLERS (FASE 1B) ===
+  const handleAddOrEditEvent = () => {
+      if (!newEventTitle.trim()) {
+          showToast('Título do evento é obrigatório');
+          return;
+      }
+
+      if (editingEventId !== null) {
+          // MODO EDIÇÃO: Atualizar evento existente
+          const updatedEvents = calendarEvents.map(event => {
+              if (event.id === editingEventId) {
+                  return {
+                      ...event,
+                      title: newEventTitle,
+                      start: new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate(), 
+                              parseInt(newEventTime.start.split(':')[0]), parseInt(newEventTime.start.split(':')[1])),
+                      end: new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate(),
+                              parseInt(newEventTime.end.split(':')[0]), parseInt(newEventTime.end.split(':')[1]))
+                  };
+              }
+              return event;
+          });
+          setCalendarEvents(updatedEvents);
+          showToast('Evento atualizado');
+      } else {
+          // MODO CRIAÇÃO: Adicionar novo evento
+          const newId = Math.max(...calendarEvents.map(e => e.id), 0) + 1;
+          const colors = ['bg-blue-500', 'bg-red-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500'];
+          
+          const newEvent = {
+              id: newId,
+              title: newEventTitle,
+              start: new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate(),
+                      parseInt(newEventTime.start.split(':')[0]), parseInt(newEventTime.start.split(':')[1])),
+              end: new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate(),
+                      parseInt(newEventTime.end.split(':')[0]), parseInt(newEventTime.end.split(':')[1])),
+              color: colors[newId % colors.length],
+              location: 'Sem local'
+          };
+          
+          setCalendarEvents([...calendarEvents, newEvent]);
+          showToast('Evento criado');
+      }
+
+      // Resetar form
+      setShowEventModal(false);
+      setEditingEventId(null);
+      setNewEventTitle('');
+      setNewEventTime({ start: '09:00', end: '10:00' });
+  };
+
+  const handleOpenEventForEdit = (event: any) => {
+      setEditingEventId(event.id);
+      setNewEventTitle(event.title);
+      const startHours = String(event.start.getHours()).padStart(2, '0');
+      const startMins = String(event.start.getMinutes()).padStart(2, '0');
+      const endHours = String(event.end.getHours()).padStart(2, '0');
+      const endMins = String(event.end.getMinutes()).padStart(2, '0');
+      setNewEventTime({
+          start: `${startHours}:${startMins}`,
+          end: `${endHours}:${endMins}`
+      });
+      setShowEventModal(true);
+  };
+
+  const handleDeleteEvent = (eventId: number) => {
+      if (confirm('Tem certeza que deseja deletar este evento?')) {
+          const updatedEvents = calendarEvents.filter(event => event.id !== eventId);
+          setCalendarEvents(updatedEvents);
+          showToast('Evento deletado');
+          setShowEventModal(false);
+      }
+  };
+
   const handleDragStart = (e: React.DragEvent, email: any) => {
       setDraggedEmail(email);
       const ghost = document.createElement('div');
@@ -531,7 +606,7 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                                           </div>
                                           <div className="flex-1 flex flex-col gap-1 overflow-hidden">
                                               {dayEvents.slice(0, 3).map(ev => (
-                                                  <div key={ev.id} className={`text-[9px] px-1 py-0.5 rounded truncate ${ev.color} text-white font-medium`}>
+                                                  <div key={ev.id} onClick={(e) => { e.stopPropagation(); handleOpenEventForEdit(ev); }} className={`text-[9px] px-1 py-0.5 rounded truncate ${ev.color} text-white font-medium cursor-pointer hover:brightness-110 transition-all`} title={`Clique para editar: ${ev.title}`}>
                                                       {ev.title}
                                                   </div>
                                               ))}
@@ -589,7 +664,7 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                                       const top = startH * 60 + startM;
                                       const height = duration * 60;
                                       return (
-                                          <div key={ev.id} className={`absolute left-1 right-1 p-1 rounded ${ev.color} text-[10px] text-white truncate border-l-2 border-white/50 z-10`} style={{ top: `${top}px`, height: `${Math.max(20, height)}px` }}>
+                                          <div key={ev.id} onClick={() => handleOpenEventForEdit(ev)} className={`absolute left-1 right-1 p-1 rounded ${ev.color} text-[10px] text-white truncate border-l-2 border-white/50 z-10 cursor-pointer hover:brightness-110 hover:scale-[1.01] transition-all`} style={{ top: `${top}px`, height: `${Math.max(20, height)}px` }} title={`Clique para editar: ${ev.title}`}>
                                               {ev.title}
                                           </div>
                                       )
@@ -622,7 +697,7 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                     const top = startH * 60 + startM; 
                     const height = duration * 60;
                     return (
-                        <div key={ev.id} className={`absolute left-16 right-4 p-2 rounded-lg ${ev.color} text-xs shadow-lg border-l-4 border-black/20 cursor-pointer hover:brightness-110 z-10 transition-all hover:scale-[1.02]`} style={{ top: `${top}px`, height: `${Math.max(30, height)}px` }} title={ev.title}>
+                        <div key={ev.id} onClick={() => handleOpenEventForEdit(ev)} className={`absolute left-16 right-4 p-2 rounded-lg ${ev.color} text-xs shadow-lg border-l-4 border-black/20 cursor-pointer hover:brightness-110 z-10 transition-all hover:scale-[1.02]`} style={{ top: `${top}px`, height: `${Math.max(30, height)}px` }} title={`Clique para editar: ${ev.title}`}>
                             <div className="font-bold text-white truncate">{ev.title}</div>
                             <div className="text-white/80 truncate flex items-center gap-1"><MapPin size={10}/> {ev.location}</div>
                         </div>
@@ -1270,18 +1345,37 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
 
         {/* MODAL NOVO EVENTO */}
         {showEventModal && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => setShowEventModal(false)}>
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => { setShowEventModal(false); setEditingEventId(null); }}>
                 <div className="w-[400px] bg-[#1E1E1E] border border-white/10 rounded-2xl shadow-2xl p-6 animate-in zoom-in" onClick={e => e.stopPropagation()}>
-                    <h3 className="text-lg font-medium text-white mb-4">Novo Evento</h3>
+                    <h3 className="text-lg font-medium text-white mb-4">{editingEventId !== null ? 'Editar Evento' : 'Novo Evento'}</h3>
                     <input type="text" placeholder="Adicionar título" className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-white outline-none mb-4 focus:border-blue-500" autoFocus value={newEventTitle} onChange={e => setNewEventTitle(e.target.value)} />
-                    <div className="flex gap-4 mb-6 text-white/70 text-sm bg-white/5 p-3 rounded-lg"><div className="flex items-center gap-2"><Clock size={16} className="text-blue-400"/> {newEventTime.start} - {newEventTime.end}</div></div>
-                    <div className="flex justify-end gap-2">
-                        <button className="px-4 py-2 rounded text-sm text-white/70 hover:bg-white/10" onClick={() => setShowEventModal(false)} title="Cancelar criação">Cancelar</button>
-                        <button className="px-6 py-2 rounded bg-blue-600 text-sm font-medium text-white hover:bg-blue-500" onClick={() => { 
-                            setCalendarEvents(prev => [...prev, { id: Date.now(), title: newEventTitle || 'Novo Evento', start: new Date(), end: new Date(), color: 'bg-blue-500', location: 'Manual' }]);
-                            setShowEventModal(false);
-                            showToast('Evento criado');
-                        }} title="Salvar evento">Salvar</button>
+                    
+                    <div className="flex gap-2 mb-6">
+                        <div className="flex-1">
+                            <label className="text-xs text-white/50 mb-2 block">Início</label>
+                            <input type="time" className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-white outline-none focus:border-blue-500" value={newEventTime.start} onChange={e => setNewEventTime({...newEventTime, start: e.target.value})} />
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-xs text-white/50 mb-2 block">Fim</label>
+                            <input type="time" className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-white outline-none focus:border-blue-500" value={newEventTime.end} onChange={e => setNewEventTime({...newEventTime, end: e.target.value})} />
+                        </div>
+                    </div>
+
+                    <div className="flex justify-between gap-2">
+                        <div className="flex gap-2">
+                            <button className="px-4 py-2 rounded text-sm text-white/70 hover:bg-white/10" onClick={() => { setShowEventModal(false); setEditingEventId(null); }} title="Cancelar">Cancelar</button>
+                        </div>
+                        <div className="flex gap-2">
+                            {editingEventId !== null && (
+                                <button className="px-4 py-2 rounded bg-red-600/30 border border-red-500/30 text-sm font-medium text-red-400 hover:bg-red-600/50" onClick={() => handleDeleteEvent(editingEventId)} title="Deletar evento">
+                                    <Trash2 size={16} className="inline mr-2" />
+                                    Deletar
+                                </button>
+                            )}
+                            <button className="px-6 py-2 rounded bg-blue-600 text-sm font-medium text-white hover:bg-blue-500" onClick={handleAddOrEditEvent} title={editingEventId !== null ? 'Atualizar evento' : 'Salvar evento'}>
+                                {editingEventId !== null ? 'Atualizar' : 'Salvar'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
