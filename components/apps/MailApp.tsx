@@ -146,6 +146,8 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
   const [newEventTime, setNewEventTime] = useState({ start: '09:00', end: '10:00' });
   const [newEventParticipants, setNewEventParticipants] = useState<string[]>([]);
   const [newParticipantEmail, setNewParticipantEmail] = useState('');
+  const [eventRecurrence, setEventRecurrence] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none');
+  const [recurrenceEnd, setRecurrenceEnd] = useState('');
   const [showViewMenu, setShowViewMenu] = useState(false);
 
   // Settings States
@@ -457,7 +459,9 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                       parseInt(newEventTime.end.split(':')[0]), parseInt(newEventTime.end.split(':')[1])),
               color: colors[newId % colors.length],
               location: 'Sem local',
-              participants: newEventParticipants
+              participants: newEventParticipants,
+              recurrence: eventRecurrence,
+              recurrenceEnd: recurrenceEnd
           };
           
           setCalendarEvents([...calendarEvents, newEvent]);
@@ -471,6 +475,8 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
       setNewEventTime({ start: '09:00', end: '10:00' });
       setNewEventParticipants([]);
       setNewParticipantEmail('');
+      setEventRecurrence('none');
+      setRecurrenceEnd('');
   };
 
   const handleOpenEventForEdit = (event: any) => {
