@@ -157,9 +157,11 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
   
   // UI Auxiliar
   const [toast, setToast] = useState<{message: string, action?: () => void} | null>(null);
+  const [showNewMenu, setShowNewMenu] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const newMenuRef = useRef<HTMLDivElement>(null);
 
   // --- EFEITOS ---
   useEffect(() => {
@@ -238,6 +240,19 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
           return () => clearTimeout(timer);
       }
   }, [toast]);
+
+  // Fechar menu "Novo" ao clicar fora
+  useEffect(() => {
+      const handleClickOutside = (e: MouseEvent) => {
+          if (newMenuRef.current && !newMenuRef.current.contains(e.target as Node)) {
+              setShowNewMenu(false);
+          }
+      };
+      if (showNewMenu) {
+          document.addEventListener('mousedown', handleClickOutside);
+      }
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNewMenu]);
 
   // --- LÓGICA ---
 
@@ -634,9 +649,56 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                             ))}
                         </div>
 
-                        <button onClick={() => setActivePane('compose')} className="flex items-center gap-2 bg-[#C2E7FF] text-[#001D35] px-5 py-2 rounded-full font-medium shadow-md hover:shadow-xl hover:scale-105 transition-all shrink-0 ml-auto" title="Escrever novo e-mail">
-                            <Plus size={20} strokeWidth={2.5} /> <span className="hidden md:inline">Novo</span>
-                        </button>
+                        {/* NOVO MENU DROPDOWN */}
+                        <div className="relative" ref={newMenuRef}>
+                            <button 
+                                onClick={() => setShowNewMenu(!showNewMenu)} 
+                                className="flex items-center gap-2 bg-[#C2E7FF] text-[#001D35] px-5 py-2 rounded-full font-medium shadow-md hover:shadow-xl hover:scale-105 transition-all shrink-0 ml-auto"
+                                title="Criar novo e-mail ou evento"
+                            >
+                                <Plus size={20} strokeWidth={2.5} /> 
+                                <span className="hidden md:inline">Novo</span>
+                            </button>
+                            
+                            {/* Menu Dropdown */}
+                            {showNewMenu && (
+                                <div className="absolute right-0 top-full mt-2 bg-[#2d2e30] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 z-50 min-w-56">
+                                    <button
+                                        onClick={() => {
+                                            setActivePane('compose');
+                                            setShowNewMenu(false);
+                                            setComposeTo('');
+                                            setComposeSubject('');
+                                        }}
+                                        className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 transition-colors border-b border-white/5 last:border-b-0"
+                                        title="Criar novo e-mail"
+                                    >
+                                        <Mail size={18} className="text-red-500" />
+                                        <div className="text-left">
+                                            <p className="font-medium">Novo E-mail</p>
+                                            <p className="text-xs text-white/50">Escrever e enviar mensagem</p>
+                                        </div>
+                                    </button>
+                                    
+                                    <button
+                                        onClick={() => {
+                                            setShowEventModal(true);
+                                            setShowNewMenu(false);
+                                            setNewEventTitle('');
+                                            setNewEventTime({ start: '09:00', end: '10:00' });
+                                        }}
+                                        className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 transition-colors border-b border-white/5 last:border-b-0"
+                                        title="Criar novo evento no calendário"
+                                    >
+                                        <CalendarClock size={18} className="text-blue-500" />
+                                        <div className="text-left">
+                                            <p className="font-medium">Novo Evento</p>
+                                            <p className="text-xs text-white/50">Adicionar à agenda</p>
+                                        </div>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
