@@ -144,6 +144,8 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
   const [editingEventId, setEditingEventId] = useState<number | null>(null);
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventTime, setNewEventTime] = useState({ start: '09:00', end: '10:00' });
+  const [newEventParticipants, setNewEventParticipants] = useState<string[]>([]);
+  const [newParticipantEmail, setNewParticipantEmail] = useState('');
   const [showViewMenu, setShowViewMenu] = useState(false);
 
   // Settings States
@@ -393,6 +395,29 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
       setReplyText('');
   }
 
+  // === CALENDAR HANDLERS (FASE 1C - PARTICIPANTS) ===
+  const handleAddParticipant = () => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!newParticipantEmail.trim()) {
+          showToast('Digite um email válido');
+          return;
+      }
+      if (!emailRegex.test(newParticipantEmail.trim())) {
+          showToast('Email inválido');
+          return;
+      }
+      if (newEventParticipants.includes(newParticipantEmail.trim())) {
+          showToast('Participante já adicionado');
+          return;
+      }
+      setNewEventParticipants([...newEventParticipants, newParticipantEmail.trim()]);
+      setNewParticipantEmail('');
+  };
+
+  const handleRemoveParticipant = (email: string) => {
+      setNewEventParticipants(newEventParticipants.filter(p => p !== email));
+  };
+
   // === CALENDAR HANDLERS (FASE 1B) ===
   const handleAddOrEditEvent = () => {
       if (!newEventTitle.trim()) {
@@ -410,7 +435,8 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                       start: new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate(), 
                               parseInt(newEventTime.start.split(':')[0]), parseInt(newEventTime.start.split(':')[1])),
                       end: new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate(),
-                              parseInt(newEventTime.end.split(':')[0]), parseInt(newEventTime.end.split(':')[1]))
+                              parseInt(newEventTime.end.split(':')[0]), parseInt(newEventTime.end.split(':')[1])),
+                      participants: newEventParticipants
                   };
               }
               return event;
@@ -430,7 +456,8 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
               end: new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate(),
                       parseInt(newEventTime.end.split(':')[0]), parseInt(newEventTime.end.split(':')[1])),
               color: colors[newId % colors.length],
-              location: 'Sem local'
+              location: 'Sem local',
+              participants: newEventParticipants
           };
           
           setCalendarEvents([...calendarEvents, newEvent]);
@@ -442,6 +469,8 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
       setEditingEventId(null);
       setNewEventTitle('');
       setNewEventTime({ start: '09:00', end: '10:00' });
+      setNewEventParticipants([]);
+      setNewParticipantEmail('');
   };
 
   const handleOpenEventForEdit = (event: any) => {
@@ -455,6 +484,7 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
           start: `${startHours}:${startMins}`,
           end: `${endHours}:${endMins}`
       });
+      setNewEventParticipants(event.participants || []);
       setShowEventModal(true);
   };
 
@@ -1444,7 +1474,7 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
         {/* MODAL NOVO EVENTO */}
         {showEventModal && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => { setShowEventModal(false); setEditingEventId(null); }}>
-                <div className="w-[400px] bg-[#1E1E1E] border border-white/10 rounded-2xl shadow-2xl p-6 animate-in zoom-in" onClick={e => e.stopPropagation()}>
+                <div className="w-[400px] bg-[#1E1E1E] border border-white/10 rounded-2xl shadow-2xl p-6 animate-in zoom-in max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                     <h3 className="text-lg font-medium text-white mb-4">{editingEventId !== null ? 'Editar Evento' : 'Novo Evento'}</h3>
                     <input type="text" placeholder="Adicionar título" className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-white outline-none mb-4 focus:border-blue-500" autoFocus value={newEventTitle} onChange={e => setNewEventTitle(e.target.value)} />
                     
@@ -1457,6 +1487,44 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                             <label className="text-xs text-white/50 mb-2 block">Fim</label>
                             <input type="time" className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-white outline-none focus:border-blue-500" value={newEventTime.end} onChange={e => setNewEventTime({...newEventTime, end: e.target.value})} />
                         </div>
+                    </div>
+
+                    {/* PARTICIPANTS SECTION - FASE 1C */}
+                    <div className="mb-6">
+                        <label className="text-xs text-white/50 mb-2 block">Participantes</label>
+                        <div className="flex gap-2 mb-2">
+                            <input 
+                                type="email" 
+                                placeholder="email@exemplo.com" 
+                                className="flex-1 bg-white/5 border border-white/10 rounded px-3 py-2 text-white outline-none focus:border-blue-500 text-sm" 
+                                value={newParticipantEmail}
+                                onChange={e => setNewParticipantEmail(e.target.value)}
+                                onKeyPress={e => e.key === 'Enter' && handleAddParticipant()}
+                            />
+                            <button 
+                                className="px-3 py-2 rounded bg-blue-600/30 border border-blue-500/30 text-blue-400 hover:bg-blue-600/50 text-sm font-medium"
+                                onClick={handleAddParticipant}
+                                title="Adicionar participante"
+                            >
+                                <Plus size={14} />
+                            </button>
+                        </div>
+                        {newEventParticipants.length > 0 && (
+                            <div className="bg-white/5 border border-white/10 rounded p-3 space-y-2">
+                                {newEventParticipants.map((participant: string) => (
+                                    <div key={participant} className="flex items-center justify-between bg-white/5 rounded px-2 py-1">
+                                        <span className="text-xs text-white/70">{participant}</span>
+                                        <button 
+                                            className="p-1 hover:bg-red-600/20 rounded text-red-400/70 hover:text-red-400"
+                                            onClick={() => handleRemoveParticipant(participant)}
+                                            title="Remover participante"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex justify-between gap-2">
