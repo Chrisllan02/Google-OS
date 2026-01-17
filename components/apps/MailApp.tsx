@@ -44,7 +44,7 @@ const ToggleSwitch = ({ checked, onChange }: { checked: boolean, onChange: () =>
 );
 
 // Painel de Filtro Expandido que absorve as pastas secundárias
-const AdvancedFilterPanel = ({ isOpen, onClose, onApply, setFolder, currentFolder, secondaryFolders }: any) => {
+const AdvancedFilterPanel = ({ isOpen, onClose, onApply, setFolder, currentFolder, secondaryFolders, advancedFilters, setAdvancedFilters }: any) => {
     if (!isOpen) return null;
     return (
         <div className="absolute top-16 left-6 w-[340px] bg-[#2d2e30] border border-white/10 rounded-xl shadow-2xl p-4 z-50 animate-in fade-in zoom-in duration-200 backdrop-blur-xl">
@@ -68,23 +68,33 @@ const AdvancedFilterPanel = ({ isOpen, onClose, onApply, setFolder, currentFolde
 
             {/* Search Fields */}
             <div className="space-y-3 mb-4">
-                <p className="text-[10px] text-white/40 uppercase font-bold px-1">Busca Avançada</p>
+                <p className="text-[10px] text-white/40 uppercase font-bold px-1">Busca Avançada (FASE 1C)</p>
                 <div className="grid grid-cols-2 gap-3">
                     <div>
                         <label className="text-[10px] text-white/50 block mb-1">De</label>
-                        <input type="text" className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:border-blue-500 outline-none" />
+                        <input type="text" placeholder="sender@example.com" value={advancedFilters.from} onChange={(e) => setAdvancedFilters({...advancedFilters, from: e.target.value})} className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:border-blue-500 outline-none" />
                     </div>
                     <div>
                         <label className="text-[10px] text-white/50 block mb-1">Para</label>
-                        <input type="text" className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:border-blue-500 outline-none" />
+                        <input type="text" placeholder="recipient@example.com" value={advancedFilters.to} onChange={(e) => setAdvancedFilters({...advancedFilters, to: e.target.value})} className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:border-blue-500 outline-none" />
                     </div>
                 </div>
                 <div>
                     <label className="text-[10px] text-white/50 block mb-1">Assunto</label>
-                    <input type="text" className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:border-blue-500 outline-none" />
+                    <input type="text" placeholder="Search in subject..." value={advancedFilters.subject} onChange={(e) => setAdvancedFilters({...advancedFilters, subject: e.target.value})} className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:border-blue-500 outline-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <label className="text-[10px] text-white/50 block mb-1">De (data)</label>
+                        <input type="date" value={advancedFilters.dateFrom} onChange={(e) => setAdvancedFilters({...advancedFilters, dateFrom: e.target.value})} className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:border-blue-500 outline-none" />
+                    </div>
+                    <div>
+                        <label className="text-[10px] text-white/50 block mb-1">Até (data)</label>
+                        <input type="date" value={advancedFilters.dateTo} onChange={(e) => setAdvancedFilters({...advancedFilters, dateTo: e.target.value})} className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:border-blue-500 outline-none" />
+                    </div>
                 </div>
                 <div className="flex items-center gap-2 pt-1">
-                    <Checkbox checked={false} onChange={() => {}} />
+                    <Checkbox checked={advancedFilters.hasAttachment} onChange={() => setAdvancedFilters({...advancedFilters, hasAttachment: !advancedFilters.hasAttachment})} />
                     <span className="text-xs text-white/80">Contém anexo</span>
                 </div>
             </div>
@@ -116,6 +126,16 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
   
   const [isResizing, setIsResizing] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
+  
+  // Advanced Search / Filter States (FASE 1C)
+  const [advancedFilters, setAdvancedFilters] = useState({
+      from: '',
+      to: '',
+      subject: '',
+      hasAttachment: false,
+      dateFrom: '',
+      dateTo: ''
+  });
   
   // Calendar States
   const [calendarViewMode, setCalendarViewMode] = useState<'day' | 'week' | 'month' | 'year'>('day');
@@ -504,6 +524,21 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
       if (mailFolder === 'starred') return e.isStarred;
       const isCorrectFolder = e.folder === mailFolder;
       if (!isCorrectFolder) return false;
+      
+      // Advanced search filters (FASE 1C)
+      if (advancedFilters.from && !e.sender.toLowerCase().includes(advancedFilters.from.toLowerCase())) return false;
+      if (advancedFilters.to && !e.sender.toLowerCase().includes(advancedFilters.to.toLowerCase())) return false;
+      if (advancedFilters.subject && !e.subject.toLowerCase().includes(advancedFilters.subject.toLowerCase())) return false;
+      if (advancedFilters.hasAttachment && !e.attachments) return false;
+      
+      // Date filtering
+      if (advancedFilters.dateFrom || advancedFilters.dateTo) {
+          const emailDate = new Date(e.time).getTime();
+          if (advancedFilters.dateFrom && emailDate < new Date(advancedFilters.dateFrom).getTime()) return false;
+          if (advancedFilters.dateTo && emailDate > new Date(advancedFilters.dateTo).getTime()) return false;
+      }
+      
+      // Quick search
       if (searchQuery) {
           const lowerQ = searchQuery.toLowerCase();
           return (
@@ -784,6 +819,8 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                                     setFolder={setMailFolder}
                                     currentFolder={mailFolder}
                                     secondaryFolders={secondaryFolders}
+                                    advancedFilters={advancedFilters}
+                                    setAdvancedFilters={setAdvancedFilters}
                                 />
                             </div>
                         </div>
