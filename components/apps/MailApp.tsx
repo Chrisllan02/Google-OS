@@ -170,6 +170,10 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
   const [replyText, setReplyText] = useState('');
   const [showFormatting, setShowFormatting] = useState(false); // Gmail formatting toolbar toggle
   
+  // Labels Management (FASE 1C)
+  const [availableLabels] = useState(['urgent', 'follow-up', 'bills', 'work', 'personal', 'important', 'review']);
+  const [showLabelManager, setShowLabelManager] = useState(false);
+  
   // Drag and Drop (Desktop) & Swipe (Mobile)
   const [draggedEmail, setDraggedEmail] = useState<any>(null);
   const [dragOverTab, setDragOverTab] = useState<string | null>(null);
@@ -461,6 +465,26 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
           showToast('Evento deletado');
           setShowEventModal(false);
       }
+  };
+
+  // === LABELS MANAGEMENT (FASE 1C) ===
+  const handleToggleLabel = (emailId: number, label: string) => {
+      const updatedEmails = emails.map(e => {
+          if (e.id === emailId) {
+              const labels = e.labels || [];
+              if (labels.includes(label)) {
+                  return { ...e, labels: labels.filter(l => l !== label) };
+              } else {
+                  return { ...e, labels: [...labels, label] };
+              }
+          }
+          return e;
+      });
+      setEmails(updatedEmails);
+      if (activeEmail?.id === emailId) {
+          setActiveEmail(updatedEmails.find(e => e.id === emailId) || null);
+      }
+      showToast(`Label "${label}" ${emails.find(e => e.id === emailId)?.labels?.includes(label) ? 'removido' : 'adicionado'}`);
   };
 
   const handleDragStart = (e: React.DragEvent, email: any) => {
@@ -1072,6 +1096,16 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                                                 </div>
                                                 <h4 className={`text-xs mb-1 truncate ${!email.read ? 'text-white font-semibold' : 'text-white/70'}`}>{email.subject}</h4>
                                                 <p className="text-[11px] text-white/40 truncate">{email.preview}</p>
+                                                {email.labels && email.labels.length > 0 && (
+                                                    <div className="flex flex-wrap gap-1 mt-1">
+                                                        {email.labels.slice(0, 3).map((label: string) => (
+                                                            <span key={label} className="text-[9px] bg-blue-600/30 border border-blue-500/30 text-blue-400 px-2 py-0.5 rounded-full">
+                                                                {label}
+                                                            </span>
+                                                        ))}
+                                                        {email.labels.length > 3 && <span className="text-[9px] text-white/40">+{email.labels.length - 3}</span>}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -1184,9 +1218,36 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
 
                             <div className="px-6 py-4">
                                 <h2 className="text-xl font-medium text-white break-words">{activeEmail.subject}</h2>
-                                <div className="flex items-center gap-2 mt-2">
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
                                      <div className="bg-white/10 px-2 py-0.5 rounded text-[10px] text-white/70">Caixa de Entrada</div>
+                                     {activeEmail.labels && activeEmail.labels.map((label: string) => (
+                                        <div key={label} className="bg-blue-600/20 px-2 py-0.5 rounded text-[10px] text-blue-400 border border-blue-500/30 flex items-center gap-1 group cursor-pointer hover:bg-blue-600/30">
+                                            {label}
+                                            <button onClick={() => handleToggleLabel(activeEmail.id, label)} className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                     ))}
+                                     <button onClick={() => setShowLabelManager(!showLabelManager)} className="text-[10px] bg-white/5 px-2 py-0.5 rounded border border-white/10 text-white/70 hover:bg-white/10 flex items-center gap-1">
+                                        <Plus size={12} /> Adicionar label
+                                     </button>
                                 </div>
+                                {showLabelManager && (
+                                    <div className="mt-2 p-3 bg-white/5 border border-white/10 rounded-lg">
+                                        <p className="text-xs text-white/50 mb-2">Gerenciar labels:</p>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {availableLabels.map(label => (
+                                                <button 
+                                                    key={label}
+                                                    onClick={() => handleToggleLabel(activeEmail.id, label)}
+                                                    className={`text-[10px] px-2 py-1 rounded transition-all ${activeEmail.labels?.includes(label) ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
+                                                >
+                                                    {label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6">
