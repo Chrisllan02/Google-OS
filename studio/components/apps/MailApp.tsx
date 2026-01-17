@@ -172,20 +172,76 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                  ...e, 
                  folder: 'inbox', // Default
                  read: false,
-                 isStarred: index === 1 
+                 isStarred: index === 1,
+                 labels: [], // Novo: etiquetas
+                 replies: [] // Novo: threading
              }));
              
+             // Adicionar conversas com threading
              enhanced.push(
-                 { id: 101, sender: 'Julia Silva', subject: 'Reunião de Design', preview: 'Vamos agendar o review do Design System.', time: '09:00', read: true, folder: 'important', senderInit: 'J', color: 'bg-purple-500' },
-                 { id: 102, sender: 'AWS Billing', subject: 'Fatura Disponível', preview: 'Sua fatura de Julho está pronta.', time: 'Ontem', read: false, folder: 'inbox', isStarred: true, senderInit: 'A', color: 'bg-orange-500' },
-                 { id: 103, sender: 'Equipe Asana', subject: 'Resumo Semanal', preview: 'Você completou 5 tarefas esta semana.', time: 'Seg', read: true, folder: 'trash', senderInit: 'E', color: 'bg-red-500' },
-                 { id: 104, sender: 'Newsletter Tech', subject: 'Novidades AI 2024', preview: 'Tudo sobre os novos modelos.', time: '10:00', read: false, folder: 'spam', senderInit: 'N', color: 'bg-green-500' },
-                 { id: 105, sender: 'Eu', subject: 'Rascunho de Proposta', preview: 'Olá cliente, segue a proposta...', time: '11:30', read: true, folder: 'drafts', senderInit: 'E', color: 'bg-gray-500' },
-                 { id: 106, sender: 'Eu', subject: 'Relatório Enviado', preview: 'Segue anexo o relatório mensal.', time: 'Ontem', read: true, folder: 'sent', senderInit: 'E', color: 'bg-blue-500' },
-                 { id: 107, sender: 'Chefe', subject: 'Adiado: Reunião', preview: 'Vamos mover para semana que vem.', time: '08:00', read: false, folder: 'snoozed', senderInit: 'C', color: 'bg-yellow-500' },
-                 { id: 108, sender: 'Eu', subject: 'Agendado: Feliz Aniversário', preview: 'Parabéns!', time: 'Amanhã', read: true, folder: 'scheduled', senderInit: 'E', color: 'bg-pink-500' },
-                 { id: 109, sender: 'Promoção', subject: 'Oferta Relâmpago', preview: '50% de desconto hoje.', time: 'Ontem', read: false, folder: 'spam', senderInit: 'P', color: 'bg-yellow-600' },
-                 { id: 110, sender: 'Lixeira', subject: 'Arquivo Antigo', preview: 'Este item será excluído em 30 dias.', time: 'Há 5 dias', read: true, folder: 'trash', senderInit: 'L', color: 'bg-gray-600' }
+                 { 
+                   id: 101, sender: 'Julia Silva', subject: 'Reunião de Design', 
+                   preview: 'Vamos agendar o review do Design System.', 
+                   time: '09:00', read: true, folder: 'important', senderInit: 'J', color: 'bg-purple-500',
+                   labels: ['urgent'], replies: [
+                     { id: 1, from: 'Você', body: 'Ótimo! Quarta 14h?', timestamp: new Date(), read: true, avatar: 'https://ui-avatars.com/api/?name=Voce&background=4285F4' },
+                     { id: 2, from: 'Julia Silva', body: 'Perfeito! Te vejo lá.', timestamp: new Date(Date.now() - 3600000), read: true, avatar: 'https://ui-avatars.com/api/?name=Julia+Silva&background=9C27B0' }
+                   ]
+                 },
+                 { 
+                   id: 102, sender: 'AWS Billing', subject: 'Fatura Disponível', 
+                   preview: 'Sua fatura de Julho está pronta.', 
+                   time: 'Ontem', read: false, folder: 'inbox', isStarred: true, senderInit: 'A', color: 'bg-orange-500',
+                   labels: ['bills'], replies: []
+                 },
+                 { 
+                   id: 103, sender: 'Equipe Asana', subject: 'Resumo Semanal', 
+                   preview: 'Você completou 5 tarefas esta semana.', 
+                   time: 'Seg', read: true, folder: 'trash', senderInit: 'E', color: 'bg-red-500',
+                   labels: ['work'], replies: []
+                 },
+                 { 
+                   id: 104, sender: 'Newsletter Tech', subject: 'Novidades AI 2024', 
+                   preview: 'Tudo sobre os novos modelos.', 
+                   time: '10:00', read: false, folder: 'spam', senderInit: 'N', color: 'bg-green-500',
+                   labels: [], replies: []
+                 },
+                 { 
+                   id: 105, sender: 'Eu', subject: 'Rascunho de Proposta', 
+                   preview: 'Olá cliente, segue a proposta...', 
+                   time: '11:30', read: true, folder: 'drafts', senderInit: 'E', color: 'bg-gray-500',
+                   labels: [], replies: []
+                 },
+                 { 
+                   id: 106, sender: 'Eu', subject: 'Relatório Enviado', 
+                   preview: 'Segue anexo o relatório mensal.', 
+                   time: 'Ontem', read: true, folder: 'sent', senderInit: 'E', color: 'bg-blue-500',
+                   labels: ['reports'], replies: []
+                 },
+                 { 
+                   id: 107, sender: 'Chefe', subject: 'Adiado: Reunião', 
+                   preview: 'Vamos mover para semana que vem.', 
+                   time: '08:00', read: false, folder: 'snoozed', senderInit: 'C', color: 'bg-yellow-500',
+                   labels: ['urgent'], replies: []
+                 },
+                 { 
+                   id: 108, sender: 'Eu', subject: 'Agendado: Feliz Aniversário', 
+                   preview: 'Parabéns!', 
+                   time: 'Amanhã', read: true, folder: 'scheduled', senderInit: 'E', color: 'bg-pink-500',
+                   labels: [], replies: []
+                 },
+                 { 
+                   id: 109, sender: 'Promoção', subject: 'Oferta Relâmpago', 
+                   preview: '50% de desconto hoje.', 
+                   time: 'Ontem', read: false, folder: 'spam', senderInit: 'P', color: 'bg-yellow-600',
+                   labels: [], replies: []
+                 },
+                 { 
+                   id: 110, sender: 'Lixeira', subject: 'Arquivo Antigo', 
+                   preview: 'Este item será excluído em 30 dias.', 
+                   time: 'Há 5 dias', read: true, folder: 'trash', senderInit: 'L', color: 'bg-gray-600',
+                   labels: [], replies: []
+                 }
              );
              setEmails(enhanced);
         }
@@ -284,7 +340,30 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
   };
 
   const handleSendReply = () => {
-      if(!replyText.trim()) return;
+      if(!replyText.trim() || !activeEmail) return;
+      
+      // Adicionar reply à thread
+      const updatedEmails = emails.map(e => {
+          if (e.id === activeEmail.id) {
+              const newReply = {
+                  id: (e.replies?.length || 0) + 1,
+                  from: 'Você',
+                  body: replyText,
+                  timestamp: new Date(),
+                  read: true,
+                  avatar: 'https://ui-avatars.com/api/?name=Voce&background=4285F4'
+              };
+              return {
+                  ...e,
+                  replies: [...(e.replies || []), newReply],
+                  time: 'Agora'
+              };
+          }
+          return e;
+      });
+      
+      setEmails(updatedEmails);
+      setActiveEmail(updatedEmails.find(e => e.id === activeEmail.id) || null);
       showToast('Resposta enviada');
       setReplyText('');
   }
@@ -1019,6 +1098,27 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                                     <br/><br/>
                                     <p className="text-white/60 italic">--<br/>Enviado via Hub Workspace</p>
                                 </div>
+
+                                {/* THREAD DE RESPOSTAS */}
+                                {activeEmail.replies && activeEmail.replies.length > 0 && (
+                                    <div className="mt-6 space-y-4 border-b border-white/5 pb-6">
+                                        <p className="text-xs text-white/40 uppercase tracking-wider font-semibold">{activeEmail.replies.length} resposta{activeEmail.replies.length !== 1 ? 's' : ''}</p>
+                                        {activeEmail.replies.map((reply: any) => (
+                                            <div key={reply.id} className="bg-white/[0.03] border border-white/5 rounded-xl p-4">
+                                                <div className="flex items-start gap-3 mb-2">
+                                                    <img src={reply.avatar} alt={reply.from} className="w-8 h-8 rounded-full" />
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex justify-between items-start">
+                                                            <span className="text-sm font-medium text-white">{reply.from}</span>
+                                                            <span className="text-xs text-white/40">{new Date(reply.timestamp).toLocaleString('pt-BR')}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <p className="text-sm text-white/80 leading-6 pl-11">{reply.body}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
 
                                 <div className="mt-6 flex gap-4">
                                     <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-sm font-bold text-white shrink-0">Eu</div>
