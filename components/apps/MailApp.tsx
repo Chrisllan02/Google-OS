@@ -121,6 +121,7 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
   const [calendarViewMode, setCalendarViewMode] = useState<'day' | 'week' | 'month' | 'year'>('day');
   const [viewDate, setViewDate] = useState(new Date());
   const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<number | null>(null);
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventTime, setNewEventTime] = useState({ start: '09:00', end: '10:00' });
   const [showViewMenu, setShowViewMenu] = useState(false);
