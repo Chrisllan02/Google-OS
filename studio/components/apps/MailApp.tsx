@@ -44,7 +44,7 @@ const ToggleSwitch = ({ checked, onChange }: { checked: boolean, onChange: () =>
 );
 
 // Painel de Filtro Expandido que absorve as pastas secundárias
-const AdvancedFilterPanel = ({ isOpen, onClose, onApply, setFolder, currentFolder, secondaryFolders, advancedFilters, setAdvancedFilters }: any) => {
+const AdvancedFilterPanel = ({ isOpen, onClose, onApply, setFolder, currentFolder, secondaryFolders }: any) => {
     if (!isOpen) return null;
     return (
         <div className="absolute top-16 left-6 w-[340px] bg-[#2d2e30] border border-white/10 rounded-xl shadow-2xl p-4 z-50 animate-in fade-in zoom-in duration-200 backdrop-blur-xl">
@@ -68,33 +68,23 @@ const AdvancedFilterPanel = ({ isOpen, onClose, onApply, setFolder, currentFolde
 
             {/* Search Fields */}
             <div className="space-y-3 mb-4">
-                <p className="text-[10px] text-white/40 uppercase font-bold px-1">Busca Avançada (FASE 1C)</p>
+                <p className="text-[10px] text-white/40 uppercase font-bold px-1">Busca Avançada</p>
                 <div className="grid grid-cols-2 gap-3">
                     <div>
                         <label className="text-[10px] text-white/50 block mb-1">De</label>
-                        <input type="text" placeholder="sender@example.com" value={advancedFilters.from} onChange={(e) => setAdvancedFilters({...advancedFilters, from: e.target.value})} className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:border-blue-500 outline-none" />
+                        <input type="text" className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:border-blue-500 outline-none" />
                     </div>
                     <div>
                         <label className="text-[10px] text-white/50 block mb-1">Para</label>
-                        <input type="text" placeholder="recipient@example.com" value={advancedFilters.to} onChange={(e) => setAdvancedFilters({...advancedFilters, to: e.target.value})} className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:border-blue-500 outline-none" />
+                        <input type="text" className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:border-blue-500 outline-none" />
                     </div>
                 </div>
                 <div>
                     <label className="text-[10px] text-white/50 block mb-1">Assunto</label>
-                    <input type="text" placeholder="Search in subject..." value={advancedFilters.subject} onChange={(e) => setAdvancedFilters({...advancedFilters, subject: e.target.value})} className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:border-blue-500 outline-none" />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                    <div>
-                        <label className="text-[10px] text-white/50 block mb-1">De (data)</label>
-                        <input type="date" value={advancedFilters.dateFrom} onChange={(e) => setAdvancedFilters({...advancedFilters, dateFrom: e.target.value})} className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:border-blue-500 outline-none" />
-                    </div>
-                    <div>
-                        <label className="text-[10px] text-white/50 block mb-1">Até (data)</label>
-                        <input type="date" value={advancedFilters.dateTo} onChange={(e) => setAdvancedFilters({...advancedFilters, dateTo: e.target.value})} className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:border-blue-500 outline-none" />
-                    </div>
+                    <input type="text" className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:border-blue-500 outline-none" />
                 </div>
                 <div className="flex items-center gap-2 pt-1">
-                    <Checkbox checked={advancedFilters.hasAttachment} onChange={() => setAdvancedFilters({...advancedFilters, hasAttachment: !advancedFilters.hasAttachment})} />
+                    <Checkbox checked={false} onChange={() => {}} />
                     <span className="text-xs text-white/80">Contém anexo</span>
                 </div>
             </div>
@@ -126,26 +116,14 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
   
   const [isResizing, setIsResizing] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
-  
-  // Advanced Search / Filter States (FASE 1C)
-  const [advancedFilters, setAdvancedFilters] = useState({
-      from: '',
-      to: '',
-      subject: '',
-      hasAttachment: false,
-      dateFrom: '',
-      dateTo: ''
-  });
+  const [showNewMenu, setShowNewMenu] = useState(false); // Menu "Novo" Dropdown
   
   // Calendar States
   const [calendarViewMode, setCalendarViewMode] = useState<'day' | 'week' | 'month' | 'year'>('day');
   const [viewDate, setViewDate] = useState(new Date());
   const [showEventModal, setShowEventModal] = useState(false);
-  const [editingEventId, setEditingEventId] = useState<number | null>(null);
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventTime, setNewEventTime] = useState({ start: '09:00', end: '10:00' });
-  const [newEventParticipants, setNewEventParticipants] = useState<string[]>([]);
-  const [newParticipantEmail, setNewParticipantEmail] = useState('');
   const [showViewMenu, setShowViewMenu] = useState(false);
 
   // Settings States
@@ -172,10 +150,6 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
   const [replyText, setReplyText] = useState('');
   const [showFormatting, setShowFormatting] = useState(false); // Gmail formatting toolbar toggle
   
-  // Labels Management (FASE 1C)
-  const [availableLabels] = useState(['urgent', 'follow-up', 'bills', 'work', 'personal', 'important', 'review']);
-  const [showLabelManager, setShowLabelManager] = useState(false);
-  
   // Drag and Drop (Desktop) & Swipe (Mobile)
   const [draggedEmail, setDraggedEmail] = useState<any>(null);
   const [dragOverTab, setDragOverTab] = useState<string | null>(null);
@@ -184,11 +158,9 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
   
   // UI Auxiliar
   const [toast, setToast] = useState<{message: string, action?: () => void} | null>(null);
-  const [showNewMenu, setShowNewMenu] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const newMenuRef = useRef<HTMLDivElement>(null);
 
   // --- EFEITOS ---
   useEffect(() => {
@@ -199,76 +171,20 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                  ...e, 
                  folder: 'inbox', // Default
                  read: false,
-                 isStarred: index === 1,
-                 labels: [], // Novo: etiquetas
-                 replies: [] // Novo: threading
+                 isStarred: index === 1 
              }));
              
-             // Adicionar conversas com threading
              enhanced.push(
-                 { 
-                   id: 101, sender: 'Julia Silva', subject: 'Reunião de Design', 
-                   preview: 'Vamos agendar o review do Design System.', 
-                   time: '09:00', read: true, folder: 'important', senderInit: 'J', color: 'bg-purple-500',
-                   labels: ['urgent'], replies: [
-                     { id: 1, from: 'Você', body: 'Ótimo! Quarta 14h?', timestamp: new Date(), read: true, avatar: 'https://ui-avatars.com/api/?name=Voce&background=4285F4' },
-                     { id: 2, from: 'Julia Silva', body: 'Perfeito! Te vejo lá.', timestamp: new Date(Date.now() - 3600000), read: true, avatar: 'https://ui-avatars.com/api/?name=Julia+Silva&background=9C27B0' }
-                   ]
-                 },
-                 { 
-                   id: 102, sender: 'AWS Billing', subject: 'Fatura Disponível', 
-                   preview: 'Sua fatura de Julho está pronta.', 
-                   time: 'Ontem', read: false, folder: 'inbox', isStarred: true, senderInit: 'A', color: 'bg-orange-500',
-                   labels: ['bills'], replies: []
-                 },
-                 { 
-                   id: 103, sender: 'Equipe Asana', subject: 'Resumo Semanal', 
-                   preview: 'Você completou 5 tarefas esta semana.', 
-                   time: 'Seg', read: true, folder: 'trash', senderInit: 'E', color: 'bg-red-500',
-                   labels: ['work'], replies: []
-                 },
-                 { 
-                   id: 104, sender: 'Newsletter Tech', subject: 'Novidades AI 2024', 
-                   preview: 'Tudo sobre os novos modelos.', 
-                   time: '10:00', read: false, folder: 'spam', senderInit: 'N', color: 'bg-green-500',
-                   labels: [], replies: []
-                 },
-                 { 
-                   id: 105, sender: 'Eu', subject: 'Rascunho de Proposta', 
-                   preview: 'Olá cliente, segue a proposta...', 
-                   time: '11:30', read: true, folder: 'drafts', senderInit: 'E', color: 'bg-gray-500',
-                   labels: [], replies: []
-                 },
-                 { 
-                   id: 106, sender: 'Eu', subject: 'Relatório Enviado', 
-                   preview: 'Segue anexo o relatório mensal.', 
-                   time: 'Ontem', read: true, folder: 'sent', senderInit: 'E', color: 'bg-blue-500',
-                   labels: ['reports'], replies: []
-                 },
-                 { 
-                   id: 107, sender: 'Chefe', subject: 'Adiado: Reunião', 
-                   preview: 'Vamos mover para semana que vem.', 
-                   time: '08:00', read: false, folder: 'snoozed', senderInit: 'C', color: 'bg-yellow-500',
-                   labels: ['urgent'], replies: []
-                 },
-                 { 
-                   id: 108, sender: 'Eu', subject: 'Agendado: Feliz Aniversário', 
-                   preview: 'Parabéns!', 
-                   time: 'Amanhã', read: true, folder: 'scheduled', senderInit: 'E', color: 'bg-pink-500',
-                   labels: [], replies: []
-                 },
-                 { 
-                   id: 109, sender: 'Promoção', subject: 'Oferta Relâmpago', 
-                   preview: '50% de desconto hoje.', 
-                   time: 'Ontem', read: false, folder: 'spam', senderInit: 'P', color: 'bg-yellow-600',
-                   labels: [], replies: []
-                 },
-                 { 
-                   id: 110, sender: 'Lixeira', subject: 'Arquivo Antigo', 
-                   preview: 'Este item será excluído em 30 dias.', 
-                   time: 'Há 5 dias', read: true, folder: 'trash', senderInit: 'L', color: 'bg-gray-600',
-                   labels: [], replies: []
-                 }
+                 { id: 101, sender: 'Julia Silva', subject: 'Reunião de Design', preview: 'Vamos agendar o review do Design System.', time: '09:00', read: true, folder: 'important', senderInit: 'J', color: 'bg-purple-500' },
+                 { id: 102, sender: 'AWS Billing', subject: 'Fatura Disponível', preview: 'Sua fatura de Julho está pronta.', time: 'Ontem', read: false, folder: 'inbox', isStarred: true, senderInit: 'A', color: 'bg-orange-500' },
+                 { id: 103, sender: 'Equipe Asana', subject: 'Resumo Semanal', preview: 'Você completou 5 tarefas esta semana.', time: 'Seg', read: true, folder: 'trash', senderInit: 'E', color: 'bg-red-500' },
+                 { id: 104, sender: 'Newsletter Tech', subject: 'Novidades AI 2024', preview: 'Tudo sobre os novos modelos.', time: '10:00', read: false, folder: 'spam', senderInit: 'N', color: 'bg-green-500' },
+                 { id: 105, sender: 'Eu', subject: 'Rascunho de Proposta', preview: 'Olá cliente, segue a proposta...', time: '11:30', read: true, folder: 'drafts', senderInit: 'E', color: 'bg-gray-500' },
+                 { id: 106, sender: 'Eu', subject: 'Relatório Enviado', preview: 'Segue anexo o relatório mensal.', time: 'Ontem', read: true, folder: 'sent', senderInit: 'E', color: 'bg-blue-500' },
+                 { id: 107, sender: 'Chefe', subject: 'Adiado: Reunião', preview: 'Vamos mover para semana que vem.', time: '08:00', read: false, folder: 'snoozed', senderInit: 'C', color: 'bg-yellow-500' },
+                 { id: 108, sender: 'Eu', subject: 'Agendado: Feliz Aniversário', preview: 'Parabéns!', time: 'Amanhã', read: true, folder: 'scheduled', senderInit: 'E', color: 'bg-pink-500' },
+                 { id: 109, sender: 'Promoção', subject: 'Oferta Relâmpago', preview: '50% de desconto hoje.', time: 'Ontem', read: false, folder: 'spam', senderInit: 'P', color: 'bg-yellow-600' },
+                 { id: 110, sender: 'Lixeira', subject: 'Arquivo Antigo', preview: 'Este item será excluído em 30 dias.', time: 'Há 5 dias', read: true, folder: 'trash', senderInit: 'L', color: 'bg-gray-600' }
              );
              setEmails(enhanced);
         }
@@ -324,19 +240,6 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
       }
   }, [toast]);
 
-  // Fechar menu "Novo" ao clicar fora
-  useEffect(() => {
-      const handleClickOutside = (e: MouseEvent) => {
-          if (newMenuRef.current && !newMenuRef.current.contains(e.target as Node)) {
-              setShowNewMenu(false);
-          }
-      };
-      if (showNewMenu) {
-          document.addEventListener('mousedown', handleClickOutside);
-      }
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showNewMenu]);
-
   // --- LÓGICA ---
 
   const toggleEmailSelection = (id: number) => {
@@ -367,155 +270,10 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
   };
 
   const handleSendReply = () => {
-      if(!replyText.trim() || !activeEmail) return;
-      
-      // Adicionar reply à thread
-      const updatedEmails = emails.map(e => {
-          if (e.id === activeEmail.id) {
-              const newReply = {
-                  id: (e.replies?.length || 0) + 1,
-                  from: 'Você',
-                  body: replyText,
-                  timestamp: new Date(),
-                  read: true,
-                  avatar: 'https://ui-avatars.com/api/?name=Voce&background=4285F4'
-              };
-              return {
-                  ...e,
-                  replies: [...(e.replies || []), newReply],
-                  time: 'Agora'
-              };
-          }
-          return e;
-      });
-      
-      setEmails(updatedEmails);
-      setActiveEmail(updatedEmails.find(e => e.id === activeEmail.id) || null);
+      if(!replyText.trim()) return;
       showToast('Resposta enviada');
       setReplyText('');
   }
-
-  // === CALENDAR HANDLERS (FASE 1C - PARTICIPANTS) ===
-  const handleAddParticipant = () => {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!newParticipantEmail.trim()) {
-          showToast('Digite um email válido');
-          return;
-      }
-      if (!emailRegex.test(newParticipantEmail.trim())) {
-          showToast('Email inválido');
-          return;
-      }
-      if (newEventParticipants.includes(newParticipantEmail.trim())) {
-          showToast('Participante já adicionado');
-          return;
-      }
-      setNewEventParticipants([...newEventParticipants, newParticipantEmail.trim()]);
-      setNewParticipantEmail('');
-  };
-
-  const handleRemoveParticipant = (email: string) => {
-      setNewEventParticipants(newEventParticipants.filter(p => p !== email));
-  };
-
-  // === CALENDAR HANDLERS (FASE 1B) ===
-  const handleAddOrEditEvent = () => {
-      if (!newEventTitle.trim()) {
-          showToast('Título do evento é obrigatório');
-          return;
-      }
-
-      if (editingEventId !== null) {
-          // MODO EDIÇÃO: Atualizar evento existente
-          const updatedEvents = calendarEvents.map(event => {
-              if (event.id === editingEventId) {
-                  return {
-                      ...event,
-                      title: newEventTitle,
-                      start: new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate(), 
-                              parseInt(newEventTime.start.split(':')[0]), parseInt(newEventTime.start.split(':')[1])),
-                      end: new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate(),
-                              parseInt(newEventTime.end.split(':')[0]), parseInt(newEventTime.end.split(':')[1])),
-                      participants: newEventParticipants
-                  };
-              }
-              return event;
-          });
-          setCalendarEvents(updatedEvents);
-          showToast('Evento atualizado');
-      } else {
-          // MODO CRIAÇÃO: Adicionar novo evento
-          const newId = Math.max(...calendarEvents.map(e => e.id), 0) + 1;
-          const colors = ['bg-blue-500', 'bg-red-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500'];
-          
-          const newEvent = {
-              id: newId,
-              title: newEventTitle,
-              start: new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate(),
-                      parseInt(newEventTime.start.split(':')[0]), parseInt(newEventTime.start.split(':')[1])),
-              end: new Date(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate(),
-                      parseInt(newEventTime.end.split(':')[0]), parseInt(newEventTime.end.split(':')[1])),
-              color: colors[newId % colors.length],
-              location: 'Sem local',
-              participants: newEventParticipants
-          };
-          
-          setCalendarEvents([...calendarEvents, newEvent]);
-          showToast('Evento criado');
-      }
-
-      // Resetar form
-      setShowEventModal(false);
-      setEditingEventId(null);
-      setNewEventTitle('');
-      setNewEventTime({ start: '09:00', end: '10:00' });
-      setNewEventParticipants([]);
-      setNewParticipantEmail('');
-  };
-
-  const handleOpenEventForEdit = (event: any) => {
-      setEditingEventId(event.id);
-      setNewEventTitle(event.title);
-      const startHours = String(event.start.getHours()).padStart(2, '0');
-      const startMins = String(event.start.getMinutes()).padStart(2, '0');
-      const endHours = String(event.end.getHours()).padStart(2, '0');
-      const endMins = String(event.end.getMinutes()).padStart(2, '0');
-      setNewEventTime({
-          start: `${startHours}:${startMins}`,
-          end: `${endHours}:${endMins}`
-      });
-      setNewEventParticipants(event.participants || []);
-      setShowEventModal(true);
-  };
-
-  const handleDeleteEvent = (eventId: number) => {
-      if (confirm('Tem certeza que deseja deletar este evento?')) {
-          const updatedEvents = calendarEvents.filter(event => event.id !== eventId);
-          setCalendarEvents(updatedEvents);
-          showToast('Evento deletado');
-          setShowEventModal(false);
-      }
-  };
-
-  // === LABELS MANAGEMENT (FASE 1C) ===
-  const handleToggleLabel = (emailId: number, label: string) => {
-      const updatedEmails = emails.map(e => {
-          if (e.id === emailId) {
-              const labels = e.labels || [];
-              if (labels.includes(label)) {
-                  return { ...e, labels: labels.filter(l => l !== label) };
-              } else {
-                  return { ...e, labels: [...labels, label] };
-              }
-          }
-          return e;
-      });
-      setEmails(updatedEmails);
-      if (activeEmail?.id === emailId) {
-          setActiveEmail(updatedEmails.find(e => e.id === emailId) || null);
-      }
-      showToast(`Label "${label}" ${emails.find(e => e.id === emailId)?.labels?.includes(label) ? 'removido' : 'adicionado'}`);
-  };
 
   const handleDragStart = (e: React.DragEvent, email: any) => {
       setDraggedEmail(email);
@@ -578,21 +336,6 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
       if (mailFolder === 'starred') return e.isStarred;
       const isCorrectFolder = e.folder === mailFolder;
       if (!isCorrectFolder) return false;
-      
-      // Advanced search filters (FASE 1C)
-      if (advancedFilters.from && !e.sender.toLowerCase().includes(advancedFilters.from.toLowerCase())) return false;
-      if (advancedFilters.to && !e.sender.toLowerCase().includes(advancedFilters.to.toLowerCase())) return false;
-      if (advancedFilters.subject && !e.subject.toLowerCase().includes(advancedFilters.subject.toLowerCase())) return false;
-      if (advancedFilters.hasAttachment && !e.attachments) return false;
-      
-      // Date filtering
-      if (advancedFilters.dateFrom || advancedFilters.dateTo) {
-          const emailDate = new Date(e.time).getTime();
-          if (advancedFilters.dateFrom && emailDate < new Date(advancedFilters.dateFrom).getTime()) return false;
-          if (advancedFilters.dateTo && emailDate > new Date(advancedFilters.dateTo).getTime()) return false;
-      }
-      
-      // Quick search
       if (searchQuery) {
           const lowerQ = searchQuery.toLowerCase();
           return (
@@ -695,7 +438,7 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                                           </div>
                                           <div className="flex-1 flex flex-col gap-1 overflow-hidden">
                                               {dayEvents.slice(0, 3).map(ev => (
-                                                  <div key={ev.id} onClick={(e) => { e.stopPropagation(); handleOpenEventForEdit(ev); }} className={`text-[9px] px-1 py-0.5 rounded truncate ${ev.color} text-white font-medium cursor-pointer hover:brightness-110 transition-all`} title={`Clique para editar: ${ev.title}`}>
+                                                  <div key={ev.id} className={`text-[9px] px-1 py-0.5 rounded truncate ${ev.color} text-white font-medium`}>
                                                       {ev.title}
                                                   </div>
                                               ))}
@@ -753,7 +496,7 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                                       const top = startH * 60 + startM;
                                       const height = duration * 60;
                                       return (
-                                          <div key={ev.id} onClick={() => handleOpenEventForEdit(ev)} className={`absolute left-1 right-1 p-1 rounded ${ev.color} text-[10px] text-white truncate border-l-2 border-white/50 z-10 cursor-pointer hover:brightness-110 hover:scale-[1.01] transition-all`} style={{ top: `${top}px`, height: `${Math.max(20, height)}px` }} title={`Clique para editar: ${ev.title}`}>
+                                          <div key={ev.id} className={`absolute left-1 right-1 p-1 rounded ${ev.color} text-[10px] text-white truncate border-l-2 border-white/50 z-10`} style={{ top: `${top}px`, height: `${Math.max(20, height)}px` }}>
                                               {ev.title}
                                           </div>
                                       )
@@ -786,7 +529,7 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                     const top = startH * 60 + startM; 
                     const height = duration * 60;
                     return (
-                        <div key={ev.id} onClick={() => handleOpenEventForEdit(ev)} className={`absolute left-16 right-4 p-2 rounded-lg ${ev.color} text-xs shadow-lg border-l-4 border-black/20 cursor-pointer hover:brightness-110 z-10 transition-all hover:scale-[1.02]`} style={{ top: `${top}px`, height: `${Math.max(30, height)}px` }} title={`Clique para editar: ${ev.title}`}>
+                        <div key={ev.id} className={`absolute left-16 right-4 p-2 rounded-lg ${ev.color} text-xs shadow-lg border-l-4 border-black/20 cursor-pointer hover:brightness-110 z-10 transition-all hover:scale-[1.02]`} style={{ top: `${top}px`, height: `${Math.max(30, height)}px` }} title={ev.title}>
                             <div className="font-bold text-white truncate">{ev.title}</div>
                             <div className="text-white/80 truncate flex items-center gap-1"><MapPin size={10}/> {ev.location}</div>
                         </div>
@@ -873,8 +616,6 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                                     setFolder={setMailFolder}
                                     currentFolder={mailFolder}
                                     secondaryFolders={secondaryFolders}
-                                    advancedFilters={advancedFilters}
-                                    setAdvancedFilters={setAdvancedFilters}
                                 />
                             </div>
                         </div>
@@ -895,53 +636,37 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                         </div>
 
                         {/* NOVO MENU DROPDOWN */}
-                        <div className="relative" ref={newMenuRef}>
-                            <button 
-                                onClick={() => setShowNewMenu(!showNewMenu)} 
-                                className="flex items-center gap-2 bg-[#C2E7FF] text-[#001D35] px-5 py-2 rounded-full font-medium shadow-md hover:shadow-xl hover:scale-105 transition-all shrink-0 ml-auto"
-                                title="Criar novo e-mail ou evento"
-                            >
-                                <Plus size={20} strokeWidth={2.5} /> 
-                                <span className="hidden md:inline">Novo</span>
+                        <div className="relative ml-auto">
+                            <button onClick={() => setShowNewMenu(!showNewMenu)} className="flex items-center gap-2 bg-[#C2E7FF] text-[#001D35] px-5 py-2 rounded-full font-medium shadow-md hover:shadow-xl hover:scale-105 transition-all shrink-0" title="Criar novo">
+                                <Plus size={20} strokeWidth={2.5} /> <span className="hidden md:inline">Novo</span>
                             </button>
                             
-                            {/* Menu Dropdown */}
+                            {/* DROPDOWN CONTENT */}
                             {showNewMenu && (
-                                <div className="absolute right-0 top-full mt-2 bg-[#2d2e30] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 z-50 min-w-56">
-                                    <button
-                                        onClick={() => {
-                                            setActivePane('compose');
-                                            setShowNewMenu(false);
-                                            setComposeTo('');
-                                            setComposeSubject('');
-                                        }}
-                                        className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 transition-colors border-b border-white/5 last:border-b-0"
-                                        title="Criar novo e-mail"
-                                    >
-                                        <Mail size={18} className="text-red-500" />
-                                        <div className="text-left">
-                                            <p className="font-medium">Novo E-mail</p>
-                                            <p className="text-xs text-white/50">Escrever e enviar mensagem</p>
-                                        </div>
-                                    </button>
-                                    
-                                    <button
-                                        onClick={() => {
-                                            setShowEventModal(true);
-                                            setShowNewMenu(false);
-                                            setNewEventTitle('');
-                                            setNewEventTime({ start: '09:00', end: '10:00' });
-                                        }}
-                                        className="w-full flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 transition-colors border-b border-white/5 last:border-b-0"
-                                        title="Criar novo evento no calendário"
-                                    >
-                                        <CalendarClock size={18} className="text-blue-500" />
-                                        <div className="text-left">
-                                            <p className="font-medium">Novo Evento</p>
-                                            <p className="text-xs text-white/50">Adicionar à agenda</p>
-                                        </div>
-                                    </button>
-                                </div>
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setShowNewMenu(false)}></div>
+                                    <div className="absolute top-full right-0 mt-2 w-48 bg-[#2d2e30] border border-white/10 rounded-xl shadow-2xl py-1 z-50 animate-in fade-in zoom-in duration-200 backdrop-blur-xl overflow-hidden">
+                                        <button 
+                                            onClick={() => { setActivePane('compose'); setShowNewMenu(false); }} 
+                                            className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors group"
+                                        >
+                                            <Mail size={16} className="text-red-400 group-hover:scale-110 transition-transform" />
+                                            <span className="text-sm font-medium text-white/90">Novo E-mail</span>
+                                        </button>
+                                        <div className="h-[1px] bg-white/5 w-full"></div>
+                                        <button 
+                                            onClick={() => { 
+                                                setNewEventTime({start: '09:00', end: '10:00'}); 
+                                                setShowEventModal(true); 
+                                                setShowNewMenu(false); 
+                                            }} 
+                                            className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors group"
+                                        >
+                                            <CalendarIcon size={16} className="text-green-400 group-hover:scale-110 transition-transform" />
+                                            <span className="text-sm font-medium text-white/90">Novo Evento</span>
+                                        </button>
+                                    </div>
+                                </>
                             )}
                         </div>
                     </div>
@@ -1126,16 +851,6 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                                                 </div>
                                                 <h4 className={`text-xs mb-1 truncate ${!email.read ? 'text-white font-semibold' : 'text-white/70'}`}>{email.subject}</h4>
                                                 <p className="text-[11px] text-white/40 truncate">{email.preview}</p>
-                                                {email.labels && email.labels.length > 0 && (
-                                                    <div className="flex flex-wrap gap-1 mt-1">
-                                                        {email.labels.slice(0, 3).map((label: string) => (
-                                                            <span key={label} className="text-[9px] bg-blue-600/30 border border-blue-500/30 text-blue-400 px-2 py-0.5 rounded-full">
-                                                                {label}
-                                                            </span>
-                                                        ))}
-                                                        {email.labels.length > 3 && <span className="text-[9px] text-white/40">+{email.labels.length - 3}</span>}
-                                                    </div>
-                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -1248,36 +963,9 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
 
                             <div className="px-6 py-4">
                                 <h2 className="text-xl font-medium text-white break-words">{activeEmail.subject}</h2>
-                                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                <div className="flex items-center gap-2 mt-2">
                                      <div className="bg-white/10 px-2 py-0.5 rounded text-[10px] text-white/70">Caixa de Entrada</div>
-                                     {activeEmail.labels && activeEmail.labels.map((label: string) => (
-                                        <div key={label} className="bg-blue-600/20 px-2 py-0.5 rounded text-[10px] text-blue-400 border border-blue-500/30 flex items-center gap-1 group cursor-pointer hover:bg-blue-600/30">
-                                            {label}
-                                            <button onClick={() => handleToggleLabel(activeEmail.id, label)} className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <X size={10} />
-                                            </button>
-                                        </div>
-                                     ))}
-                                     <button onClick={() => setShowLabelManager(!showLabelManager)} className="text-[10px] bg-white/5 px-2 py-0.5 rounded border border-white/10 text-white/70 hover:bg-white/10 flex items-center gap-1">
-                                        <Plus size={12} /> Adicionar label
-                                     </button>
                                 </div>
-                                {showLabelManager && (
-                                    <div className="mt-2 p-3 bg-white/5 border border-white/10 rounded-lg">
-                                        <p className="text-xs text-white/50 mb-2">Gerenciar labels:</p>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {availableLabels.map(label => (
-                                                <button 
-                                                    key={label}
-                                                    onClick={() => handleToggleLabel(activeEmail.id, label)}
-                                                    className={`text-[10px] px-2 py-1 rounded transition-all ${activeEmail.labels?.includes(label) ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
-                                                >
-                                                    {label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
 
                             <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6">
@@ -1301,27 +989,6 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                                     <br/><br/>
                                     <p className="text-white/60 italic">--<br/>Enviado via Hub Workspace</p>
                                 </div>
-
-                                {/* THREAD DE RESPOSTAS */}
-                                {activeEmail.replies && activeEmail.replies.length > 0 && (
-                                    <div className="mt-6 space-y-4 border-b border-white/5 pb-6">
-                                        <p className="text-xs text-white/40 uppercase tracking-wider font-semibold">{activeEmail.replies.length} resposta{activeEmail.replies.length !== 1 ? 's' : ''}</p>
-                                        {activeEmail.replies.map((reply: any) => (
-                                            <div key={reply.id} className="bg-white/[0.03] border border-white/5 rounded-xl p-4">
-                                                <div className="flex items-start gap-3 mb-2">
-                                                    <img src={reply.avatar} alt={reply.from} className="w-8 h-8 rounded-full" />
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex justify-between items-start">
-                                                            <span className="text-sm font-medium text-white">{reply.from}</span>
-                                                            <span className="text-xs text-white/40">{new Date(reply.timestamp).toLocaleString('pt-BR')}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <p className="text-sm text-white/80 leading-6 pl-11">{reply.body}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
 
                                 <div className="mt-6 flex gap-4">
                                     <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-sm font-bold text-white shrink-0">Eu</div>
@@ -1473,75 +1140,18 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
 
         {/* MODAL NOVO EVENTO */}
         {showEventModal && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => { setShowEventModal(false); setEditingEventId(null); }}>
-                <div className="w-[400px] bg-[#1E1E1E] border border-white/10 rounded-2xl shadow-2xl p-6 animate-in zoom-in max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                    <h3 className="text-lg font-medium text-white mb-4">{editingEventId !== null ? 'Editar Evento' : 'Novo Evento'}</h3>
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => setShowEventModal(false)}>
+                <div className="w-[400px] bg-[#1E1E1E] border border-white/10 rounded-2xl shadow-2xl p-6 animate-in zoom-in" onClick={e => e.stopPropagation()}>
+                    <h3 className="text-lg font-medium text-white mb-4">Novo Evento</h3>
                     <input type="text" placeholder="Adicionar título" className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-white outline-none mb-4 focus:border-blue-500" autoFocus value={newEventTitle} onChange={e => setNewEventTitle(e.target.value)} />
-                    
-                    <div className="flex gap-2 mb-6">
-                        <div className="flex-1">
-                            <label className="text-xs text-white/50 mb-2 block">Início</label>
-                            <input type="time" className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-white outline-none focus:border-blue-500" value={newEventTime.start} onChange={e => setNewEventTime({...newEventTime, start: e.target.value})} />
-                        </div>
-                        <div className="flex-1">
-                            <label className="text-xs text-white/50 mb-2 block">Fim</label>
-                            <input type="time" className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-white outline-none focus:border-blue-500" value={newEventTime.end} onChange={e => setNewEventTime({...newEventTime, end: e.target.value})} />
-                        </div>
-                    </div>
-
-                    {/* PARTICIPANTS SECTION - FASE 1C */}
-                    <div className="mb-6">
-                        <label className="text-xs text-white/50 mb-2 block">Participantes</label>
-                        <div className="flex gap-2 mb-2">
-                            <input 
-                                type="email" 
-                                placeholder="email@exemplo.com" 
-                                className="flex-1 bg-white/5 border border-white/10 rounded px-3 py-2 text-white outline-none focus:border-blue-500 text-sm" 
-                                value={newParticipantEmail}
-                                onChange={e => setNewParticipantEmail(e.target.value)}
-                                onKeyPress={e => e.key === 'Enter' && handleAddParticipant()}
-                            />
-                            <button 
-                                className="px-3 py-2 rounded bg-blue-600/30 border border-blue-500/30 text-blue-400 hover:bg-blue-600/50 text-sm font-medium"
-                                onClick={handleAddParticipant}
-                                title="Adicionar participante"
-                            >
-                                <Plus size={14} />
-                            </button>
-                        </div>
-                        {newEventParticipants.length > 0 && (
-                            <div className="bg-white/5 border border-white/10 rounded p-3 space-y-2">
-                                {newEventParticipants.map((participant: string) => (
-                                    <div key={participant} className="flex items-center justify-between bg-white/5 rounded px-2 py-1">
-                                        <span className="text-xs text-white/70">{participant}</span>
-                                        <button 
-                                            className="p-1 hover:bg-red-600/20 rounded text-red-400/70 hover:text-red-400"
-                                            onClick={() => handleRemoveParticipant(participant)}
-                                            title="Remover participante"
-                                        >
-                                            <X size={12} />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex justify-between gap-2">
-                        <div className="flex gap-2">
-                            <button className="px-4 py-2 rounded text-sm text-white/70 hover:bg-white/10" onClick={() => { setShowEventModal(false); setEditingEventId(null); }} title="Cancelar">Cancelar</button>
-                        </div>
-                        <div className="flex gap-2">
-                            {editingEventId !== null && (
-                                <button className="px-4 py-2 rounded bg-red-600/30 border border-red-500/30 text-sm font-medium text-red-400 hover:bg-red-600/50" onClick={() => handleDeleteEvent(editingEventId)} title="Deletar evento">
-                                    <Trash2 size={16} className="inline mr-2" />
-                                    Deletar
-                                </button>
-                            )}
-                            <button className="px-6 py-2 rounded bg-blue-600 text-sm font-medium text-white hover:bg-blue-500" onClick={handleAddOrEditEvent} title={editingEventId !== null ? 'Atualizar evento' : 'Salvar evento'}>
-                                {editingEventId !== null ? 'Atualizar' : 'Salvar'}
-                            </button>
-                        </div>
+                    <div className="flex gap-4 mb-6 text-white/70 text-sm bg-white/5 p-3 rounded-lg"><div className="flex items-center gap-2"><Clock size={16} className="text-blue-400"/> {newEventTime.start} - {newEventTime.end}</div></div>
+                    <div className="flex justify-end gap-2">
+                        <button className="px-4 py-2 rounded text-sm text-white/70 hover:bg-white/10" onClick={() => setShowEventModal(false)} title="Cancelar criação">Cancelar</button>
+                        <button className="px-6 py-2 rounded bg-blue-600 text-sm font-medium text-white hover:bg-blue-500" onClick={() => { 
+                            setCalendarEvents(prev => [...prev, { id: Date.now(), title: newEventTitle || 'Novo Evento', start: new Date(), end: new Date(), color: 'bg-blue-500', location: 'Manual' }]);
+                            setShowEventModal(false);
+                            showToast('Evento criado');
+                        }} title="Salvar evento">Salvar</button>
                     </div>
                 </div>
             </div>

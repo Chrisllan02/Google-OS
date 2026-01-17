@@ -1,1 +1,200 @@
-Full contents of the file
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Workspace Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Custom Scrollbar */
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #dadce0;
+        border-radius: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #bdc1c6;
+      }
+
+      /* Animation Utility Mocks for tailwindcss-animate compatibility */
+      .animate-in {
+        animation-duration: 300ms;
+        animation-fill-mode: both;
+        animation-timing-function: cubic-bezier(0.2, 0, 0.2, 1);
+      }
+      
+      .zoom-in {
+        animation-name: zoomIn;
+      }
+      
+      .fade-in {
+        animation-name: fadeIn;
+      }
+      
+      .slide-in-from-right-10 {
+        animation-name: slideInRight;
+      }
+
+      @keyframes zoomIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      @keyframes slideInRight {
+        from { opacity: 0; transform: translateX(2.5rem); }
+        to { opacity: 1; transform: translateX(0); }
+      }
+
+      /* Glass Button Styles - Updated to match Menu Glass */
+      :root {
+          --g-red: #EA4335;
+          --g-blue: #4285F4;
+          --g-green: #34A853;
+          --g-yellow: #FBBC05;
+      }
+
+      .glass-btn {
+          position: relative;
+          width: 72px; /* Adjusted to 72px to match dock */
+          height: 72px;
+          border-radius: 50%;
+          border: none;
+          outline: none;
+          background: transparent;
+          cursor: pointer;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          transition: transform 0.2s ease;
+          isolation: isolate; 
+          -webkit-tap-highlight-color: transparent;
+      }
+
+      .glass-btn:active {
+          transform: scale(0.92);
+      }
+
+      .glass-btn::before {
+          content: '';
+          position: absolute;
+          inset: -4px; 
+          border-radius: 50%;
+          padding: 4px;
+          background: conic-gradient(
+              from 180deg, 
+              transparent 0%, 
+              transparent 45%, 
+              var(--g-red), 
+              var(--g-yellow), 
+              var(--g-green), 
+              var(--g-blue)
+          );
+          -webkit-mask: 
+             linear-gradient(#fff 0 0) content-box, 
+             linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          z-index: -1;
+          opacity: 0;
+          filter: blur(2px); 
+      }
+
+      .glass-btn::after {
+          content: '';
+          position: absolute;
+          inset: -4px;
+          border-radius: 50%;
+          background: conic-gradient(
+              from 180deg, 
+              transparent 0%, 
+              transparent 45%, 
+              var(--g-red), 
+              var(--g-yellow), 
+              var(--g-green), 
+              var(--g-blue)
+          );
+          z-index: -2;
+          opacity: 0;
+          filter: blur(15px);
+      }
+
+      .glass-btn.active::before,
+      .glass-btn.active::after {
+          animation: spinSnake 0.8s cubic-bezier(0.25, 1, 0.5, 1) 1 forwards;
+      }
+
+      @keyframes spinSnake {
+          0% { transform: rotate(0deg); opacity: 0; }
+          10% { opacity: 1; }
+          80% { opacity: 1; }
+          100% { transform: rotate(360deg); opacity: 0; }
+      }
+
+      .glass-body {
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          
+          /* Matches menu: bg-white/10 */
+          background: rgba(255, 255, 255, 0.1); 
+          
+          /* Matches menu: backdrop-blur-3xl */
+          backdrop-filter: blur(40px);
+          -webkit-backdrop-filter: blur(40px);
+          
+          /* Matches menu: border-white/20 */
+          border: 1px solid rgba(255, 255, 255, 0.2); 
+          
+          /* Matches menu shadow */
+          box-shadow: 0 8px 32px 0 rgba(0,0,0,0.36);
+          
+          z-index: 1;
+          transition: all 0.3s ease;
+      }
+      
+      .glass-btn.active .glass-body {
+          background: rgba(255, 255, 255, 0.15);
+          border-color: rgba(255, 255, 255, 0.3);
+      }
+
+      .home-icon {
+          position: relative;
+          z-index: 2;
+          color: rgba(255, 255, 255, 0.7); 
+          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+
+      .glass-btn.active .home-icon {
+          color: #ffffff;
+          filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
+          transform: scale(1.1);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react-dom/client": "https://esm.sh/react-dom@^19.2.3/client",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "ogl": "https://esm.sh/ogl@1.0.11"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+  </body>
+</html>

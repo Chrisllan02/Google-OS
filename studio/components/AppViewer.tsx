@@ -1,3 +1,4 @@
+
 import React from 'react';
 import MailApp from './apps/MailApp';
 import DriveApp from './apps/DriveApp';
@@ -33,7 +34,7 @@ export default function AppViewer({ type, onClose, data, searchQuery }: AppViewe
   };
 
   return (
-    <div className={`fixed inset-4 z-50 flex flex-col ${glassContainer} bg-[#191919]`}>
+    <div className={`fixed top-4 left-4 right-4 bottom-32 z-50 flex flex-col ${glassContainer} bg-[#191919]`}>
         {renderApp()}
     </div>
   );
