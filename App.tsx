@@ -1,13 +1,15 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, LayoutGrid, CloudSun, Mail, HardDrive, FileText, 
-  FileSpreadsheet, Presentation, Video, Plus, X, ArrowRight,
-  Home, CheckCircle2, Lightbulb
+  Plus, X, ArrowRight, Home, CheckCircle2, Lightbulb
 } from 'lucide-react';
 import AppViewer from './components/AppViewer';
 import Aurora from './components/Aurora';
 import GoogleLoader from './components/GoogleLoader';
 import { GoogleIcons, GeminiLogo } from './components/GoogleIcons';
+import { bridge, DashboardData } from './utils/GASBridge';
+import { GoogleGenAI, Chat } from "@google/genai";
 
 // Helper for file icons used in dashboard widgets
 const getFileIcon = (type: string) => {
@@ -21,7 +23,7 @@ const getFileIcon = (type: string) => {
 
 export default function App() {
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [aiMode, setAiMode] = useState(false); 
   const [isTyping, setIsTyping] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -32,50 +34,42 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('');
   const [menuSearchActive, setMenuSearchActive] = useState(false);
 
+  // Gemini State
+  const chatSession = useRef<Chat | null>(null);
+  const aiClient = useRef<GoogleGenAI | null>(null);
+
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchMockData = () => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          user: {
-            name: "Dev Criativo",
-            email: "dev@workspace.new",
-            avatar: "https://ui-avatars.com/api/?name=Dev+Criativo&background=4285F4&color=fff"
-          },
-          weather: { temp: "24°", location: "São Paulo" },
-          stats: { storageUsed: 78, unreadEmails: 3 },
-          emails: [
-            { id: 1, subject: "Design System v2.0", sender: "Julia Silva", avatarColor: "bg-purple-500", time: "10:30", preview: "Oi! Atualizei os componentes no Figma..." },
-            { id: 2, subject: "Fatura AWS Pendente", sender: "Financeiro", avatarColor: "bg-orange-500", time: "09:15", preview: "Segue anexo a fatura referente ao mês..." },
-            { id: 3, subject: "Reunião de Planejamento", sender: "Roberto Alves", avatarColor: "bg-blue-500", time: "Ontem", preview: "Vamos alinhar as metas do Q3?" },
-          ],
-          events: [ 
-            { id: 1, title: "Reunião Diária", time: "11:00", type: "meet" } 
-          ],
-          files: [
-            { id: 1, name: "Orçamento 2024.xlsx", type: "sheet", date: "Há 2h", owner: "Eu" },
-            { id: 2, name: "Apresentação Vendas.ppt", type: "slide", date: "Há 5h", owner: "Julia" },
-            { id: 3, name: "Briefing IA.docx", type: "doc", date: "Ontem", owner: "Legal" },
-          ],
-          tasks: [
-            { id: 1, title: "Revisar Q3 Report", completed: false },
-            { id: 2, title: "Email para Marketing", completed: true },
-            { id: 3, title: "Deploy da nova feature", completed: false },
-          ],
-          notes: [
-            { id: 1, title: "Ideias Brainstorm", content: "Implementar dark mode, revisar paleta de cores..." },
-            { id: 2, title: "Links Úteis", content: "Design system docs, API references..." },
-          ]
-        });
-      }, 3000); // Increased loading time to show off the new loader
-    });
-  };
-
+  // Initialize Gemini
   useEffect(() => {
-    fetchMockData().then((res) => { setData(res); setLoading(false); });
+    try {
+        if (!aiClient.current) {
+            aiClient.current = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            chatSession.current = aiClient.current.chats.create({
+                model: 'gemini-3-flash-preview',
+                config: {
+                    systemInstruction: "Você é um assistente inteligente do Google Workspace OS. Você ajuda o usuário a gerenciar seus e-mails, arquivos do Drive, agenda e tarefas. Seja conciso, útil e amigável. Use formatação Markdown simples quando necessário.",
+                },
+            });
+        }
+    } catch (e) {
+        console.error("Erro ao inicializar Gemini:", e);
+    }
+  }, []);
+
+  // FETCH DATA VIA BRIDGE (WORKS LOCAL & PROD)
+  useEffect(() => {
+    bridge.getInitialData()
+      .then((res) => {
+        setData(res);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load dashboard data", err);
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -97,27 +91,49 @@ export default function App() {
     }
   }, [chatHistory, isTyping]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!searchQuery.trim()) return;
     const text = searchQuery;
+    
+    // 1. Update UI with User Message
     setChatHistory(prev => [...prev, { role: 'user', text }]);
     setSearchQuery('');
     if (menuSearchActive) setMenuSearchActive(false);
     setAiMode(true);
     setIsTyping(true);
-    
-    // Simulating context-aware AI response based on where the user was
-    let responseText = `Analisei sua solicitação sobre "${text}".`;
-    if (activeApp === 'mail') {
-        responseText = `Entendi. Você estava pesquisando por "${text}" nos seus emails. Quer que eu gere um resumo dos resultados encontrados ou crie uma resposta automática baseada neles?`;
-    } else {
-        responseText += ` Quer que eu crie um evento na agenda ou busque arquivos relacionados?`;
-    }
 
-    setTimeout(() => {
-      setIsTyping(false);
-      setChatHistory(prev => [...prev, { role: 'assistant', text: responseText }]);
-    }, 2000);
+    try {
+        if (!chatSession.current) throw new Error("Chat session not initialized");
+
+        // 2. Create a placeholder for the AI response
+        setChatHistory(prev => [...prev, { role: 'assistant', text: '' }]);
+
+        // 3. Send message stream
+        const result = await chatSession.current.sendMessageStream({ message: text });
+        
+        let fullResponse = "";
+        
+        for await (const chunk of result) {
+            const chunkText = chunk.text || "";
+            fullResponse += chunkText;
+            
+            // 4. Update the last message (assistant's placeholder) with the accumulated text
+            setChatHistory(prev => {
+                const newHistory = [...prev];
+                const lastMsgIndex = newHistory.length - 1;
+                if (lastMsgIndex >= 0 && newHistory[lastMsgIndex].role === 'assistant') {
+                    newHistory[lastMsgIndex] = { ...newHistory[lastMsgIndex], text: fullResponse };
+                }
+                return newHistory;
+            });
+            setIsTyping(false); // Stop typing indicator as soon as data starts flowing
+        }
+
+    } catch (error) {
+        console.error("Gemini Error:", error);
+        setIsTyping(false);
+        setChatHistory(prev => [...prev, { role: 'assistant', text: "Desculpe, não consegui processar sua solicitação no momento." }]);
+    }
   };
 
   const getGreeting = () => {
@@ -138,7 +154,7 @@ export default function App() {
     setMenuSearchActive(true);
   };
 
-  if (loading) {
+  if (loading || !data) {
     return <GoogleLoader />;
   }
 
@@ -171,7 +187,7 @@ export default function App() {
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050505]/40 to-[#050505]"></div>
       </div>
 
-      {activeApp && <AppViewer type={activeApp} onClose={() => setActiveApp(null)} data={data} searchQuery={searchQuery} />}
+      {activeApp && <AppViewer type={activeApp} onClose={() => setActiveApp(null)} data={data} searchQuery={searchQuery} onOpenApp={openApp} />}
 
       {/* --- MENU FLUTUANTE INFERIOR --- */}
       <div className={`fixed bottom-8 left-0 right-0 z-[60] flex justify-center items-center gap-3 px-4 pointer-events-none transition-all duration-500 ${aiMode ? 'opacity-0 translate-y-20' : 'opacity-100 translate-y-0'}`}>
@@ -179,7 +195,6 @@ export default function App() {
           {/* HOME BUTTON - GLASS EDITION */}
           <button 
               onClick={(e) => {
-                  // Animation reset logic
                   const btn = e.currentTarget;
                   if (btn.classList.contains('active')) {
                       btn.classList.remove('active');
@@ -188,8 +203,6 @@ export default function App() {
                   } else {
                       btn.classList.add('active');
                   }
-                  
-                  // App Logic
                   setActiveApp(null); 
                   setActiveTab(''); 
                   setAiMode(false); 
