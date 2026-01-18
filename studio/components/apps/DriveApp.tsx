@@ -12,7 +12,7 @@ import { bridge, DriveItem, DriveResponse } from '../../utils/GASBridge';
 interface DriveAppProps {
   onClose: () => void;
   data: any;
-  onOpenApp?: (type: string) => void;
+  onOpenApp?: (type: string, fileData?: any) => void;
 }
 
 const getFileIcon = (type: string, className = "w-6 h-6") => {
@@ -63,9 +63,9 @@ const PreviewModal = ({ file, onClose, onDownload }: { file: DriveItem, onClose:
                 {loading ? (
                     <Loader2 size={48} className="text-white/50 animate-spin" />
                 ) : content ? (
-                    file.type === 'image' ? (
+                    file.type === 'image' || file.mimeType?.startsWith('image/') ? (
                         <img src={`data:${file.mimeType};base64,${content}`} className="max-w-full max-h-full object-contain shadow-2xl rounded-lg" alt={file.name} />
-                    ) : file.type === 'pdf' ? (
+                    ) : file.type === 'pdf' || file.mimeType === 'application/pdf' ? (
                         <iframe src={`data:${file.mimeType};base64,${content}`} className="w-full h-full rounded-lg bg-white" title={file.name} />
                     ) : (
                         <div className="text-center text-white/50">
@@ -166,8 +166,8 @@ export default function DriveApp({ onClose, data, onOpenApp }: DriveAppProps) {
 
   const getSortedItems = (items: DriveItem[]) => {
       return [...items].sort((a, b) => {
-          let aVal = a[sortConfig.key];
-          let bVal = b[sortConfig.key];
+          let aVal: any = a[sortConfig.key];
+          let bVal: any = b[sortConfig.key];
           
           if (!aVal) return 1;
           if (!bVal) return -1;
@@ -306,7 +306,7 @@ export default function DriveApp({ onClose, data, onOpenApp }: DriveAppProps) {
       if (item.type === 'folder') {
           handleNavigate(item.id, item.name);
       } else if (['doc', 'sheet', 'slide'].includes(item.type)) {
-          if (onOpenApp) onOpenApp(item.type);
+          if (onOpenApp) onOpenApp(item.type, item);
       } else {
           setPreviewFile(item);
       }

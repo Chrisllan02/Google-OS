@@ -18,6 +18,7 @@ import {
   RemoveFormatting, GripHorizontal, MousePointerClick, RefreshCcw, CalendarDays
 } from 'lucide-react';
 import { GoogleIcons } from '../GoogleIcons';
+import { bridge } from '../../utils/GASBridge';
 
 interface MailAppProps {
   onClose: () => void;
@@ -28,38 +29,65 @@ interface MailAppProps {
 // --- HELPERS ---
 
 // Expand recurring events based on the view date
-const expandEvents = (events: any[], viewDate: Date) => {
+const expandEvents = (events: any[], viewDate: Date, viewMode: 'day' | 'week' | 'month') => {
     const expanded: any[] = [];
-    const viewStart = new Date(viewDate);
-    viewStart.setHours(0,0,0,0);
-    const viewEnd = new Date(viewDate);
-    viewEnd.setHours(23,59,59,999);
+    
+    // Determine View Range
+    let viewStart = new Date(viewDate);
+    let viewEnd = new Date(viewDate);
+
+    if (viewMode === 'day') {
+        viewStart.setHours(0,0,0,0);
+        viewEnd.setHours(23,59,59,999);
+    } else if (viewMode === 'week') {
+        const day = viewStart.getDay();
+        const diff = viewStart.getDate() - day;
+        viewStart = new Date(viewStart.setDate(diff));
+        viewStart.setHours(0,0,0,0);
+        viewEnd = new Date(viewStart);
+        viewEnd.setDate(viewStart.getDate() + 6);
+        viewEnd.setHours(23,59,59,999);
+    } else if (viewMode === 'month') {
+        viewStart = new Date(viewStart.getFullYear(), viewStart.getMonth(), 1);
+        viewEnd = new Date(viewStart.getFullYear(), viewStart.getMonth() + 1, 0);
+        viewEnd.setHours(23,59,59,999);
+    }
 
     events.forEach(ev => {
-        // Se for o dia exato
-        const isSameDay = ev.start.getDate() === viewDate.getDate() && ev.start.getMonth() === viewDate.getMonth() && ev.start.getFullYear() === viewDate.getFullYear();
-        
-        if (ev.recurrence === 'daily') {
-            // Project event to today if created before or today
-            if (ev.start <= viewEnd) {
-                const projectedStart = new Date(viewDate);
-                projectedStart.setHours(ev.start.getHours(), ev.start.getMinutes());
-                const projectedEnd = new Date(viewDate);
-                projectedEnd.setHours(ev.end.getHours(), ev.end.getMinutes());
+        const evStart = new Date(ev.start);
+        const evEnd = new Date(ev.end);
+
+        // Single Event check
+        if (ev.recurrence === 'none' || !ev.recurrence) {
+            if (evStart <= viewEnd && evEnd >= viewStart) {
+                expanded.push(ev);
+            }
+            return;
+        }
+
+        // Recurring Event Logic (Simplified)
+        let currentIter = new Date(evStart);
+        while (currentIter <= viewEnd) {
+            if (currentIter >= viewStart) {
+                // Clone and project
+                const duration = evEnd.getTime() - evStart.getTime();
+                const projectedStart = new Date(currentIter);
+                const projectedEnd = new Date(currentIter.getTime() + duration);
                 
-                expanded.push({ ...ev, start: projectedStart, end: projectedEnd, isVirtual: true });
+                // Only if visible in the view
+                if (projectedStart <= viewEnd && projectedEnd >= viewStart) {
+                    expanded.push({ ...ev, start: projectedStart, end: projectedEnd, isVirtual: true });
+                }
             }
-        } else if (ev.recurrence === 'weekly') {
-            // Project if same day of week
-            if (ev.start <= viewEnd && ev.start.getDay() === viewDate.getDay()) {
-                const projectedStart = new Date(viewDate);
-                projectedStart.setHours(ev.start.getHours(), ev.start.getMinutes());
-                const projectedEnd = new Date(viewDate);
-                projectedEnd.setHours(ev.end.getHours(), ev.end.getMinutes());
-                expanded.push({ ...ev, start: projectedStart, end: projectedEnd, isVirtual: true });
+
+            // Increment
+            if (ev.recurrence === 'daily') {
+                currentIter.setDate(currentIter.getDate() + 1);
+            } else if (ev.recurrence === 'weekly') {
+                currentIter.setDate(currentIter.getDate() + 7);
+            } else {
+                break; // Safety break
             }
-        } else if (isSameDay) {
-            expanded.push(ev);
         }
     });
     return expanded;
@@ -369,13 +397,15 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
              setEmails(enhanced);
         }
         
-        setCalendarEvents([
-            { id: 1, title: 'Reunião Diária', start: new Date(new Date().setHours(9,0)), end: new Date(new Date().setHours(10,0)), color: 'bg-blue-500', location: 'Meet', recurrence: 'daily', guests: [{name: 'Julia Silva', avatar: 'J', color: 'bg-purple-600'}, {name: 'Roberto Alves', avatar: 'R', color: 'bg-orange-500'}] },
-            { id: 11, title: 'Sync Cliente A', start: new Date(new Date().setHours(9,15)), end: new Date(new Date().setHours(9,45)), color: 'bg-red-500', location: 'Zoom', guests: [{name: 'Cliente A', avatar: 'C', color: 'bg-red-600'}] }, 
-            { id: 2, title: 'Almoço Cliente', start: new Date(new Date().setHours(12,30)), end: new Date(new Date().setHours(14,0)), color: 'bg-orange-500', location: 'Restaurante', guests: [] },
-            { id: 3, title: 'Call Noturna', start: new Date(new Date().setHours(20,0)), end: new Date(new Date().setHours(21,0)), color: 'bg-purple-500', location: 'Zoom', guests: [{name: 'Equipe Noturna', avatar: 'E', color: 'bg-blue-500'}] },
-            { id: 4, title: 'Feriado Empresa', start: new Date(new Date().setHours(0,0)), end: new Date(new Date().setHours(23,59)), color: 'bg-green-500', isAllDay: true, guests: [] }
-        ]);
+        if (data.events) {
+            setCalendarEvents(data.events);
+        } else {
+            // Fallback se não vier do backend
+            setCalendarEvents([
+                { id: 1, title: 'Reunião Diária', start: new Date(new Date().setHours(9,0)), end: new Date(new Date().setHours(10,0)), color: 'bg-blue-500', location: 'Meet', recurrence: 'daily', guests: [{name: 'Julia Silva', avatar: 'J', color: 'bg-purple-600'}, {name: 'Roberto Alves', avatar: 'R', color: 'bg-orange-500'}] }
+            ]);
+        }
+
         if (data.tasks) setTasks(data.tasks);
         if (data.notes) setNotes(data.notes);
     }
@@ -387,8 +417,6 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
           if (!dragState) return;
 
           const pixelDiff = e.clientY - dragState.startY;
-          // 60px = 60 minutes, so 1px = 1 minute.
-          // Snap to 15 mins = 15px.
           const snappedMinutes = Math.round(pixelDiff / 15) * 15;
 
           setCalendarEvents(prev => prev.map(ev => {
@@ -402,7 +430,6 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                   newEnd.setMinutes(dragState.originalEnd.getMinutes() + snappedMinutes);
               } else if (dragState.type === 'resize') {
                   newEnd.setMinutes(dragState.originalEnd.getMinutes() + snappedMinutes);
-                  // Prevent negative duration
                   if (newEnd <= newStart) newEnd.setMinutes(newStart.getMinutes() + 15);
               }
 
@@ -414,7 +441,7 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
           if (dragState) {
               setDragState(null);
               document.body.style.cursor = '';
-              showToast('Agenda atualizada');
+              showToast('Agenda atualizada (localmente)');
           }
       };
 
@@ -448,7 +475,7 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
           switch(e.key.toLowerCase()) {
               case 'c': e.preventDefault(); setActivePane('compose'); break;
               case '/': e.preventDefault(); setShowFilterPanel(true); break;
-              case 'delete': case '#': if (selectedEmailIds.size > 0 || activeEmail) handleBulkAction('Lixeira'); break;
+              case 'delete': case '#': if (selectedEmailIds.size > 0 || activeEmail) handleBulkAction('trash'); break;
               case 'r': if (activeEmail) { e.preventDefault(); const replyBox = document.querySelector('textarea') as HTMLTextAreaElement; if(replyBox) replyBox.focus(); } break;
               case 'escape': 
                   setShowFilterPanel(false); setShowNewMenu(false); setContextMenu(null); setShowEmojiPicker(false);
@@ -503,23 +530,46 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
 
   const toggleStar = (id: number) => {
       setEmails(prev => prev.map(e => e.id === id ? { ...e, isStarred: !e.isStarred } : e));
+      bridge.manageEmail(id, 'star');
   };
 
   const toggleReadStatus = (id: number) => {
-      setEmails(prev => prev.map(e => e.id === id ? { ...e, read: !e.read } : e));
+      const email = emails.find(e => e.id === id);
+      if (email) {
+          const newReadStatus = !email.read;
+          setEmails(prev => prev.map(e => e.id === id ? { ...e, read: newReadStatus } : e));
+          bridge.manageEmail(id, newReadStatus ? 'read' : 'unread');
+      }
   };
 
-  const handleBulkAction = (action: string) => {
-      let msg = `${selectedEmailIds.size > 0 ? selectedEmailIds.size : '1'} conversa(s) movida(s) para ${action}`;
-      let targetFolder = action === 'Lixeira' ? 'trash' : action === 'Arquivado' ? 'all' : action === 'Spam' ? 'spam' : 'inbox';
+  const handleBulkAction = async (action: 'trash' | 'archive' | 'spam' | 'read' | 'unread') => {
+      let msg = '';
+      if (action === 'trash') msg = 'Movido para a Lixeira';
+      else if (action === 'archive') msg = 'Arquivado';
+      else if (action === 'spam') msg = 'Marcado como Spam';
       
-      const apply = (id: number) => setEmails(prev => prev.map(e => e.id === id ? { ...e, folder: targetFolder } : e));
+      const targetFolder = action === 'trash' ? 'trash' : action === 'archive' ? 'all' : action === 'spam' ? 'spam' : 'inbox';
+      const isFolderAction = ['trash', 'archive', 'spam'].includes(action);
+
+      const apply = async (id: number) => {
+          if (isFolderAction) {
+              setEmails(prev => prev.map(e => e.id === id ? { ...e, folder: targetFolder } : e));
+          }
+          await bridge.manageEmail(id, action);
+      };
       
-      if (selectedEmailIds.size > 0) { selectedEmailIds.forEach(apply); setSelectedEmailIds(new Set()); }
-      else if (swipedEmailId) { apply(swipedEmailId); setSwipedEmailId(null); }
-      else if (activeEmail) { apply(activeEmail.id); setActiveEmail(null); }
+      if (selectedEmailIds.size > 0) { 
+          selectedEmailIds.forEach(apply); 
+          setSelectedEmailIds(new Set()); 
+      } else if (swipedEmailId) { 
+          await apply(swipedEmailId); 
+          setSwipedEmailId(null); 
+      } else if (activeEmail) { 
+          await apply(activeEmail.id); 
+          setActiveEmail(null); 
+      }
       
-      showToast(msg);
+      if (msg) showToast(msg);
   };
 
   const handleSnooze = (id: number) => {
@@ -530,16 +580,18 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
 
   const handleEmailClick = (email: any) => {
       if (email.folder === 'drafts') {
-          // Open in Composer
           setComposeTo(email.to || '');
           setComposeSubject(email.subject || '');
           if(editorRef.current) editorRef.current.innerHTML = email.preview || '';
           setActivePane('compose');
       } else {
-          // Open in Reader
           setActiveEmail(email);
           setActivePane('email');
-          setEmails(prev => prev.map(e => e.id === email.id ? { ...e, read: true } : e));
+          // Optimistic UI update
+          if (!email.read) {
+              setEmails(prev => prev.map(e => e.id === email.id ? { ...e, read: true } : e));
+              bridge.manageEmail(email.id, 'read');
+          }
       }
   };
 
@@ -547,6 +599,8 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
   const handleSendReply = () => {
       if(!replyText.trim()) return;
       
+      bridge.sendEmail(activeEmail.sender, "Re: " + activeEmail.subject, replyText);
+
       const newReply = {
           id: Date.now(),
           sender: "Eu",
@@ -576,12 +630,15 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
           return;
       }
       
+      const body = editorRef.current ? editorRef.current.innerText : "...";
+      bridge.sendEmail(composeTo, composeSubject, body);
+
       const newEmail = {
           id: Date.now(),
           sender: "Eu",
           senderInit: "E",
           subject: composeSubject || "(Sem assunto)",
-          preview: editorRef.current ? editorRef.current.innerText : "...",
+          preview: body,
           time: "Agora",
           read: true,
           folder: 'sent',
@@ -600,7 +657,7 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
   const handleCloseComposer = () => {
       const content = editorRef.current?.innerText.trim();
       if (content || composeSubject || composeTo) {
-          // Save Draft
+          // Save Draft UI
           const draft = {
               id: Date.now(),
               sender: "Rascunho",
@@ -695,15 +752,22 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
   // --- CALENDAR RENDER ---
   const hours24 = Array.from({ length: 24 }, (_, i) => i);
   // Expand recurrences first
-  const expandedEvents = expandEvents(calendarEvents, viewDate);
-  const layoutEvents = arrangeEvents(expandedEvents.filter(ev => ev.start.getDate() === viewDate.getDate() && ev.start.getMonth() === viewDate.getMonth()));
-  const allDayEvents = expandedEvents.filter(ev => ev.isAllDay && ev.start.getDate() === viewDate.getDate());
+  const expandedEvents = expandEvents(calendarEvents, viewDate, calendarViewMode === 'day' ? 'day' : calendarViewMode === 'week' ? 'week' : 'month');
+  
+  // Filter for specific views
+  const dayEvents = layoutEvents(expandedEvents.filter(ev => new Date(ev.start).getDate() === viewDate.getDate()));
+  const allDayEvents = expandedEvents.filter(ev => ev.isAllDay && new Date(ev.start).getDate() === viewDate.getDate());
+
+  function layoutEvents(events: any[]) {
+      // Basic overlap logic for Day View
+      return arrangeEvents(events);
+  }
 
   const renderCalendar = () => {
+      // --- DAY VIEW ---
       if (calendarViewMode === 'day') {
           return (
               <div className="flex-1 flex flex-col h-full bg-[#1E1E1E]">
-                  {/* ALL DAY SECTION */}
                   {allDayEvents.length > 0 && (
                       <div className="border-b border-white/10 p-2 bg-white/5 flex flex-col gap-1 shrink-0">
                           <span className="text-[10px] text-white/40 uppercase pl-2">Dia Inteiro</span>
@@ -714,7 +778,6 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                           ))}
                       </div>
                   )}
-
                   <div className="flex-1 overflow-y-auto custom-scrollbar relative" ref={calendarRef}>
                     <div className="relative min-h-[1440px] pb-20">
                         {hours24.map(h => (
@@ -729,7 +792,7 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                             </div>
                         ))}
                         
-                        {layoutEvents.map((ev: any) => {
+                        {dayEvents.map((ev: any) => {
                             const startH = ev.start.getHours();
                             const startM = ev.start.getMinutes();
                             const duration = (ev.end.getTime() - ev.start.getTime()) / (1000 * 60 * 60);
@@ -760,8 +823,6 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                                         </div>
                                         <div className="text-white/80 truncate flex items-center gap-1"><MapPin size={10}/> {ev.location}</div>
                                     </div>
-
-                                    {/* HANDLE DE REDIMENSIONAMENTO */}
                                     {!ev.isVirtual && (
                                         <div 
                                             className="absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize flex justify-center items-end hover:bg-black/10 transition-colors pointer-events-auto"
@@ -781,7 +842,132 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
               </div>
           );
       }
-      return null; // Simplified for this request to focus on Day view logic as example
+      
+      // --- WEEK VIEW ---
+      if (calendarViewMode === 'week') {
+          const daysOfWeek = [];
+          const startOfWeek = new Date(viewDate);
+          const day = startOfWeek.getDay(); 
+          const diff = startOfWeek.getDate() - day; 
+          startOfWeek.setDate(diff); // Sunday
+
+          for(let i=0; i<7; i++) {
+              const d = new Date(startOfWeek);
+              d.setDate(startOfWeek.getDate() + i);
+              daysOfWeek.push(d);
+          }
+
+          return (
+              <div className="flex-1 flex flex-col h-full bg-[#1E1E1E]">
+                  {/* Week Header */}
+                  <div className="flex border-b border-white/10 pl-14">
+                      {daysOfWeek.map((d, i) => (
+                          <div key={i} className={`flex-1 py-2 text-center border-l border-white/5 ${d.toDateString() === new Date().toDateString() ? 'bg-blue-500/10' : ''}`}>
+                              <p className={`text-[10px] uppercase font-bold ${d.toDateString() === new Date().toDateString() ? 'text-blue-400' : 'text-white/50'}`}>{d.toLocaleDateString('pt-BR', {weekday: 'short'})}</p>
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg mx-auto mt-1 ${d.toDateString() === new Date().toDateString() ? 'bg-blue-600 text-white font-bold' : 'text-white'}`}>{d.getDate()}</div>
+                          </div>
+                      ))}
+                  </div>
+                  {/* Week Grid */}
+                  <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+                      <div className="relative min-h-[1440px] flex">
+                          {/* Time Col */}
+                          <div className="w-14 shrink-0 border-r border-white/10 bg-[#1E1E1E] z-20 sticky left-0">
+                              {hours24.map(h => (
+                                  <div key={h} className="h-[60px] text-right pr-2 text-xs text-white/40 pt-1 -mt-2.5 bg-[#1E1E1E]">{h}:00</div>
+                              ))}
+                          </div>
+                          {/* Days Cols */}
+                          {daysOfWeek.map((d, i) => {
+                              const dayEvs = expandedEvents.filter(ev => new Date(ev.start).toDateString() === d.toDateString() && !ev.isAllDay);
+                              const layout = arrangeEvents(dayEvs); // Layout per column
+                              return (
+                                  <div key={i} className="flex-1 border-l border-white/5 relative min-w-[100px] hover:bg-white/[0.02]" onClick={() => { setActiveEvent({ start: new Date(d.setHours(9,0)), end: new Date(d.setHours(10,0)), title: '', guests: [], recurrence: 'none' }); setActivePane('event-create'); }}>
+                                      {hours24.map(h => <div key={h} className="h-[60px] border-b border-white/5 pointer-events-none"></div>)}
+                                      
+                                      {/* Events in this Col */}
+                                      {layout.map(ev => {
+                                          const startH = ev.start.getHours();
+                                          const startM = ev.start.getMinutes();
+                                          const duration = (ev.end.getTime() - ev.start.getTime()) / (1000 * 60 * 60);
+                                          const top = startH * 60 + startM; 
+                                          const height = duration * 60;
+                                          return (
+                                              <div 
+                                                  key={ev.id} 
+                                                  className={`absolute rounded-md ${ev.color} text-[10px] p-1 cursor-pointer hover:brightness-110 border-l-2 border-black/20 overflow-hidden ${ev.isVirtual ? 'opacity-70 border-dashed' : 'shadow-md'}`}
+                                                  style={{ top: `${top}px`, height: `${Math.max(20, height)}px`, left: `${ev.leftPercent}%`, width: `${ev.widthPercent}%` }}
+                                                  onClick={(e) => { e.stopPropagation(); setActiveEvent(ev); setActivePane('event-view'); }}
+                                              >
+                                                  <span className="font-bold truncate block">{ev.title}</span>
+                                                  <span className="truncate block opacity-80">{ev.start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                                              </div>
+                                          );
+                                      })}
+                                      {/* Current Time Line */}
+                                      {d.toDateString() === new Date().toDateString() && (
+                                          <div className="absolute left-0 right-0 border-t border-red-500 z-20 pointer-events-none" style={{ top: `${currentTime.getHours() * 60 + currentTime.getMinutes()}px` }}></div>
+                                      )}
+                                  </div>
+                              )
+                          })}
+                      </div>
+                  </div>
+              </div>
+          );
+      }
+
+      // --- MONTH VIEW ---
+      if (calendarViewMode === 'month') {
+          const year = viewDate.getFullYear();
+          const month = viewDate.getMonth();
+          const firstDay = new Date(year, month, 1);
+          const lastDay = new Date(year, month + 1, 0);
+          const days = [];
+          
+          const startPad = firstDay.getDay(); // 0 is Sunday
+          for(let i=startPad; i>0; i--) days.push({ date: new Date(year, month, 1 - i), isPadding: true });
+          for(let i=1; i<=lastDay.getDate(); i++) days.push({ date: new Date(year, month, i), isPadding: false });
+          const remaining = 42 - days.length;
+          for(let i=1; i<=remaining; i++) days.push({ date: new Date(year, month + 1, i), isPadding: true });
+
+          return (
+              <div className="flex-1 flex flex-col bg-[#1E1E1E] overflow-hidden">
+                  <div className="grid grid-cols-7 border-b border-white/10 shrink-0">
+                      {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
+                          <div key={d} className="py-2 text-center text-xs font-bold text-white/50 uppercase">{d}</div>
+                      ))}
+                  </div>
+                  <div className="flex-1 grid grid-cols-7 grid-rows-6">
+                      {days.map((dObj, idx) => {
+                          const dateStr = dObj.date.toDateString();
+                          const isToday = dateStr === new Date().toDateString();
+                          const dayEvents = expandedEvents.filter(ev => new Date(ev.start).toDateString() === dateStr);
+                          
+                          return (
+                              <div key={idx} className={`border-b border-r border-white/5 p-1 relative flex flex-col group ${dObj.isPadding ? 'bg-black/20' : 'bg-transparent'} hover:bg-white/[0.02] transition-colors`} onClick={() => { setViewDate(dObj.date); setCalendarViewMode('day'); }}>
+                                  <div className="flex justify-center mb-1">
+                                      <span className={`text-xs w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-blue-600 text-white font-bold' : dObj.isPadding ? 'text-white/30' : 'text-white/90'}`}>{dObj.date.getDate()}</span>
+                                  </div>
+                                  <div className="flex-1 flex flex-col gap-1 overflow-hidden">
+                                      {dayEvents.slice(0, 4).map(ev => (
+                                          <div key={ev.id} className={`text-[9px] px-1.5 py-0.5 rounded-sm ${ev.color} text-white truncate cursor-pointer hover:brightness-110 shadow-sm`} onClick={(e) => { e.stopPropagation(); setActiveEvent(ev); setActivePane('event-view'); }}>
+                                              {ev.isAllDay ? '' : <span className="opacity-80 mr-1">{ev.start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>}
+                                              {ev.title}
+                                          </div>
+                                      ))}
+                                      {dayEvents.length > 4 && <div className="text-[9px] text-white/50 pl-1 font-medium hover:text-white cursor-pointer">+ mais {dayEvents.length - 4}</div>}
+                                  </div>
+                              </div>
+                          );
+                      })}
+                  </div>
+              </div>
+          );
+      }
+
+      // Year view could be added here similar to month view logic
+      return null;
   };
 
   const primaryFolders = [
@@ -898,7 +1084,7 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                                             </div>
                                         </div>
                                         {/* Swipe Action Background */}
-                                        <div className="absolute inset-y-0 right-0 w-24 bg-red-500/20 flex items-center justify-end px-6 rounded-2xl" onClick={() => handleBulkAction('Lixeira')}>
+                                        <div className="absolute inset-y-0 right-0 w-24 bg-red-500/20 flex items-center justify-end px-6 rounded-2xl" onClick={() => handleBulkAction('trash')}>
                                             <Trash2 className="text-red-500" size={20} />
                                         </div>
                                     </div>
@@ -991,7 +1177,12 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                                 <button onClick={() => setActivePane('agenda')} className="p-2 hover:bg-white/10 rounded-full text-white/70"><ArrowLeft size={18}/></button>
                                 <div className="flex gap-2">
                                     <button className="p-2 hover:bg-white/10 rounded-full text-white/70" onClick={() => setActivePane('event-create')}><Pencil size={18}/></button>
-                                    <button className="p-2 hover:bg-white/10 rounded-full text-white/70 hover:text-red-400" onClick={() => { setCalendarEvents(prev => prev.filter(e => e.id !== activeEvent.id)); setActivePane('agenda'); showToast('Evento excluído'); }}><Trash2 size={18}/></button>
+                                    <button className="p-2 hover:bg-white/10 rounded-full text-white/70 hover:text-red-400" onClick={() => { 
+                                        setCalendarEvents(prev => prev.filter(e => e.id !== activeEvent.id)); 
+                                        bridge.deleteCalendarEvent(activeEvent.id);
+                                        setActivePane('agenda'); 
+                                        showToast('Evento excluído'); 
+                                    }}><Trash2 size={18}/></button>
                                 </div>
                             </div>
                             <div className="p-8 space-y-6 overflow-y-auto custom-scrollbar">
@@ -1053,24 +1244,30 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                     <div className="h-full flex flex-col">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
                             <button onClick={() => setActivePane('agenda')} className="p-2 hover:bg-white/10 rounded-full text-white/70"><X size={18}/></button>
-                            <button className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium" onClick={() => {
+                            <button className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium" onClick={async () => {
                                 const newEv = { 
-                                    id: activeEvent?.id || Date.now(), 
+                                    id: activeEvent?.id || Date.now().toString(), 
                                     title: activeEvent?.title || 'Novo Evento', 
                                     start: activeEvent?.start || new Date(), 
                                     end: activeEvent?.end || new Date(), 
                                     color: newEventColor, 
-                                    location: activeEvent?.location || 'Manual',
+                                    location: activeEvent?.location || '',
                                     guests: activeEvent?.guests || [],
                                     isAllDay: activeEvent?.isAllDay || false,
                                     recurrence: activeEvent?.recurrence || 'none',
-                                    meetLink: activeEvent?.meetLink
+                                    meetLink: activeEvent?.meetLink,
+                                    addMeet: !!activeEvent?.meetLink
                                 };
+                                
+                                // Otimistically update UI
                                 setCalendarEvents(prev => {
                                     if (activeEvent?.id) return prev.map(e => e.id === activeEvent.id ? newEv : e);
                                     return [...prev, newEv];
                                 });
                                 setActivePane('agenda');
+                                
+                                // Call Backend
+                                await bridge.createCalendarEvent(newEv);
                                 showToast('Evento salvo');
                             }}>Salvar</button>
                         </div>
@@ -1117,11 +1314,11 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                                     <Video size={20} className="text-white/50"/>
                                     {activeEvent?.meetLink ? (
                                         <div className="flex items-center gap-2 bg-blue-500/20 px-3 py-1 rounded-full border border-blue-500/30">
-                                            <span className="text-sm text-blue-200">meet.google.com/{activeEvent.meetLink}</span>
+                                            <span className="text-sm text-blue-200">Adicionado: Google Meet</span>
                                             <X size={14} className="cursor-pointer text-white/60 hover:text-white" onClick={() => setActiveEvent({...activeEvent, meetLink: undefined})}/>
                                         </div>
                                     ) : (
-                                        <button onClick={() => setActiveEvent({...activeEvent, meetLink: Math.random().toString(36).substring(7)})} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-xs text-white font-medium">Adicionar videoconferência do Google Meet</button>
+                                        <button onClick={() => setActiveEvent({...activeEvent, meetLink: "new"})} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-xs text-white font-medium">Adicionar videoconferência do Google Meet</button>
                                     )}
                                 </div>
                                 <div className="flex items-center gap-4">
@@ -1186,8 +1383,8 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                             <div className="flex items-center justify-between px-6 py-2 border-b border-white/5 bg-white/[0.02]">
                                 <div className="flex items-center gap-1">
                                     <button onClick={() => { setActivePane('email'); setActiveEmail(null); }} className="p-2 hover:bg-white/10 rounded-full text-white/70 mr-2"><ArrowLeft size={18}/></button>
-                                    <button onClick={() => handleBulkAction('Arquivado')} className="p-2 hover:bg-white/10 rounded-full text-white/70"><Archive size={18}/></button>
-                                    <button onClick={() => handleBulkAction('Lixeira')} className="p-2 hover:bg-white/10 rounded-full text-white/70"><Trash2 size={18}/></button>
+                                    <button onClick={() => handleBulkAction('archive')} className="p-2 hover:bg-white/10 rounded-full text-white/70"><Archive size={18}/></button>
+                                    <button onClick={() => handleBulkAction('trash')} className="p-2 hover:bg-white/10 rounded-full text-white/70"><Trash2 size={18}/></button>
                                     <div className="w-[1px] h-4 bg-white/10 mx-1"></div>
                                     <button onClick={() => { toggleReadStatus(activeEmail.id); setActivePane('agenda'); setActiveEmail(null); }} className="p-2 hover:bg-white/10 rounded-full text-white/70" title="Marcar como não lida"><Mail size={18}/></button>
                                     <button onClick={() => { handleSnooze(activeEmail.id); }} className="p-2 hover:bg-white/10 rounded-full text-white/70" title="Adiar"><Clock size={18}/></button>
@@ -1317,10 +1514,8 @@ export default function MailApp({ onClose, data, searchQuery = '' }: MailAppProp
                     <>
                         <button className="w-full text-left px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 flex items-center gap-3 transition-colors" onClick={() => { setActivePane('email'); setActiveEmail(contextMenu.data); setContextMenu(null); }}><Reply size={14} className="text-white/60"/> Responder</button>
                         <button className="w-full text-left px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 flex items-center gap-3 transition-colors" onClick={() => { toggleEmailSelection(contextMenu.data.id); setContextMenu(null); }}><CheckSquare size={14} className="text-white/60"/> Selecionar</button>
-                        <button className="w-full text-left px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 flex items-center gap-3 transition-colors" onClick={() => { toggleReadStatus(contextMenu.data.id); setContextMenu(null); }}><Mail size={14} className="text-white/60"/> Marcar como {contextMenu.data.read ? 'Não Lida' : 'Lida'}</button>
-                        <button className="w-full text-left px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 flex items-center gap-3 transition-colors" onClick={() => { handleSnooze(contextMenu.data.id); setContextMenu(null); }}><Clock size={14} className="text-white/60"/> Adiar</button>
                         <div className="h-[1px] bg-white/5 w-full my-1"></div>
-                        <button className="w-full text-left px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 flex items-center gap-3 transition-colors hover:text-red-400" onClick={() => { handleBulkAction('Lixeira'); setContextMenu(null); }}><Trash2 size={14}/> Excluir</button>
+                        <button className="w-full text-left px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 flex items-center gap-3 transition-colors hover:text-red-400" onClick={() => { handleBulkAction('trash'); setContextMenu(null); }}><Trash2 size={14}/> Excluir</button>
                     </>
                 ) : (
                     <>

@@ -13,7 +13,7 @@ interface AppViewerProps {
   onClose: () => void;
   data: any;
   searchQuery?: string;
-  onOpenApp?: (type: string) => void;
+  onOpenApp?: (type: string, fileData?: any) => void;
 }
 
 export default function AppViewer({ type, onClose, data, searchQuery, onOpenApp }: AppViewerProps) {
@@ -29,7 +29,7 @@ export default function AppViewer({ type, onClose, data, searchQuery, onOpenApp 
         case 'meet': return <MeetApp onClose={onClose} data={data} />;
         case 'keep': return <KeepApp onClose={onClose} data={data} />;
         case 'tasks': return <TasksApp onClose={onClose} data={data} />;
-        case 'search': return <SearchApp onClose={onClose} data={data} />;
+        case 'search': return <SearchApp onClose={onClose} data={data} searchQuery={searchQuery} onOpenApp={onOpenApp} />;
         default: return null;
     }
   };

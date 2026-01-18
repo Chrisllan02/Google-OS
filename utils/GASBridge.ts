@@ -81,8 +81,8 @@ const MOCK_DATA: DashboardData = {
     { id: 3, title: "Deploy da nova feature", completed: false },
   ],
   notes: [
-    { id: 1, title: "Ideias Brainstorm", content: "Implementar dark mode, revisar paleta de cores..." },
-    { id: 2, title: "Links Úteis", content: "Design system docs, API references..." },
+    { id: 1, title: "Ideias Brainstorm", content: "Implementar dark mode, revisar paleta de cores...", color: 'default' },
+    { id: 2, title: "Links Úteis", content: "Design system docs, API references...", color: 'yellow' },
   ]
 };
 
@@ -128,17 +128,67 @@ class GASBridge {
     }
   }
 
+  // --- MAIL METHODS ---
+
+  async manageEmail(id: number | string, action: 'read' | 'unread' | 'archive' | 'trash' | 'spam' | 'star'): Promise<boolean> {
+      if (this.isGasEnvironment()) {
+          return new Promise((resolve, reject) => {
+              (window as any).google.script.run
+                .withSuccessHandler((res: string) => resolve(JSON.parse(res).success))
+                .withFailureHandler(reject)
+                .manageEmail(id, action);
+          });
+      } else {
+          console.log(`[MOCK] Email ${id} action: ${action}`);
+          return Promise.resolve(true);
+      }
+  }
+
   async sendEmail(to: string, subject: string, body: string): Promise<boolean> {
       if (this.isGasEnvironment()) {
           return new Promise((resolve, reject) => {
               (window as any).google.script.run
-                .withSuccessHandler(() => resolve(true))
+                .withSuccessHandler((res: string) => resolve(JSON.parse(res).success))
                 .withFailureHandler(reject)
                 .sendEmail(to, subject, body);
           });
       } else {
           console.log(`[DEV] Enviando email para ${to}: ${subject}`);
           return new Promise(resolve => setTimeout(() => resolve(true), 1000));
+      }
+  }
+
+  // --- CALENDAR METHODS ---
+
+  async createCalendarEvent(data: any): Promise<{success: boolean, id?: string}> {
+      if (this.isGasEnvironment()) {
+          return new Promise((resolve, reject) => {
+              (window as any).google.script.run
+                .withSuccessHandler((res: string) => resolve(JSON.parse(res)))
+                .withFailureHandler(reject)
+                .createCalendarEvent({
+                    ...data,
+                    start: data.start.toISOString(),
+                    end: data.end.toISOString()
+                });
+          });
+      } else {
+          console.log('[MOCK] Create Event', data);
+          return Promise.resolve({ success: true, id: Date.now().toString() });
+      }
+  }
+
+  async deleteCalendarEvent(id: string): Promise<boolean> {
+      if (this.isGasEnvironment()) {
+          return new Promise((resolve, reject) => {
+              (window as any).google.script.run
+                .withSuccessHandler((res: string) => resolve(JSON.parse(res).success))
+                .withFailureHandler(reject)
+                .deleteCalendarEvent(id);
+          });
+      } else {
+          console.log('[MOCK] Delete Event', id);
+          return Promise.resolve(true);
       }
   }
 
@@ -271,6 +321,35 @@ class GASBridge {
               name: 'Mock File'
           }), 1000));
       }
+  }
+
+  // --- TASKS METHODS ---
+  async createTask(title: string): Promise<boolean> {
+      // Mock implementation - in real GAS, use Tasks API
+      console.log(`[MOCK] Creating Task: ${title}`);
+      return Promise.resolve(true);
+  }
+
+  async toggleTask(id: number): Promise<boolean> {
+      console.log(`[MOCK] Toggling Task: ${id}`);
+      return Promise.resolve(true);
+  }
+
+  async deleteTask(id: number): Promise<boolean> {
+      console.log(`[MOCK] Deleting Task: ${id}`);
+      return Promise.resolve(true);
+  }
+
+  // --- KEEP (NOTES) METHODS ---
+  async addNote(note: any): Promise<boolean> {
+      // Mock implementation - in real GAS, use Drive App (create text file) or Keep API (advanced)
+      console.log(`[MOCK] Creating Note: ${note.title}`);
+      return Promise.resolve(true);
+  }
+
+  async deleteNote(id: number): Promise<boolean> {
+      console.log(`[MOCK] Deleting Note: ${id}`);
+      return Promise.resolve(true);
   }
 }
 

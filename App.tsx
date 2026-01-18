@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Search, LayoutGrid, CloudSun, Mail, HardDrive, FileText, 
-  Plus, X, ArrowRight, Home, CheckCircle2, Lightbulb
+  Search, LayoutGrid, Loader2, CloudSun, Mail, HardDrive, FileText, 
+  FileSpreadsheet, Presentation, Video, Plus, X, ArrowRight,
+  Home, CheckCircle2, Lightbulb
 } from 'lucide-react';
 import AppViewer from './components/AppViewer';
 import Aurora from './components/Aurora';
@@ -29,7 +30,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false); 
   const [chatHistory, setChatHistory] = useState<Array<{role: string, text: string}>>([]);
-  const [activeApp, setActiveApp] = useState<string | null>(null); 
+  const [activeApp, setActiveApp] = useState<{type: string, data?: any} | null>(null); 
   
   const [activeTab, setActiveTab] = useState('');
   const [menuSearchActive, setMenuSearchActive] = useState(false);
@@ -143,9 +144,9 @@ export default function App() {
     return 'Boa noite';
   };
 
-  const openApp = (type: string) => {
+  const openApp = (type: string, fileData?: any) => {
     setAiMode(false);
-    setActiveApp(type);
+    setActiveApp({ type, data: fileData });
     setActiveTab(type);
   };
 
@@ -187,7 +188,7 @@ export default function App() {
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050505]/40 to-[#050505]"></div>
       </div>
 
-      {activeApp && <AppViewer type={activeApp} onClose={() => setActiveApp(null)} data={data} searchQuery={searchQuery} onOpenApp={openApp} />}
+      {activeApp && <AppViewer type={activeApp.type} onClose={() => setActiveApp(null)} data={activeApp.data || data} searchQuery={searchQuery} onOpenApp={openApp} />}
 
       {/* --- MENU FLUTUANTE INFERIOR --- */}
       <div className={`fixed bottom-8 left-0 right-0 z-[60] flex justify-center items-center gap-3 px-4 pointer-events-none transition-all duration-500 ${aiMode ? 'opacity-0 translate-y-20' : 'opacity-100 translate-y-0'}`}>
@@ -338,7 +339,7 @@ export default function App() {
                     </div>
                     <div className="space-y-2 flex-1 overflow-hidden">
                         {data.files.map((f: any) => (
-                          <div key={f.id} onClick={() => openApp(f.type)} className="flex items-center gap-2 p-2 rounded-xl hover:bg-white/5 cursor-pointer group transition-colors border border-transparent hover:border-white/5">
+                          <div key={f.id} onClick={() => openApp(f.type, f)} className="flex items-center gap-2 p-2 rounded-xl hover:bg-white/5 cursor-pointer group transition-colors border border-transparent hover:border-white/5">
                              <div className="p-1.5 bg-white/5 rounded-lg group-hover:bg-white/10">
                                {getFileIcon(f.type)}
                              </div>

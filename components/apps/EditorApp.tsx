@@ -13,7 +13,7 @@ import { GoogleIcons } from '../GoogleIcons';
 interface EditorAppProps {
   onClose: () => void;
   type: string;
-  data: any;
+  data: any; // Now receives fileData specifically in data prop if coming from Drive
 }
 
 const getAppColor = (type: string) => {
@@ -56,7 +56,8 @@ const ToolbarButton = ({ children, active, onClick, title }: any) => (
 const Divider = () => <div className="w-[1px] h-5 bg-gray-300 mx-1 self-center"></div>;
 
 export default function EditorApp({ onClose, type, data }: EditorAppProps) {
-  const [title, setTitle] = useState('Documento sem título');
+  // Use file metadata passed via 'data' prop if available
+  const [title, setTitle] = useState(data?.name || (type === 'doc' ? 'Documento sem título' : type === 'sheet' ? 'Planilha sem título' : 'Apresentação sem título'));
   const [saved, setSaved] = useState(true);
   const [content, setContent] = useState('');
   
@@ -253,7 +254,7 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
                         onMouseUp={checkFormatState}
                         style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt', lineHeight: '1.5' }}
                     >
-                        <h1 style={{ fontSize: '26pt', fontWeight: 'bold', paddingBottom: '10px', color: '#000' }}>Proposta de Projeto: Workspace Hub</h1>
+                        <h1 style={{ fontSize: '26pt', fontWeight: 'bold', paddingBottom: '10px', color: '#000' }}>{data?.name ? data.name.replace('.docx','') : 'Proposta de Projeto: Workspace Hub'}</h1>
                         <p style={{ paddingBottom: '12px' }}>Este documento delineia a visão estratégica para o desenvolvimento do novo sistema operacional web.</p>
                         <h2 style={{ fontSize: '18pt', fontWeight: 'bold', paddingTop: '14px', paddingBottom: '6px', color: '#444' }}>1. Objetivos Principais</h2>
                         <ul>
