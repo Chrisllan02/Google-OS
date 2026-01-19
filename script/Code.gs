@@ -1,338 +1,194 @@
 
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('index')
-      .setTitle('Workspace Dashboard')
+      .setTitle('Workspace OS')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
-/**
- * Função principal que hidrata a aplicação React com dados reais.
- */
 function getInitialData() {
-  var userEmail = Session.getActiveUser().getEmail();
-  
-  var user = {
-    email: userEmail,
-    name: userEmail.split('@')[0], 
-    avatar: "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg" 
-  };
-  
-  var emails = getEmailsMockOrReal();
-  var events = getEventsMockOrReal();
-  var files = getRecentFilesSimple();
-
-  var response = {
-    user: user,
-    emails: emails,
-    events: events,
-    files: files,
-    weather: { temp: "24°", location: "Online" },
-    stats: { storageUsed: 0, unreadEmails: GmailApp.getInboxUnreadCount() },
-    tasks: [],
-    notes: []
-  };
-
-  return JSON.stringify(response);
-}
-
-// --- GMAIL OPERATIONS ---
-
-function manageEmail(id, action) {
   try {
-    var thread = GmailApp.getThreadById(id);
-    if (!thread) return JSON.stringify({ success: false, error: "Email não encontrado" });
-
-    if (action === 'read') thread.markRead();
-    else if (action === 'unread') thread.markUnread();
-    else if (action === 'archive') thread.moveToArchive();
-    else if (action === 'trash') thread.moveToTrash();
-    else if (action === 'spam') thread.moveToSpam();
-    else if (action === 'star') thread.addLabel(GmailApp.getUserLabelByName("Starred") || GmailApp.createLabel("Starred")); // Fallback simples
-    
-    return JSON.stringify({ success: true });
-  } catch (e) {
-    return JSON.stringify({ success: false, error: e.message });
-  }
-}
-
-function sendEmail(to, subject, body) {
-  try { 
-    GmailApp.sendEmail(to, subject, body); 
-    return JSON.stringify({ success: true }); 
-  } catch(e) { 
-    return JSON.stringify({ success: false, error: e.message }); 
-  }
-}
-
-// --- CALENDAR OPERATIONS ---
-
-function createCalendarEvent(data) {
-  try {
-    var cal = CalendarApp.getDefaultCalendar();
-    var start = new Date(data.start);
-    var end = new Date(data.end);
-    var options = {
-      description: data.description || '',
-      location: data.location || ''
+    var userEmail = Session.getActiveUser().getEmail();
+    var user = {
+      email: userEmail,
+      name: userEmail.split('@')[0], 
+      avatar: "https://lh3.googleusercontent.com/-XdUIqdMkCWA/AAAAAAAAAAI/AAAAAAAAAAA/4252rscbv5M/photo.jpg" 
     };
     
-    if (data.guests) {
-      options.guests = data.guests.map(function(g){ return g.email || g.name; }).join(',');
-    }
+    var emails = getEmailsReal();
+    var labels = getGmailLabelsReal();
+    var events = getEventsReal();
+    var tasks = getTasksReal();
+    var notes = getNotesReal();
+    
+    var driveData = JSON.parse(getDriveItems({ folderId: 'root' }));
+    var files = driveData.files; 
+    
+    var storageUsed = 0; 
+    try { storageUsed = DriveApp.getStorageUsed(); } catch(e) {}
+    
+    var response = {
+      user: user,
+      emails: emails,
+      labels: labels,
+      events: events,
+      tasks: tasks,
+      notes: notes,
+      files: files, 
+      weather: { temp: "24°", location: "Corporativo" },
+      stats: { storageUsed: storageUsed, unreadEmails: GmailApp.getInboxUnreadCount() }
+    };
 
-    var event;
-    if (data.isAllDay) {
-      event = cal.createAllDayEvent(data.title, start, options);
+    return JSON.stringify(response);
+  } catch (e) {
+    return JSON.stringify({ error: e.toString() });
+  }
+}
+
+// --- DATABASE SYSTEM (JSON in Drive) ---
+var DB_FOLDER_NAME = ".workspace_os_data";
+
+function getDbFolder() {
+  var folders = DriveApp.getFoldersByName(DB_FOLDER_NAME);
+  if (folders.hasNext()) return folders.next();
+  return DriveApp.createFolder(DB_FOLDER_NAME);
+}
+
+function loadDB(filename) {
+  try {
+    var folder = getDbFolder();
+    var files = folder.getFilesByName(filename);
+    if (files.hasNext()) {
+      var content = files.next().getBlob().getDataAsString();
+      return JSON.parse(content);
+    }
+    return [];
+  } catch (e) { return []; }
+}
+
+function saveDB(filename, data) {
+  try {
+    var folder = getDbFolder();
+    var files = folder.getFilesByName(filename);
+    if (files.hasNext()) {
+      files.next().setContent(JSON.stringify(data));
     } else {
-      event = cal.createEvent(data.title, start, end, options);
+      folder.createFile(filename, JSON.stringify(data), MimeType.PLAIN_TEXT);
     }
-
-    // Simulação de adição de Meet (Apps Script padrão não adiciona link meet nativamente fácil sem Advanced Services, então adicionamos ao local/descrição)
-    if (data.addMeet) {
-      var meetLink = "https://meet.google.com/new"; // Em produção usaria Advanced Calendar Service
-      event.setLocation("Google Meet: " + meetLink);
-    }
-
-    return JSON.stringify({ success: true, id: event.getId() });
-  } catch(e) {
-    return JSON.stringify({ success: false, error: e.message });
-  }
+    return true;
+  } catch (e) { return false; }
 }
 
-function deleteCalendarEvent(id) {
+// --- TASKS OPERATIONS ---
+function getTasksReal() { return loadDB('tasks.json'); }
+function createTask(title) { var tasks = getTasksReal(); var newTask = { id: new Date().getTime(), title: title, completed: false, date: new Date().toISOString() }; tasks.unshift(newTask); saveDB('tasks.json', tasks); return JSON.stringify({ success: true, task: newTask }); }
+function toggleTask(id) { var tasks = getTasksReal(); var updated = false; tasks = tasks.map(function(t) { if (t.id == id) { t.completed = !t.completed; updated = true; } return t; }); if(updated) saveDB('tasks.json', tasks); return JSON.stringify({ success: updated }); }
+function deleteTask(id) { var tasks = getTasksReal(); var initialLen = tasks.length; tasks = tasks.filter(function(t) { return t.id != id; }); if (tasks.length !== initialLen) saveDB('tasks.json', tasks); return JSON.stringify({ success: true }); }
+
+// --- KEEP NOTES OPERATIONS ---
+function getNotesReal() { return loadDB('notes.json'); }
+function saveNote(note) { var notes = getNotesReal(); var existingIndex = notes.findIndex(function(n){ return n.id == note.id; }); if (existingIndex >= 0) { notes[existingIndex] = note; } else { notes.unshift(note); } saveDB('notes.json', notes); return JSON.stringify({ success: true }); }
+function deleteNote(id) { var notes = getNotesReal(); var initialLen = notes.length; notes = notes.filter(function(n) { return n.id != id; }); if (notes.length !== initialLen) saveDB('notes.json', notes); return JSON.stringify({ success: true }); }
+
+// --- MAIL SERVICES ---
+function getEmailsReal() {
   try {
-    var cal = CalendarApp.getDefaultCalendar();
-    var event = cal.getEventById(id);
-    if (event) {
-      event.deleteEvent();
-      return JSON.stringify({ success: true });
-    }
-    return JSON.stringify({ success: false, error: "Evento não encontrado" });
-  } catch(e) {
-    return JSON.stringify({ success: false, error: e.message });
-  }
-}
-
-// --- DRIVE OPERATIONS ---
-
-function getDriveItems(params) {
-  var folderId = params.folderId;
-  var category = params.category || 'root'; 
-  var query = params.query || '';
-  
-  var files = [];
-  var folders = [];
-  var currentFolderName = "Meu Drive";
-  var parentId = null;
-
-  try {
-    if (query) {
-      currentFolderName = 'Resultados para "' + query + '"';
-      var search = 'trashed = false and (title contains "' + query + '")';
-      var iter = DriveApp.searchFiles(search);
-      while (iter.hasNext() && files.length < 50) processFile(iter.next(), files);
-      
-      var folderIter = DriveApp.searchFolders('trashed = false and (title contains "' + query + '")');
-      while (folderIter.hasNext() && folders.length < 20) {
-         var f = folderIter.next();
-         folders.push(processFolderObj(f));
-      }
-
-    } else if (category === 'recent') {
-      currentFolderName = "Recentes";
-      var iter = DriveApp.searchFiles('trashed = false');
-      while (iter.hasNext() && files.length < 50) processFile(iter.next(), files);
-      files.sort(function(a, b) { return new Date(b.dateRaw) - new Date(a.dateRaw); });
-      
-    } else if (category === 'starred') {
-      currentFolderName = "Com Estrela";
-      var iter = DriveApp.searchFiles('starred = true and trashed = false');
-      while (iter.hasNext() && files.length < 50) processFile(iter.next(), files);
-      
-    } else if (category === 'trash') {
-      currentFolderName = "Lixeira";
-      var iter = DriveApp.searchFiles('trashed = true');
-      while (iter.hasNext() && files.length < 50) processFile(iter.next(), files);
-
-    } else {
-      var folder;
-      if (folderId && folderId !== 'root') {
-        folder = DriveApp.getFolderById(folderId);
-      } else {
-        folder = DriveApp.getRootFolder();
-      }
-      
-      currentFolderName = folder.getName();
-      try { 
-        var parents = folder.getParents();
-        if (parents.hasNext()) parentId = parents.next().getId();
-      } catch(e) {} 
-
-      var folderIter = folder.getFolders();
-      while (folderIter.hasNext()) {
-        folders.push(processFolderObj(folderIter.next()));
-      }
-
-      var fileIter = folder.getFiles();
-      while (fileIter.hasNext()) {
-        processFile(fileIter.next(), files);
-      }
-    }
-  } catch (e) {
-    return JSON.stringify({ error: e.message });
-  }
-
-  return JSON.stringify({
-    category: category,
-    currentFolderId: folderId,
-    currentFolderName: currentFolderName,
-    parentId: parentId,
-    folders: folders,
-    files: files
-  });
-}
-
-function createDriveFolder(name, parentId) {
-  try {
-    var parent = parentId && parentId !== 'root' ? DriveApp.getFolderById(parentId) : DriveApp.getRootFolder();
-    var newFolder = parent.createFolder(name);
-    return JSON.stringify({ success: true, id: newFolder.getId() });
-  } catch(e) { return JSON.stringify({ success: false, error: e.message }); }
-}
-
-function renameDriveItem(id, newName) {
-  try {
-    var file = DriveApp.getFileById(id);
-    file.setName(newName);
-    return JSON.stringify({ success: true });
-  } catch(e) {
-    try {
-      var folder = DriveApp.getFolderById(id);
-      folder.setName(newName);
-      return JSON.stringify({ success: true });
-    } catch(e2) { return JSON.stringify({ success: false }); }
-  }
-}
-
-function trashDriveItem(id) {
-  try {
-    var file = DriveApp.getFileById(id);
-    file.setTrashed(true);
-    return JSON.stringify({ success: true });
-  } catch(e) {
-    try {
-      var folder = DriveApp.getFolderById(id);
-      folder.setTrashed(true);
-      return JSON.stringify({ success: true });
-    } catch(e2) { return JSON.stringify({ success: false }); }
-  }
-}
-
-function setStarredDriveItem(id, starred) {
-  try {
-    var file = DriveApp.getFileById(id);
-    file.setStarred(starred);
-    return JSON.stringify({ success: true });
-  } catch(e) {
-    try {
-      var folder = DriveApp.getFolderById(id);
-      folder.setStarred(starred);
-      return JSON.stringify({ success: true });
-    } catch(e2) { return JSON.stringify({ success: false }); }
-  }
-}
-
-function uploadFileToDrive(data, name, mimeType, parentId) {
-  try {
-    var blob = Utilities.newBlob(Utilities.base64Decode(data), mimeType, name);
-    var parent = parentId && parentId !== 'root' ? DriveApp.getFolderById(parentId) : DriveApp.getRootFolder();
-    var file = parent.createFile(blob);
-    return JSON.stringify({ success: true, id: file.getId() });
-  } catch (e) {
-    return JSON.stringify({ success: false, error: e.message });
-  }
-}
-
-function getFileContent(id) {
-  try {
-    var file = DriveApp.getFileById(id);
-    var blob = file.getBlob();
-    return JSON.stringify({
-      success: true,
-      data: Utilities.base64Encode(blob.getBytes()),
-      mimeType: file.getMimeType(),
-      name: file.getName()
-    });
-  } catch (e) {
-    return JSON.stringify({ success: false, error: e.message });
-  }
-}
-
-// --- HELPERS ---
-
-function processFolderObj(f) {
-  return {
-    id: f.getId(),
-    name: f.getName(),
-    type: 'folder',
-    owner: f.getOwner() ? f.getOwner().getName() : 'Eu',
-    date: formatDateSmart(f.getLastUpdated()),
-    dateRaw: f.getLastUpdated().toISOString(),
-    size: '-',
-    isStarred: f.isStarred()
-  };
-}
-
-function processFile(f, list) {
-  list.push({
-    id: f.getId(),
-    name: f.getName(),
-    type: mapMimeTypeToIcon(f.getMimeType()),
-    mimeType: f.getMimeType(),
-    owner: f.getOwner() ? f.getOwner().getName() : 'Eu',
-    date: formatDateSmart(f.getLastUpdated()),
-    dateRaw: f.getLastUpdated().toISOString(),
-    size: formatBytes(f.getSize()),
-    thumbnail: hasThumbnail(f) ? f.getThumbnail() : null,
-    isStarred: f.isStarred()
-  });
-}
-
-function hasThumbnail(f) {
-  var mime = f.getMimeType();
-  return mime.indexOf('image/') !== -1;
-}
-
-function getEmailsMockOrReal() {
-  try {
-    var threads = GmailApp.getInboxThreads(0, 15);
+    var threads = GmailApp.getInboxThreads(0, 20);
     return threads.map(function(t) {
-      var m = t.getMessages()[0];
+      var m = t.getMessages()[0]; 
       return {
         id: t.getId(),
         subject: t.getFirstMessageSubject(),
-        sender: m.getFrom().split('<')[0].replace(/"/g,'').trim(),
+        sender: m.getFrom().replace(/<.*?>/g, "").trim(),
         senderInit: m.getFrom().charAt(0).toUpperCase(),
         time: formatDateSmart(m.getDate()),
-        preview: m.getPlainBody().substring(0,80)+"...",
+        preview: m.getPlainBody().substring(0, 90) + "...",
         read: !t.isUnread(),
-        hasAttachment: m.getAttachments().length > 0,
-        labels: t.getLabels().map(function(l){return l.getName()}),
-        isStarred: t.hasStarredMessages()
+        hasAttachment: t.getMessages().some(function(msg){ return msg.getAttachments().length > 0 }),
+        labels: t.getLabels().map(function(l) { return l.getName(); }),
+        isStarred: t.hasStarredMessages(),
+        folder: 'inbox',
+        messageCount: t.getMessageCount()
       };
     });
   } catch (e) { return []; }
 }
 
-function getEventsMockOrReal() {
+function getThreadDetails(threadId) {
+  try {
+    var thread = GmailApp.getThreadById(threadId);
+    var messages = thread.getMessages();
+    var details = messages.map(function(m) {
+      return {
+        id: m.getId(),
+        from: m.getFrom().replace(/<.*?>/g, "").trim(),
+        senderInit: m.getFrom().charAt(0).toUpperCase(),
+        to: m.getTo(),
+        date: formatDateSmart(m.getDate()),
+        body: m.getBody(), 
+        plainBody: m.getPlainBody(),
+        attachments: m.getAttachments().map(function(att) {
+           return { name: att.getName(), mimeType: att.getContentType(), size: formatBytes(att.getSize()) };
+        })
+      };
+    });
+    // Mark as read when opened
+    if (thread.isUnread()) thread.markRead();
+    
+    return JSON.stringify({ success: true, messages: details, subject: thread.getFirstMessageSubject() });
+  } catch(e) {
+    return JSON.stringify({ success: false, error: e.message });
+  }
+}
+
+function getGmailLabelsReal() {
+  try {
+    var labels = GmailApp.getUserLabels();
+    return labels.map(function(l) {
+      return { id: l.getName(), name: l.getName(), type: 'user' };
+    });
+  } catch (e) { return []; }
+}
+
+function sendEmail(to, subject, bodyHTML, attachmentsData) {
+  try {
+    var options = { htmlBody: bodyHTML };
+    if (attachmentsData && attachmentsData.length > 0) {
+      var blobs = attachmentsData.map(function(att) {
+        // att.data é base64
+        return Utilities.newBlob(Utilities.base64Decode(att.data), att.mimeType, att.name);
+      });
+      options.attachments = blobs;
+    }
+    GmailApp.sendEmail(to, subject, bodyHTML.replace(/<[^>]+>/g, ''), options);
+    return JSON.stringify({ success: true });
+  } catch(e) { return JSON.stringify({ success: false, error: e.message }); }
+}
+
+function manageEmail(id, action) {
+  try {
+    var thread = GmailApp.getThreadById(id);
+    if (!thread) return JSON.stringify({ success: false });
+    if (action === 'read') thread.markRead();
+    else if (action === 'unread') thread.markUnread();
+    else if (action === 'archive') thread.moveToArchive();
+    else if (action === 'trash') thread.moveToTrash();
+    else if (action === 'spam') thread.moveToSpam();
+    else if (action === 'star') { 
+        var msgs = thread.getMessages(); 
+        if(msgs.length > 0) { if(msgs[0].isStarred()) GmailApp.unstarMessage(msgs[0]); else msgs[0].star(); }
+    }
+    return JSON.stringify({ success: true });
+  } catch (e) { return JSON.stringify({ success: false }); }
+}
+
+// --- CALENDAR SERVICES ---
+function getEventsReal() {
   try {
     var now = new Date();
-    // Pega eventos de 30 dias atrás até 30 dias no futuro para preencher a view mensal
-    var start = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
-    var end = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
+    var start = new Date(now.getTime() - (60 * 86400000));
+    var end = new Date(now.getTime() + (60 * 86400000));
     var events = CalendarApp.getDefaultCalendar().getEvents(start, end);
-    
     return events.map(function(e) {
       return {
         id: e.getId(),
@@ -341,56 +197,139 @@ function getEventsMockOrReal() {
         end: e.getEndTime().toISOString(),
         location: e.getLocation(),
         isAllDay: e.isAllDayEvent(),
-        color: 'bg-blue-500', // Default color, mapping real GCal colors is complex due to ColorID enums
+        color: 'bg-blue-500', 
+        description: e.getDescription(),
         guests: e.getGuestList().map(function(g){ return {name: g.getEmail(), email: g.getEmail(), avatar: g.getEmail().charAt(0).toUpperCase()}; }),
-        recurrence: e.isRecurring() ? 'daily' : 'none' // Simplificação
+        recurrence: e.isRecurring() ? 'daily' : 'none' 
       };
     });
   } catch (e) { return []; }
 }
 
-function getRecentFilesSimple() {
-  var files = [];
+function createCalendarEvent(data) {
   try {
-    var iter = DriveApp.searchFiles('trashed = false');
-    var i = 0;
-    while(iter.hasNext() && i < 6) {
-      var f = iter.next();
-      files.push({
-        id: f.getId(),
-        name: f.getName(),
-        type: mapMimeTypeToIcon(f.getMimeType()),
-        date: formatDateSmart(f.getLastUpdated())
-      });
-      i++;
+    var cal = CalendarApp.getDefaultCalendar();
+    var start = new Date(data.start);
+    var end = new Date(data.end);
+    var options = { description: data.description || '', location: data.location || '' };
+    if (data.guests && data.guests.length > 0) {
+      options.guests = data.guests.map(function(g){ return g.email || g.name; }).join(',');
+      options.sendInvites = true;
     }
-  } catch(e) {}
-  return files;
+    var event;
+    if (data.isAllDay) event = cal.createAllDayEvent(data.title, start, options);
+    else event = cal.createEvent(data.title, start, end, options);
+    return JSON.stringify({ success: true, id: event.getId() });
+  } catch(e) { return JSON.stringify({ success: false, error: e.message }); }
 }
 
-function formatDateSmart(date) {
-  var now = new Date();
-  if (date.toDateString() === now.toDateString()) {
-    return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+function updateCalendarEvent(data) {
+  try {
+    var event = CalendarApp.getDefaultCalendar().getEventById(data.id);
+    if (!event) return JSON.stringify({ success: false, error: "Evento não encontrado" });
+    
+    // Atualiza horário
+    if (data.start && data.end) {
+        event.setTime(new Date(data.start), new Date(data.end));
+    }
+    return JSON.stringify({ success: true });
+  } catch(e) { return JSON.stringify({ success: false, error: e.message }); }
+}
+
+function deleteCalendarEvent(id) {
+  try { var e = CalendarApp.getDefaultCalendar().getEventById(id); if(e) e.deleteEvent(); return JSON.stringify({ success: true }); } catch(e) { return JSON.stringify({ success: false }); }
+}
+
+// --- DRIVE SERVICES ---
+function getDriveItems(params) {
+  var folderId = params.folderId;
+  var category = params.category || 'root'; 
+  var query = params.query || '';
+  var files = []; var folders = []; var currentFolderName = "Meu Drive";
+  try {
+    if (query) {
+      var searchFiles = DriveApp.searchFiles('trashed = false and title contains "' + query + '"');
+      while (searchFiles.hasNext() && files.length < 50) processFile(searchFiles.next(), files);
+    } else if (category === 'recent') {
+      var recentFiles = DriveApp.searchFiles('trashed = false');
+      var temp = []; var count = 0;
+      while (recentFiles.hasNext() && count < 30) { temp.push(recentFiles.next()); count++; }
+      temp.sort(function(a,b){ return b.getLastUpdated().getTime() - a.getLastUpdated().getTime() });
+      temp.forEach(function(f){ processFile(f, files); });
+    } else {
+      var folder = (folderId && folderId !== 'root') ? DriveApp.getFolderById(folderId) : DriveApp.getRootFolder();
+      currentFolderName = folder.getName();
+      var folderIter = folder.getFolders();
+      while (folderIter.hasNext()) folders.push(processFolderObj(folderIter.next()));
+      var fileIter = folder.getFiles();
+      while (fileIter.hasNext()) processFile(fileIter.next(), files);
+    }
+  } catch (e) { }
+  return JSON.stringify({ category: category, currentFolderId: folderId || 'root', currentFolderName: currentFolderName, folders: folders, files: files });
+}
+
+// Drive Helpers
+function createDriveFolder(name, parentId) { try { var p = (parentId && parentId!=='root') ? DriveApp.getFolderById(parentId) : DriveApp.getRootFolder(); return JSON.stringify({success:true, id: p.createFolder(name).getId()}); } catch(e){ return JSON.stringify({success:false}); } }
+function renameDriveItem(id, newName) { try { DriveApp.getFileById(id).setName(newName); return JSON.stringify({success:true}); } catch(e){ try{ DriveApp.getFolderById(id).setName(newName); return JSON.stringify({success:true}); }catch(e2){return JSON.stringify({success:false});} } }
+function trashDriveItem(id) { try { DriveApp.getFileById(id).setTrashed(true); return JSON.stringify({success:true}); } catch(e){ try{ DriveApp.getFolderById(id).setTrashed(true); return JSON.stringify({success:true}); }catch(e2){return JSON.stringify({success:false});} } }
+function setStarredDriveItem(id, starred) { try { DriveApp.getFileById(id).setStarred(starred); return JSON.stringify({success:true}); } catch(e){ try{ DriveApp.getFolderById(id).setStarred(starred); return JSON.stringify({success:true}); }catch(e2){return JSON.stringify({success:false});} } }
+function uploadFileToDrive(data, name, mimeType, parentId) { try { var p = (parentId && parentId!=='root') ? DriveApp.getFolderById(parentId) : DriveApp.getRootFolder(); p.createFile(Utilities.newBlob(Utilities.base64Decode(data), mimeType, name)); return JSON.stringify({success:true}); } catch(e){ return JSON.stringify({success:false}); } }
+
+function getFileContent(id) { 
+  try { 
+    var file = DriveApp.getFileById(id); 
+    var mimeType = file.getMimeType();
+    var blob;
+
+    // Converte Docs/Sheets/Slides para PDF para preview
+    if (mimeType === MimeType.GOOGLE_DOCS || mimeType === MimeType.GOOGLE_SHEETS || mimeType === MimeType.GOOGLE_SLIDES) {
+        blob = file.getAs(MimeType.PDF);
+        return JSON.stringify({
+            success: true, 
+            data: Utilities.base64Encode(blob.getBytes()), 
+            mimeType: 'application/pdf', 
+            name: file.getName() + ".pdf"
+        });
+    }
+    
+    // Se for texto/html/json, retorna o conteúdo como string decodificável
+    if (mimeType === MimeType.PLAIN_TEXT || mimeType === MimeType.HTML || mimeType === 'application/json' || mimeType.includes('script')) {
+       return JSON.stringify({
+            success: true, 
+            data: Utilities.base64Encode(file.getBlob().getBytes()), 
+            mimeType: mimeType, 
+            name: file.getName()
+        });
+    }
+
+    if(file.getSize() > 10*1024*1024) return JSON.stringify({success:false, error: "Arquivo muito grande"}); 
+    
+    blob = file.getBlob();
+    return JSON.stringify({
+        success: true, 
+        data: Utilities.base64Encode(blob.getBytes()), 
+        mimeType: mimeType, 
+        name: file.getName()
+    }); 
+  } catch(e){ 
+    return JSON.stringify({success:false, error: e.toString()}); 
+  } 
+}
+
+// Salvar conteúdo em arquivo (Simulação de Editor)
+function saveFileContent(id, content) {
+  try {
+    var file = DriveApp.getFileById(id);
+    // Suporta salvar texto plano, HTML, JSON. Docs Google requer conversão complexa não suportada nativamente sem API avançada.
+    file.setContent(content);
+    return JSON.stringify({ success: true });
+  } catch(e) {
+    return JSON.stringify({ success: false, error: e.message });
   }
-  return date.toLocaleDateString([], {day: '2-digit', month: '2-digit'});
 }
 
-function mapMimeTypeToIcon(mime) {
-  if(mime.indexOf('spreadsheet') !== -1) return 'sheet';
-  if(mime.indexOf('presentation') !== -1) return 'slide';
-  if(mime.indexOf('document') !== -1 || mime.indexOf('text') !== -1) return 'doc';
-  if(mime.indexOf('image') !== -1) return 'image';
-  if(mime.indexOf('folder') !== -1) return 'folder';
-  if(mime.indexOf('pdf') !== -1) return 'pdf';
-  return 'file';
-}
-
-function formatBytes(bytes, decimals) {
-  if (bytes == 0) return '0 Bytes';
-  var k = 1024,
-      dm = decimals || 2,
-      sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'],
-      i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-}
+function processFolderObj(f) { return { id: f.getId(), name: f.getName(), type: 'folder', owner: 'Eu', date: formatDateSmart(f.getLastUpdated()), isStarred: f.isStarred() }; }
+function processFile(f, list) { list.push({ id: f.getId(), name: f.getName(), type: mapMimeTypeToIcon(f.getMimeType()), mimeType: f.getMimeType(), owner: 'Eu', date: formatDateSmart(f.getLastUpdated()), size: formatBytes(f.getSize()), isStarred: f.isStarred() }); }
+function formatDateSmart(date) { var now = new Date(); if (date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()) return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); return date.toLocaleDateString([], {day: '2-digit', month: '2-digit'}); }
+function mapMimeTypeToIcon(mime) { if(mime.indexOf('spreadsheet')!==-1||mime.indexOf('excel')!==-1) return 'sheet'; if(mime.indexOf('presentation')!==-1||mime.indexOf('powerpoint')!==-1) return 'slide'; if(mime.indexOf('document')!==-1||mime.indexOf('word')!==-1) return 'doc'; if(mime.indexOf('image')!==-1) return 'image'; if(mime.indexOf('pdf')!==-1) return 'pdf'; return 'file'; }
+function formatBytes(bytes, decimals) { if(bytes==0) return '0 Bytes'; var k=1024, dm=decimals||2, sizes=['Bytes','KB','MB','GB'], i=Math.floor(Math.log(bytes)/Math.log(k)); return parseFloat((bytes/Math.pow(k, i)).toFixed(dm))+' '+sizes[i]; }

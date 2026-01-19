@@ -1,21 +1,26 @@
 
-
 import React, { useState, useEffect, useRef } from 'react';
-import { Lightbulb, Square, Settings, X, Search, Plus, Image as ImageIcon, Paintbrush, MoreVertical, Archive, Trash2 } from 'lucide-react';
+import { Lightbulb, Square, Settings, X, Search, Plus, Image as ImageIcon, Paintbrush, MoreVertical, Archive, Trash2, Pin, Check, Clock } from 'lucide-react';
 import { bridge } from '../../utils/GASBridge';
 
 interface KeepAppProps {
   onClose: () => void;
   data: any;
+  onUpdate?: (notes: any[]) => void;
 }
 
-export default function KeepApp({ onClose, data }: KeepAppProps) {
+export default function KeepApp({ onClose, data, onUpdate }: KeepAppProps) {
   const [notes, setNotes] = useState<any[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
   const [selectedColor, setSelectedColor] = useState('default');
+  
+  // Edit State
+  const [editingNote, setEditingNote] = useState<any | null>(null);
+  
   const createRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
       if (data?.notes) setNotes(data.notes);
@@ -32,6 +37,21 @@ export default function KeepApp({ onClose, data }: KeepAppProps) {
       return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isCreating, newTitle, newContent, selectedColor]);
 
+  // Save edited note when clicking outside modal or closing
+  const handleCloseEdit = async () => {
+      if (editingNote) {
+          const updatedNotes = notes.map(n => n.id === editingNote.id ? editingNote : n);
+          updateParent(updatedNotes);
+          await bridge.addNote(editingNote); // Re-save functionality handles update
+          setEditingNote(null);
+      }
+  };
+
+  const updateParent = (newNotes: any[]) => {
+      setNotes(newNotes);
+      if (onUpdate) onUpdate(newNotes);
+  };
+
   const handleCreateNote = async () => {
       if (!newTitle.trim() && !newContent.trim()) {
           resetCreation();
@@ -42,10 +62,13 @@ export default function KeepApp({ onClose, data }: KeepAppProps) {
           id: Date.now(),
           title: newTitle,
           content: newContent,
-          color: selectedColor
+          color: selectedColor,
+          pinned: false,
+          date: new Date().toISOString()
       };
 
-      setNotes(prev => [note, ...prev]);
+      const updatedNotes = [note, ...notes];
+      updateParent(updatedNotes);
       await bridge.addNote(note);
       resetCreation();
   };
@@ -57,8 +80,20 @@ export default function KeepApp({ onClose, data }: KeepAppProps) {
   };
 
   const deleteNote = async (id: number) => {
-      setNotes(prev => prev.filter(n => n.id !== id));
+      const updatedNotes = notes.filter(n => n.id !== id);
+      updateParent(updatedNotes);
       await bridge.deleteNote(id);
+      if (editingNote && editingNote.id === id) setEditingNote(null);
+  };
+
+  const togglePin = async (e: React.MouseEvent, note: any) => {
+      e.stopPropagation();
+      const updatedNote = { ...note, pinned: !note.pinned };
+      if (editingNote && editingNote.id === note.id) setEditingNote(updatedNote);
+      
+      const updatedNotes = notes.map(n => n.id === note.id ? updatedNote : n);
+      updateParent(updatedNotes);
+      await bridge.addNote(updatedNote); 
   };
 
   // Color Mapping
@@ -77,10 +112,15 @@ export default function KeepApp({ onClose, data }: KeepAppProps) {
       gray: 'bg-[#3c3f43] border-transparent'
   };
 
+  const sortedNotes = [...notes].sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
+
   const appHeaderClass = "h-16 px-6 flex items-center justify-between shrink-0 border-b border-white/5 backdrop-blur-xl z-20 bg-black/20";
 
   return (
-    <div className="flex flex-col h-full bg-[#202124] text-white">
+    <div className="flex flex-col h-full bg-[#202124] text-white relative">
         {/* HEADER */}
         <div className={appHeaderClass}>
             <div className="flex items-center gap-4 w-64">
@@ -104,11 +144,11 @@ export default function KeepApp({ onClose, data }: KeepAppProps) {
             </div>
         </div>
 
-        <div className="flex-1 p-8 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 p-8 overflow-y-auto custom-scrollbar relative z-10">
             
             {/* CREATE NOTE INPUT */}
-            <div className="max-w-[600px] mx-auto mb-8 relative z-20" ref={createRef}>
-                <div className={`bg-[#202124] rounded-xl shadow-lg transition-all duration-200 border ${isCreating ? 'border-white/20' : 'border-white/10'}`} style={{ backgroundColor: selectedColor !== 'default' ? colors[selectedColor].split(' ')[0].replace('bg-', '') : '' }}>
+            <div className="max-w-[600px] mx-auto mb-10 relative z-20" ref={createRef}>
+                <div className={`bg-[#202124] rounded-xl shadow-[0_4px_24px_rgba(0,0,0,0.5)] transition-all duration-200 border ${isCreating ? 'border-white/20' : 'border-white/10'}`} style={{ backgroundColor: selectedColor !== 'default' ? colors[selectedColor].split(' ')[0].replace('bg-', '') : '' }}>
                     {!isCreating ? (
                         <div className="flex items-center justify-between p-3 cursor-text" onClick={() => setIsCreating(true)}>
                             <span className="text-white/70 font-medium ml-2">Criar uma nota...</span>
@@ -140,13 +180,11 @@ export default function KeepApp({ onClose, data }: KeepAppProps) {
                                         <button className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Cor de fundo"><Paintbrush size={16}/></button>
                                         <div className="absolute top-full left-0 mt-2 bg-[#2d2e30] p-2 rounded-lg shadow-xl grid grid-cols-4 gap-1 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity z-30 border border-white/10">
                                             {Object.keys(colors).map(c => (
-                                                <button key={c} onClick={() => setSelectedColor(c)} className={`w-6 h-6 rounded-full border border-white/20 ${colors[c].split(' ')[0]}`}></button>
+                                                <button key={c} onClick={() => setSelectedColor(c)} className={`w-6 h-6 rounded-full border border-white/20 ${colors[c].split(' ')[0]} ${selectedColor === c ? 'ring-2 ring-white' : ''}`}></button>
                                             ))}
                                         </div>
                                     </div>
                                     <button className="p-2 hover:bg-white/10 rounded-full transition-colors"><ImageIcon size={16}/></button>
-                                    <button className="p-2 hover:bg-white/10 rounded-full transition-colors"><Archive size={16}/></button>
-                                    <button className="p-2 hover:bg-white/10 rounded-full transition-colors"><MoreVertical size={16}/></button>
                                 </div>
                                 <button onClick={() => { handleCreateNote(); setIsCreating(false); }} className="px-4 py-1.5 hover:bg-white/10 rounded text-sm font-medium transition-colors">Fechar</button>
                             </div>
@@ -156,24 +194,89 @@ export default function KeepApp({ onClose, data }: KeepAppProps) {
             </div>
 
             {/* MASONRY LAYOUT */}
-            <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
-                {notes.map((n:any) => {
-                    const noteColorClass = colors[n.color || 'default'] || colors.default;
-                    return (
-                        <div key={n.id} className={`rounded-xl p-4 shadow-sm break-inside-avoid cursor-default group transition-all border hover:border-white/40 ${noteColorClass}`}>
-                            {n.title && <h3 className="text-white font-medium mb-2 text-base">{n.title}</h3>}
-                            <p className="text-white/80 text-sm leading-relaxed whitespace-pre-wrap">{n.content}</p>
-                            <div className="mt-4 pt-2 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <div className="flex gap-1 text-white/70">
-                                    <button className="p-1.5 hover:bg-white/10 rounded-full transition-colors" title="Arquivar"><Archive size={14}/></button>
-                                    <button className="p-1.5 hover:bg-white/10 rounded-full transition-colors" title="Excluir" onClick={() => deleteNote(n.id)}><Trash2 size={14}/></button>
+            {sortedNotes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 text-white/20">
+                    <Lightbulb size={64} className="mb-4 opacity-20"/>
+                    <p>As notas que você adicionar aparecem aqui</p>
+                </div>
+            ) : (
+                <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
+                    {sortedNotes.map((n:any) => {
+                        const noteColorClass = colors[n.color || 'default'] || colors.default;
+                        return (
+                            <div key={n.id} onClick={() => setEditingNote(n)} className={`rounded-xl p-4 shadow-sm break-inside-avoid cursor-default group transition-all border border-transparent hover:border-white/40 relative ${noteColorClass} hover:shadow-md`}>
+                                <button 
+                                    onClick={(e) => togglePin(e, n)}
+                                    className={`absolute top-2 right-2 p-1.5 rounded-full hover:bg-black/20 transition-opacity z-10 ${n.pinned ? 'opacity-100 text-white' : 'opacity-0 group-hover:opacity-100 text-white/50'}`}
+                                >
+                                    <Pin size={14} className={n.pinned ? "fill-white" : ""}/>
+                                </button>
+                                {n.title && <h3 className="text-white font-medium mb-2 text-base pr-6">{n.title}</h3>}
+                                <p className="text-white/80 text-sm leading-relaxed whitespace-pre-wrap max-h-[400px] overflow-hidden">{n.content}</p>
+                                <div className="mt-4 pt-2 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex gap-1 text-white/70">
+                                        <button className="p-1.5 hover:bg-white/10 rounded-full transition-colors" title="Arquivar" onClick={(e) => e.stopPropagation()}><Archive size={14}/></button>
+                                        <button className="p-1.5 hover:bg-white/10 rounded-full transition-colors" title="Excluir" onClick={(e) => { e.stopPropagation(); deleteNote(n.id); }}><Trash2 size={14}/></button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    );
-                })}
-            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
+
+        {/* EDIT MODAL */}
+        {editingNote && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={handleCloseEdit}>
+                <div 
+                    ref={modalRef}
+                    onClick={(e) => e.stopPropagation()}
+                    className={`w-full max-w-lg rounded-2xl shadow-2xl transition-all duration-300 transform scale-100 border border-white/20 ${colors[editingNote.color || 'default']?.split(' ')[0] || 'bg-[#202124]'}`}
+                >
+                    <div className="p-4 flex flex-col gap-2">
+                        <div className="flex items-start justify-between">
+                            <input 
+                                type="text" 
+                                className="bg-transparent text-white text-xl font-medium placeholder:text-white/50 outline-none flex-1"
+                                placeholder="Título"
+                                value={editingNote.title}
+                                onChange={(e) => setEditingNote({...editingNote, title: e.target.value})}
+                            />
+                            <button 
+                                onClick={(e) => togglePin(e, editingNote)}
+                                className={`p-2 rounded-full hover:bg-black/10 transition-colors ${editingNote.pinned ? 'text-white' : 'text-white/50'}`}
+                            >
+                                <Pin size={20} className={editingNote.pinned ? "fill-white" : ""}/>
+                            </button>
+                        </div>
+                        <textarea 
+                            className="bg-transparent text-white text-sm leading-relaxed placeholder:text-white/50 outline-none resize-none min-h-[200px]"
+                            placeholder="Nota..."
+                            value={editingNote.content}
+                            onChange={(e) => setEditingNote({...editingNote, content: e.target.value})}
+                        />
+                    </div>
+                    <div className="p-2 flex items-center justify-between">
+                         <div className="flex gap-1 text-white/70">
+                            <div className="relative group">
+                                <button className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Cor de fundo"><Paintbrush size={16}/></button>
+                                <div className="absolute bottom-full left-0 mb-2 bg-[#2d2e30] p-2 rounded-lg shadow-xl grid grid-cols-4 gap-1 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity z-30 border border-white/10">
+                                    {Object.keys(colors).map(c => (
+                                        <button key={c} onClick={() => setEditingNote({...editingNote, color: c})} className={`w-6 h-6 rounded-full border border-white/20 ${colors[c].split(' ')[0]} ${editingNote.color === c ? 'ring-2 ring-white' : ''}`}></button>
+                                    ))}
+                                </div>
+                            </div>
+                            <button onClick={() => deleteNote(editingNote.id)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><Trash2 size={16}/></button>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <span className="text-[10px] text-white/40">Editado {new Date(editingNote.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                            <button onClick={handleCloseEdit} className="px-6 py-2 rounded text-sm font-medium hover:bg-white/10 transition-colors">Fechar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 }

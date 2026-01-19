@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, LayoutGrid, Loader2, CloudSun, Mail, HardDrive, FileText, 
   FileSpreadsheet, Presentation, Video, Plus, X, ArrowRight,
-  Home, CheckCircle2, Lightbulb
+  Home, CheckCircle2, Lightbulb, Calendar, LogOut, User, Settings
 } from 'lucide-react';
 import AppViewer from './components/AppViewer';
 import Aurora from './components/Aurora';
@@ -22,6 +22,22 @@ const getFileIcon = (type: string) => {
     }
 };
 
+// Colors from KeepApp for consistency
+const keepColors: {[key:string]: string} = {
+    default: 'bg-[#202124] border-white/20',
+    red: 'bg-[#5c2b29] border-transparent',
+    orange: 'bg-[#614a19] border-transparent',
+    yellow: 'bg-[#635d19] border-transparent',
+    green: 'bg-[#345920] border-transparent',
+    teal: 'bg-[#16504b] border-transparent',
+    blue: 'bg-[#2d555e] border-transparent',
+    darkblue: 'bg-[#1e3a5f] border-transparent',
+    purple: 'bg-[#42275e] border-transparent',
+    pink: 'bg-[#5b2245] border-transparent',
+    brown: 'bg-[#442f19] border-transparent',
+    gray: 'bg-[#3c3f43] border-transparent'
+};
+
 export default function App() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DashboardData | null>(null);
@@ -34,6 +50,12 @@ export default function App() {
   
   const [activeTab, setActiveTab] = useState('');
   const [menuSearchActive, setMenuSearchActive] = useState(false);
+
+  // Header Menus
+  const [showAppLauncher, setShowAppLauncher] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const launcherRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   // Gemini State
   const chatSession = useRef<Chat | null>(null);
@@ -71,6 +93,20 @@ export default function App() {
         console.error("Failed to load dashboard data", err);
         setLoading(false);
       });
+  }, []);
+
+  // Click Outside Handlers for Menus
+  useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+          if (launcherRef.current && !launcherRef.current.contains(event.target as Node)) {
+              setShowAppLauncher(false);
+          }
+          if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+              setShowProfileMenu(false);
+          }
+      };
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // SYNC HANDLERS
@@ -153,6 +189,7 @@ export default function App() {
     setAiMode(false);
     setActiveApp({ type, data: fileData });
     setActiveTab(type);
+    setShowAppLauncher(false);
   };
 
   const toggleSearch = () => {
@@ -177,6 +214,18 @@ export default function App() {
     { id: 'sheet', label: "Sheets", icon: <GoogleIcons.SheetsGlass className="w-6 h-6" />, color: '#34A853', lightColor: '#E6F4EA', isGlass: true },
     { id: 'slide', label: "Slides", icon: <GoogleIcons.SlidesGlass className="w-6 h-6" />, color: '#FBBC05', lightColor: '#FEF7E0', isGlass: true },
     { id: 'meet', label: "Meet", icon: <GoogleIcons.MeetGlass className="w-6 h-6" />, color: '#EA4335', lightColor: '#FCE8E6', isGlass: true },
+  ];
+
+  const launcherApps = [
+      { id: 'mail', label: 'Gmail', icon: <GoogleIcons.GmailGlass className="w-10 h-10"/> },
+      { id: 'drive', label: 'Drive', icon: <GoogleIcons.DriveGlass className="w-10 h-10"/> },
+      { id: 'meet', label: 'Meet', icon: <GoogleIcons.MeetGlass className="w-10 h-10"/> },
+      { id: 'doc', label: 'Docs', icon: <GoogleIcons.DocsGlass className="w-10 h-10"/> },
+      { id: 'sheet', label: 'Sheets', icon: <GoogleIcons.SheetsGlass className="w-10 h-10"/> },
+      { id: 'slide', label: 'Slides', icon: <GoogleIcons.SlidesGlass className="w-10 h-10"/> },
+      { id: 'tasks', label: 'Tarefas', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><CheckCircle2 className="text-[#4E79F3]"/></div> },
+      { id: 'keep', label: 'Keep', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Lightbulb className="text-[#FBBC05]"/></div> },
+      { id: 'search', label: 'Busca', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Search className="text-white"/></div> },
   ];
 
   const isLightMode = !!activeApp;
@@ -312,8 +361,62 @@ export default function App() {
                     <CloudSun size={14} className="text-[#FBBC05]" />
                     <span>{data.weather.temp}</span>
                 </div>
-                <button className="p-2 rounded-full hover:bg-white/10 border border-transparent hover:border-white/10 text-[#E3E3E3] backdrop-blur-sm"><LayoutGrid size={20} /></button>
-                <img src={data.user.avatar} alt="Profile" className="w-9 h-9 rounded-full border border-white/20 hover:ring-2 hover:ring-white/20 cursor-pointer transition-all" />
+                
+                {/* APP LAUNCHER */}
+                <div className="relative" ref={launcherRef}>
+                    <button 
+                        onClick={() => setShowAppLauncher(!showAppLauncher)} 
+                        className={`p-2 rounded-full border border-transparent hover:border-white/10 text-[#E3E3E3] backdrop-blur-sm transition-all ${showAppLauncher ? 'bg-white/10' : 'hover:bg-white/10'}`}
+                    >
+                        <LayoutGrid size={20} />
+                    </button>
+                    {showAppLauncher && (
+                        <div className="absolute top-12 right-0 w-[320px] bg-[#2d2e30]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in zoom-in duration-200 grid grid-cols-3 gap-2 max-h-[400px] overflow-y-auto custom-scrollbar">
+                            {launcherApps.map((app) => (
+                                <button key={app.id} onClick={() => openApp(app.id)} className="flex flex-col items-center justify-center p-3 rounded-xl hover:bg-white/5 transition-colors gap-2 group">
+                                    <div className="transform group-hover:scale-110 transition-transform duration-200">{app.icon}</div>
+                                    <span className="text-xs text-white/80">{app.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* USER PROFILE */}
+                <div className="relative" ref={profileRef}>
+                    <img 
+                        src={data.user.avatar} 
+                        alt="Profile" 
+                        onClick={() => setShowProfileMenu(!showProfileMenu)}
+                        className="w-9 h-9 rounded-full border border-white/20 hover:ring-2 hover:ring-white/20 cursor-pointer transition-all" 
+                    />
+                    {showProfileMenu && (
+                        <div className="absolute top-12 right-0 w-80 bg-[#2d2e30] border border-white/10 rounded-3xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden">
+                            <div className="bg-[#1f1f1f] rounded-[20px] p-4 flex flex-col items-center mb-1 border border-white/5 relative">
+                                <div className="absolute top-3 right-3 p-1 hover:bg-white/5 rounded-full cursor-pointer"><X size={16} className="text-white/50" onClick={() => setShowProfileMenu(false)}/></div>
+                                <img src={data.user.avatar} alt="Profile" className="w-20 h-20 rounded-full border-4 border-[#2d2e30] mb-2" />
+                                <h3 className="text-white font-medium text-lg">{data.user.name}</h3>
+                                <p className="text-white/60 text-sm mb-4">{data.user.email}</p>
+                                <button className="px-4 py-2 rounded-full border border-white/20 text-white/90 text-sm hover:bg-white/5 transition-colors">Gerenciar sua Conta do Google</button>
+                            </div>
+                            <div className="flex flex-col gap-1 p-1">
+                                <button className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-white/5 text-white/80 text-sm transition-colors text-left">
+                                    <div className="w-8 flex justify-center"><User size={20}/></div>
+                                    Adicionar outra conta
+                                </button>
+                                <button className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-white/5 text-white/80 text-sm transition-colors text-left border-t border-white/5">
+                                    <div className="w-8 flex justify-center"><LogOut size={20}/></div>
+                                    Sair de todas as contas
+                                </button>
+                                <div className="flex justify-center gap-4 py-2 text-[10px] text-white/30">
+                                    <span className="hover:text-white/50 cursor-pointer">Privacidade</span>
+                                    <span className="w-1 h-1 bg-white/20 rounded-full self-center"></span>
+                                    <span className="hover:text-white/50 cursor-pointer">Termos</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </header>
 
@@ -380,12 +483,19 @@ export default function App() {
                             <Plus size={24} className="text-[#FBBC05] mb-2 group-hover:scale-110 transition-transform" />
                             <span className="text-xs font-medium text-[#E3E3E3]">Nova Nota</span>
                         </div>
-                        {data.notes && data.notes.slice(0, 3).map((note: any) => (
-                            <div key={note.id} onClick={() => openApp('keep')} className={`p-3 rounded-2xl cursor-pointer flex flex-col ${glassInner}`}>
-                                <h4 className="text-xs font-bold text-[#E3E3E3] mb-1 truncate">{note.title || "Sem título"}</h4>
-                                <p className="text-[10px] text-white/60 line-clamp-3 leading-relaxed">{note.content}</p>
-                            </div>
-                        ))}
+                        {data.notes && data.notes.slice(0, 3).map((note: any) => {
+                            // Map Keep color to tailwind class or default style
+                            const noteColorClass = keepColors[note.color || 'default']?.split(' ')[0] || 'bg-white/5';
+                            // Remove border from class string if needed for dashboard consistency
+                            const finalClass = noteColorClass.replace('bg-', 'bg-opacity-20 bg-') + ' border border-white/5';
+                            
+                            return (
+                                <div key={note.id} onClick={() => openApp('keep')} className={`p-3 rounded-2xl cursor-pointer flex flex-col hover:brightness-110 transition-all ${finalClass}`}>
+                                    <h4 className="text-xs font-bold text-[#E3E3E3] mb-1 truncate">{note.title || "Sem título"}</h4>
+                                    <p className="text-[10px] text-white/70 line-clamp-3 leading-relaxed">{note.content}</p>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -397,13 +507,21 @@ export default function App() {
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2">
                         {data.tasks && data.tasks.slice(0, 5).map((task: any) => (
-                            <div key={task.id} onClick={() => openApp('tasks')} className="group flex items-center gap-3 p-3 rounded-2xl hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/5">
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${task.completed ? 'bg-[#4E79F3] border-[#4E79F3]' : 'border-white/40 group-hover:border-white'}`}>
+                            <div key={task.id} onClick={() => openApp('tasks')} className="group flex items-start gap-3 p-3 rounded-2xl hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/5">
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 mt-0.5 ${task.completed ? 'bg-[#4E79F3] border-[#4E79F3]' : 'border-white/40 group-hover:border-white'}`}>
                                     {task.completed && <CheckCircle2 size={14} className="text-white" />}
                                 </div>
-                                <span className={`text-sm flex-1 ${task.completed ? 'text-white/40 line-through' : 'text-[#E3E3E3]'}`}>
-                                    {task.title}
-                                </span>
+                                <div className="flex-1 min-w-0">
+                                    <span className={`text-sm block truncate ${task.completed ? 'text-white/40 line-through' : 'text-[#E3E3E3]'}`}>
+                                        {task.title}
+                                    </span>
+                                    {task.date && (
+                                        <div className="flex items-center gap-1 mt-1 text-[10px] text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded-full w-fit">
+                                            <Calendar size={10} />
+                                            {new Date(task.date).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ))}
                         <div onClick={() => openApp('tasks')} className="flex items-center gap-3 p-3 rounded-2xl hover:bg-white/5 cursor-pointer transition-colors text-white/60 hover:text-white border border-transparent hover:border-white/5">

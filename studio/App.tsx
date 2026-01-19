@@ -60,7 +60,7 @@ export default function App() {
     }
   }, []);
 
-  // FETCH DATA VIA BRIDGE (WORKS LOCAL & PROD)
+  // FETCH DATA VIA BRIDGE
   useEffect(() => {
     bridge.getInitialData()
       .then((res) => {
@@ -72,6 +72,15 @@ export default function App() {
         setLoading(false);
       });
   }, []);
+
+  // SYNC HANDLERS
+  const updateTasks = (newTasks: any[]) => {
+      setData(prev => prev ? { ...prev, tasks: newTasks } : null);
+  };
+
+  const updateNotes = (newNotes: any[]) => {
+      setData(prev => prev ? { ...prev, notes: newNotes } : null);
+  };
 
   useEffect(() => {
     if (aiMode && inputRef.current) {
@@ -96,7 +105,6 @@ export default function App() {
     if (!searchQuery.trim()) return;
     const text = searchQuery;
     
-    // 1. Update UI with User Message
     setChatHistory(prev => [...prev, { role: 'user', text }]);
     setSearchQuery('');
     if (menuSearchActive) setMenuSearchActive(false);
@@ -106,10 +114,8 @@ export default function App() {
     try {
         if (!chatSession.current) throw new Error("Chat session not initialized");
 
-        // 2. Create a placeholder for the AI response
         setChatHistory(prev => [...prev, { role: 'assistant', text: '' }]);
 
-        // 3. Send message stream
         const result = await chatSession.current.sendMessageStream({ message: text });
         
         let fullResponse = "";
@@ -118,7 +124,6 @@ export default function App() {
             const chunkText = chunk.text || "";
             fullResponse += chunkText;
             
-            // 4. Update the last message (assistant's placeholder) with the accumulated text
             setChatHistory(prev => {
                 const newHistory = [...prev];
                 const lastMsgIndex = newHistory.length - 1;
@@ -127,7 +132,7 @@ export default function App() {
                 }
                 return newHistory;
             });
-            setIsTyping(false); // Stop typing indicator as soon as data starts flowing
+            setIsTyping(false);
         }
 
     } catch (error) {
@@ -175,8 +180,6 @@ export default function App() {
   ];
 
   const isLightMode = !!activeApp;
-
-  // Glassmorphism classes constants
   const glassCard = "bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[32px] shadow-2xl hover:border-white/20 transition-all duration-300";
   const glassInner = "bg-white/5 hover:bg-white/10 border border-white/5 transition-colors";
 
@@ -188,18 +191,27 @@ export default function App() {
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050505]/40 to-[#050505]"></div>
       </div>
 
-      {activeApp && <AppViewer type={activeApp.type} onClose={() => setActiveApp(null)} data={activeApp.data || data} searchQuery={searchQuery} onOpenApp={openApp} />}
+      {activeApp && (
+          <AppViewer 
+              type={activeApp.type} 
+              onClose={() => setActiveApp(null)} 
+              data={activeApp.data || data} 
+              searchQuery={searchQuery} 
+              onOpenApp={openApp}
+              onUpdateTasks={updateTasks}
+              onUpdateNotes={updateNotes}
+          />
+      )}
 
       {/* --- MENU FLUTUANTE INFERIOR --- */}
       <div className={`fixed bottom-8 left-0 right-0 z-[60] flex justify-center items-center gap-3 px-4 pointer-events-none transition-all duration-500 ${aiMode ? 'opacity-0 translate-y-20' : 'opacity-100 translate-y-0'}`}>
           
-          {/* HOME BUTTON - GLASS EDITION */}
           <button 
               onClick={(e) => {
                   const btn = e.currentTarget;
                   if (btn.classList.contains('active')) {
                       btn.classList.remove('active');
-                      void btn.offsetWidth; // Force reflow
+                      void btn.offsetWidth;
                       btn.classList.add('active');
                   } else {
                       btn.classList.add('active');
@@ -309,14 +321,14 @@ export default function App() {
             {/* Widgets Grid */}
             <div className={`grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-min transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${aiMode ? 'opacity-30 scale-[0.98] blur-sm pointer-events-none' : 'opacity-100 scale-100 blur-0'}`}>
                 
-                {/* 2. GMAIL (Expanded to take place of Calendar) */}
+                {/* 2. GMAIL */}
                 <div className={`${glassCard} md:col-span-8 p-6 h-[320px] flex flex-col`}>
                     <div className="flex justify-between items-center mb-4">
                        <span className="font-bold text-[#E3E3E3] text-sm">Caixa de Entrada</span>
                        <Mail size={18} className="text-[#EA4335]" />
                     </div>
                     <div className="space-y-2 flex-1 overflow-hidden">
-                      {data.emails.map((e: any) => (
+                      {data.emails.slice(0, 4).map((e: any) => (
                         <div key={e.id} onClick={() => openApp('mail')} className="p-2 hover:bg-white/5 rounded-2xl cursor-pointer group transition-colors border border-transparent hover:border-white/5">
                            <div className="flex justify-between items-start mb-1">
                               <span className="font-medium text-xs text-[#E3E3E3]">{e.sender}</span>
@@ -331,14 +343,14 @@ export default function App() {
                     </button>
                 </div>
 
-                {/* 3. DRIVE (Expanded to fill row) */}
+                {/* 3. DRIVE */}
                 <div className={`${glassCard} md:col-span-4 p-6 flex flex-col h-[320px]`}>
                     <div className="flex justify-between items-center mb-4">
                         <span className="text-white/60 text-xs font-bold uppercase">Meu Drive</span>
                         <HardDrive size={18} className="text-[#34A853]" />
                     </div>
                     <div className="space-y-2 flex-1 overflow-hidden">
-                        {data.files.map((f: any) => (
+                        {data.files.slice(0, 4).map((f: any) => (
                           <div key={f.id} onClick={() => openApp(f.type, f)} className="flex items-center gap-2 p-2 rounded-xl hover:bg-white/5 cursor-pointer group transition-colors border border-transparent hover:border-white/5">
                              <div className="p-1.5 bg-white/5 rounded-lg group-hover:bg-white/10">
                                {getFileIcon(f.type)}
@@ -357,7 +369,7 @@ export default function App() {
                     </div>
                 </div>
 
-                {/* 4. GOOGLE KEEP WIDGET */}
+                {/* 4. KEEP */}
                 <div className={`${glassCard} md:col-span-6 p-6 flex flex-col h-[280px]`}>
                     <div className="flex justify-between items-center mb-4">
                         <span className="text-white/60 text-xs font-bold uppercase tracking-wider">Notas</span>
@@ -368,23 +380,23 @@ export default function App() {
                             <Plus size={24} className="text-[#FBBC05] mb-2 group-hover:scale-110 transition-transform" />
                             <span className="text-xs font-medium text-[#E3E3E3]">Nova Nota</span>
                         </div>
-                        {data.notes && data.notes.map((note: any) => (
+                        {data.notes && data.notes.slice(0, 3).map((note: any) => (
                             <div key={note.id} onClick={() => openApp('keep')} className={`p-3 rounded-2xl cursor-pointer flex flex-col ${glassInner}`}>
-                                <h4 className="text-xs font-bold text-[#E3E3E3] mb-1 truncate">{note.title}</h4>
+                                <h4 className="text-xs font-bold text-[#E3E3E3] mb-1 truncate">{note.title || "Sem título"}</h4>
                                 <p className="text-[10px] text-white/60 line-clamp-3 leading-relaxed">{note.content}</p>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* 5. GOOGLE TASKS WIDGET */}
+                {/* 5. TASKS */}
                 <div className={`${glassCard} md:col-span-6 p-6 flex flex-col h-[280px]`}>
                     <div className="flex justify-between items-center mb-4">
                         <span className="text-white/60 text-xs font-bold uppercase tracking-wider">Tarefas</span>
                         <CheckCircle2 size={18} className="text-[#4E79F3]" />
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2">
-                        {data.tasks && data.tasks.map((task: any) => (
+                        {data.tasks && data.tasks.slice(0, 5).map((task: any) => (
                             <div key={task.id} onClick={() => openApp('tasks')} className="group flex items-center gap-3 p-3 rounded-2xl hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/5">
                                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${task.completed ? 'bg-[#4E79F3] border-[#4E79F3]' : 'border-white/40 group-hover:border-white'}`}>
                                     {task.completed && <CheckCircle2 size={14} className="text-white" />}
@@ -406,6 +418,7 @@ export default function App() {
 
         {/* --- CHAT OVERLAY --- */}
         <div className={`absolute inset-0 w-full flex flex-col z-20 pointer-events-none ${aiMode ? 'pointer-events-auto' : ''}`}>
+            {/* ... chat overlay code ... */}
             <div className={`flex justify-end p-2 transition-opacity duration-500 ${aiMode ? 'opacity-100' : 'opacity-0'}`}>
                 <button onClick={() => setAiMode(false)} className="px-4 py-2 bg-black/60 backdrop-blur-xl border border-white/10 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition flex items-center gap-2 shadow-2xl">
                     <span className="text-xs font-medium">Fechar Chat</span>

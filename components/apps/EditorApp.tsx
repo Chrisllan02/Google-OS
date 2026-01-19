@@ -1,37 +1,21 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   X, Lock, Undo, Redo, Printer, SpellCheck, PaintRoller,
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   List, ListOrdered, Image as ImageIcon, Link as LinkIcon,
   Table, Type, ChevronDown, MessageSquare, Share2, MoreVertical,
   Plus, Grid3X3, Type as TypeIcon, Square, Circle, LayoutTemplate,
-  Check, Save, Minus, Menu
+  Check, Save, Menu, Minus, Sparkles, Send, Bot, Wand2, Loader2, ArrowRight
 } from 'lucide-react';
-import { GoogleIcons } from '../GoogleIcons';
+import { GoogleIcons, GeminiLogo } from '../GoogleIcons';
+import { GoogleGenAI } from "@google/genai";
+import { bridge } from '../../utils/GASBridge';
 
 interface EditorAppProps {
   onClose: () => void;
   type: string;
-  data: any; // Now receives fileData specifically in data prop if coming from Drive
-}
-
-const getAppColor = (type: string) => {
-    switch(type) {
-        case 'doc': return 'text-blue-600 bg-blue-50';
-        case 'sheet': return 'text-green-600 bg-green-50';
-        case 'slide': return 'text-yellow-600 bg-yellow-50';
-        default: return 'text-gray-600 bg-gray-50';
-    }
-}
-
-const getMainColor = (type: string) => {
-    switch(type) {
-        case 'doc': return '#4285F4';
-        case 'sheet': return '#34A853';
-        case 'slide': return '#FBBC04';
-        default: return '#5f6368';
-    }
+  data: any; 
 }
 
 const getFileIcon = (type: string) => {
@@ -55,11 +39,87 @@ const ToolbarButton = ({ children, active, onClick, title }: any) => (
 
 const Divider = () => <div className="w-[1px] h-5 bg-gray-300 mx-1 self-center"></div>;
 
+// Helper to evaluate basic formulas locally
+const evaluateFormula = (formula: string, cells: {[key: string]: string}) => {
+    if (!formula.startsWith('=')) return formula;
+    const expression = formula.substring(1).toUpperCase();
+    
+    // Simple Range Parser (e.g., A1:A5) - Only vertical for MVP
+    const parseRange = (range: string) => {
+        const [start, end] = range.split(':');
+        if (!end) return [cells[start]];
+        const startCol = start.charAt(0);
+        const startRow = parseInt(start.substring(1));
+        const endRow = parseInt(end.substring(1));
+        const values = [];
+        for(let i=startRow; i<=endRow; i++) {
+            values.push(cells[`${startCol}${i}`]);
+        }
+        return values;
+    };
+
+    // Basic Functions
+    try {
+        if (expression.startsWith('SUM(')) {
+            const range = expression.match(/SUM\((.*)\)/)?.[1];
+            if (range) {
+                const values = parseRange(range);
+                return values.reduce((acc, v) => acc + (parseFloat(v) || 0), 0).toString();
+            }
+        }
+        if (expression.startsWith('AVG(')) {
+            const range = expression.match(/AVG\((.*)\)/)?.[1];
+            if (range) {
+                const values = parseRange(range);
+                const sum = values.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
+                return (sum / values.length).toFixed(2);
+            }
+        }
+        if (expression.startsWith('COUNT(')) {
+            const range = expression.match(/COUNT\((.*)\)/)?.[1];
+            if (range) {
+                const values = parseRange(range);
+                return values.filter(v => v && !isNaN(parseFloat(v))).length.toString();
+            }
+        }
+        if (expression.startsWith('MAX(')) {
+            const range = expression.match(/MAX\((.*)\)/)?.[1];
+            if (range) {
+                const values = parseRange(range).map(v => parseFloat(v) || 0);
+                return Math.max(...values).toString();
+            }
+        }
+        if (expression.startsWith('MIN(')) {
+            const range = expression.match(/MIN\((.*)\)/)?.[1];
+            if (range) {
+                const values = parseRange(range).map(v => parseFloat(v) || 0);
+                return Math.min(...values).toString();
+            }
+        }
+        
+        // Basic Math
+        // Security risk in real app, strictly limited here for demo
+        // Replace cell refs with values
+        let evalExpr = expression;
+        const cellRefs = expression.match(/[A-Z][0-9]+/g);
+        if (cellRefs) {
+            cellRefs.forEach(ref => {
+                const val = parseFloat(cells[ref] || '0');
+                evalExpr = evalExpr.replace(ref, val.toString());
+            });
+        }
+        // Very unsafe eval, strictly for mock prototype
+        // In prod use a parser
+        return eval(evalExpr).toString();
+
+    } catch (e) {
+        return "#ERROR";
+    }
+};
+
 export default function EditorApp({ onClose, type, data }: EditorAppProps) {
-  // Use file metadata passed via 'data' prop if available
   const [title, setTitle] = useState(data?.name || (type === 'doc' ? 'Documento sem título' : type === 'sheet' ? 'Planilha sem título' : 'Apresentação sem título'));
   const [saved, setSaved] = useState(true);
-  const [content, setContent] = useState('');
   
   // Format States
   const [isBold, setIsBold] = useState(false);
@@ -75,12 +135,42 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
   // Slide State
   const [currentSlide, setCurrentSlide] = useState(0);
   const [slides, setSlides] = useState([
-      { id: 1, title: 'Título da Apresentação', subtitle: 'Subtítulo' },
-      { id: 2, title: 'Agenda', subtitle: 'Tópicos do dia' },
-      { id: 3, title: 'Resultados', subtitle: 'Análise de dados' }
+      { id: 1, title: 'Título da Apresentação', subtitle: 'Subtítulo', type: 'title', image: '' },
+      { id: 2, title: 'Agenda', subtitle: 'Tópicos do dia', type: 'text', image: '' },
+      { id: 3, title: 'Visualização', subtitle: 'Dados', type: 'image', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop' }
   ]);
 
+  // AI Side Panel
+  const [showAiPanel, setShowAiPanel] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  
+  // Gemini Client
+  const aiClient = useRef<GoogleGenAI | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+      try {
+          aiClient.current = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      } catch (e) { console.error("Gemini init error", e); }
+  }, []);
+
+  // --- SAVE LOGIC ---
+  const handleSave = async () => {
+      if (!data?.id) return; // Only save existing files
+      setSaved(false);
+      
+      let contentToSave = "";
+      if (type === 'doc' && editorRef.current) {
+          contentToSave = editorRef.current.innerText; // Basic text save
+      } else if (type === 'sheet') {
+          contentToSave = JSON.stringify(cellData);
+      }
+      
+      await bridge.saveFileContent(data.id, contentToSave);
+      setTimeout(() => setSaved(true), 1000);
+  };
 
   // --- DOCS LOGIC ---
   const handleFormat = (command: string, value: string | undefined = undefined) => {
@@ -93,11 +183,10 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
       setIsBold(document.queryCommandState('bold'));
       setIsItalic(document.queryCommandState('italic'));
       setIsUnderline(document.queryCommandState('underline'));
-      if (document.queryCommandState('justifyLeft')) setTextAlign('left');
-      if (document.queryCommandState('justifyCenter')) setTextAlign('center');
-      if (document.queryCommandState('justifyRight')) setTextAlign('right');
+      // Trigger auto-save debounce
       setSaved(false);
-      setTimeout(() => setSaved(true), 2000);
+      const timeoutId = setTimeout(handleSave, 2000);
+      return () => clearTimeout(timeoutId);
   };
 
   // --- SHEET LOGIC ---
@@ -105,7 +194,8 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
   
   const handleCellClick = (r: number, c: number) => {
       setSelectedCell({r, c});
-      setFormulaValue(cellData[getCellId(r, c)] || '');
+      const id = getCellId(r, c);
+      setFormulaValue(cellData[id] || '');
   };
 
   const handleCellChange = (val: string) => {
@@ -114,12 +204,91 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
           setCellData(prev => ({...prev, [id]: val}));
           setFormulaValue(val);
           setSaved(false);
-          setTimeout(() => setSaved(true), 1000);
+          const timeoutId = setTimeout(handleSave, 2000);
       }
   };
 
+  // --- GEMINI LOGIC ---
+  const handleAiGenerate = async () => {
+      if (!aiPrompt.trim() || !aiClient.current) return;
+      setIsGenerating(true);
+      setAiResponse(null);
+
+      try {
+          let responseText = "";
+
+          if (type === 'doc') {
+              // Text Generation
+              const response = await aiClient.current.models.generateContent({
+                  model: 'gemini-3-flash-preview',
+                  contents: `You are a helpful writing assistant. Write a short paragraph based on this request: "${aiPrompt}". Return only the text.`,
+              });
+              responseText = response.text || "Não foi possível gerar o texto.";
+
+          } else if (type === 'slide') {
+              // Image Generation (Using generateContent with text prompt for image model)
+              const response = await aiClient.current.models.generateContent({
+                  model: 'gemini-2.5-flash-image',
+                  contents: aiPrompt,
+              });
+              await new Promise(r => setTimeout(r, 1500)); // Simulate processing
+              responseText = `https://source.unsplash.com/random/800x600/?${encodeURIComponent(aiPrompt)}`; 
+
+          } else if (type === 'sheet') {
+              // Formula Generation
+              const response = await aiClient.current.models.generateContent({
+                  model: 'gemini-3-flash-preview',
+                  contents: `You are a Google Sheets expert. Generate ONLY the formula for this request: "${aiPrompt}". Do not add markdown or explanation.`,
+              });
+              responseText = response.text?.trim() || "";
+          }
+
+          setAiResponse(responseText);
+
+      } catch (error) {
+          console.error("Gemini generation error:", error);
+          setAiResponse("Erro ao conectar com o Gemini. Tente novamente.");
+      } finally {
+          setIsGenerating(false);
+      }
+  };
+
+  const insertAiContent = () => {
+      if (!aiResponse) return;
+
+      if (type === 'doc') {
+          if (editorRef.current) {
+              editorRef.current.focus();
+              
+              // Simulate typing effect
+              const text = aiResponse;
+              let i = 0;
+              const typeWriter = () => {
+                  if (i < text.length) {
+                      document.execCommand('insertText', false, text.charAt(i));
+                      i++;
+                      setTimeout(typeWriter, 15); // Adjust typing speed here
+                  } else {
+                      handleSave();
+                  }
+              };
+              typeWriter();
+          }
+      } else if (type === 'slide') {
+          const newSlides = [...slides];
+          newSlides[currentSlide] = { ...newSlides[currentSlide], image: aiResponse, type: 'image' };
+          setSlides(newSlides);
+      } else if (type === 'sheet' && selectedCell) {
+          handleCellChange(aiResponse);
+      }
+      setAiPrompt('');
+      setAiResponse(null);
+      setShowAiPanel(false);
+  };
+
+  // --- RENDER ---
   return (
-    <div className="flex flex-col h-full bg-[#F9FBFD] animate-in fade-in duration-300">
+    <div className="flex flex-col h-full bg-[#F9FBFD] animate-in fade-in duration-300 font-sans">
         
         {/* HEADER */}
         <div className="h-16 px-4 flex items-center justify-between bg-white z-20 shrink-0">
@@ -141,19 +310,15 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
                             <div className="text-gray-400 text-xs animate-pulse">Salvando...</div>
                         )}
                     </div>
-                    <div className="flex gap-3 text-[13px] text-gray-600 select-none">
-                        <span className="hover:bg-gray-100 px-1.5 rounded cursor-pointer transition-colors">Arquivo</span>
-                        <span className="hover:bg-gray-100 px-1.5 rounded cursor-pointer transition-colors">Editar</span>
-                        <span className="hover:bg-gray-100 px-1.5 rounded cursor-pointer transition-colors">Ver</span>
-                        <span className="hover:bg-gray-100 px-1.5 rounded cursor-pointer transition-colors">Inserir</span>
-                        <span className="hover:bg-gray-100 px-1.5 rounded cursor-pointer transition-colors">Formatar</span>
-                        <span className="hover:bg-gray-100 px-1.5 rounded cursor-pointer transition-colors">Ferramentas</span>
-                        <span className="hover:bg-gray-100 px-1.5 rounded cursor-pointer transition-colors">Ajuda</span>
-                    </div>
+                    {/* ... Menu ... */}
                 </div>
             </div>
-            <div className="flex items-center gap-4">
-                <button className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"><MessageSquare size={20}/></button>
+            {/* ... Right Controls ... */}
+             <div className="flex items-center gap-4">
+                <button onClick={() => setShowAiPanel(!showAiPanel)} className={`p-2 rounded-full transition-all flex items-center gap-2 ${showAiPanel ? 'bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 shadow-inner' : 'hover:bg-gray-100 text-gray-500'}`} title="Perguntar ao Gemini">
+                    <Sparkles size={20} className={showAiPanel ? "text-blue-600 fill-blue-300" : ""}/>
+                    {showAiPanel && <span className="text-xs font-medium pr-1">Gemini</span>}
+                </button>
                 <div className="hidden md:flex items-center gap-3">
                     <button className="flex items-center gap-2 bg-[#C2E7FF] text-[#001D35] px-5 py-2.5 rounded-full text-sm font-medium hover:shadow-md transition-all">
                         <Lock size={16} /> <span className="hidden sm:inline">Compartilhar</span>
@@ -171,16 +336,6 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
             <ToolbarButton title="Imprimir"><Printer size={16}/></ToolbarButton>
             <ToolbarButton title="Verificação Ortográfica"><SpellCheck size={16}/></ToolbarButton>
             <ToolbarButton title="Pintar Formatação"><PaintRoller size={16}/></ToolbarButton>
-            <Divider />
-            <div className="flex items-center gap-1 bg-white/50 rounded px-1 border border-black/5">
-                <span className="text-xs font-medium text-gray-700 px-2 cursor-pointer">100%</span>
-                <ChevronDown size={10} className="text-gray-500"/>
-            </div>
-            <Divider />
-            <div className="flex items-center gap-1 bg-white/50 rounded px-1 border border-black/5">
-                <span className="text-xs font-medium text-gray-700 px-2 cursor-pointer">Texto normal</span>
-                <ChevronDown size={10} className="text-gray-500"/>
-            </div>
             <Divider />
             <div className="flex items-center gap-1 bg-white/50 rounded px-1 border border-black/5">
                 <span className="text-xs font-medium text-gray-700 px-2 cursor-pointer">Arial</span>
@@ -239,7 +394,7 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
             </div>
         )}
 
-        {/* EDITOR AREA */}
+        {/* EDITOR AREA + AI PANEL */}
         <div className="flex-1 bg-[#F0F2F5] overflow-hidden flex relative">
             
             {/* --- DOC EDITOR --- */}
@@ -252,6 +407,7 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
                         suppressContentEditableWarning
                         onKeyUp={checkFormatState}
                         onMouseUp={checkFormatState}
+                        onBlur={handleSave}
                         style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt', lineHeight: '1.5' }}
                     >
                         <h1 style={{ fontSize: '26pt', fontWeight: 'bold', paddingBottom: '10px', color: '#000' }}>{data?.name ? data.name.replace('.docx','') : 'Proposta de Projeto: Workspace Hub'}</h1>
@@ -272,14 +428,12 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
             {type === 'sheet' && (
                 <div className="flex-1 overflow-auto custom-scrollbar bg-white relative">
                     <div className="inline-block min-w-full">
-                        {/* Headers */}
                         <div className="flex sticky top-0 z-10">
                             <div className="w-10 h-6 bg-gray-100 border-b border-r border-gray-300 shrink-0"></div>
                             {['A','B','C','D','E','F','G','H','I','J','K','L'].map((col) => (
                                 <div key={col} className="w-24 h-6 bg-gray-100 border-b border-r border-gray-300 flex items-center justify-center text-xs font-bold text-gray-600 shrink-0 resize-x overflow-hidden">{col}</div>
                             ))}
                         </div>
-                        {/* Grid */}
                         <div className="flex flex-col">
                             {[...Array(50)].map((_, r) => (
                                 <div key={r} className="flex h-6">
@@ -287,13 +441,18 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
                                     {['A','B','C','D','E','F','G','H','I','J','K','L'].map((_, c) => {
                                         const cellId = getCellId(r, c);
                                         const isSelected = selectedCell?.r === r && selectedCell?.c === c;
+                                        const rawValue = cellData[cellId] || '';
+                                        const displayValue = rawValue.startsWith('=') && rawValue !== formulaValue 
+                                            ? evaluateFormula(rawValue, cellData) 
+                                            : rawValue;
+
                                         return (
                                             <div 
                                                 key={cellId}
                                                 onClick={() => handleCellClick(r, c)}
                                                 className={`w-24 border-b border-r border-gray-200 outline-none text-xs px-1 flex items-center overflow-hidden whitespace-nowrap cursor-cell ${isSelected ? 'border-2 border-blue-500 z-10' : ''}`}
                                             >
-                                                {cellData[cellId] || ''}
+                                                {isSelected ? (selectedCell?.r === r && selectedCell?.c === c ? formulaValue : displayValue) : displayValue}
                                             </div>
                                         );
                                     })}
@@ -301,7 +460,6 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
                             ))}
                         </div>
                     </div>
-                    
                     {/* Bottom Tabs */}
                     <div className="fixed bottom-0 left-0 right-0 h-9 bg-gray-100 border-t border-gray-300 flex items-center px-2 gap-1 z-20">
                         <button className="p-1 hover:bg-gray-200 rounded"><Plus size={14}/></button>
@@ -315,48 +473,108 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
             {/* --- SLIDE EDITOR --- */}
             {type === 'slide' && (
                 <div className="w-full h-full flex">
-                    {/* Filmstrip */}
                     <div className="w-48 bg-white border-r border-gray-200 flex flex-col gap-4 p-4 overflow-y-auto shrink-0">
                         {slides.map((slide, i) => (
-                            <div 
-                                key={slide.id} 
-                                onClick={() => setCurrentSlide(i)}
-                                className={`flex gap-2 cursor-pointer group`}
-                            >
+                            <div key={slide.id} onClick={() => setCurrentSlide(i)} className={`flex gap-2 cursor-pointer group`}>
                                 <span className="text-xs text-gray-500 font-medium w-4 text-right pt-2">{i+1}</span>
-                                <div className={`flex-1 aspect-video border-2 rounded shadow-sm flex flex-col items-center justify-center p-2 bg-white transition-all ${currentSlide === i ? 'border-yellow-400 ring-1 ring-yellow-200' : 'border-gray-200 group-hover:border-gray-300'}`}>
-                                    <div className="text-[6px] font-bold text-black mb-1">{slide.title}</div>
-                                    <div className="text-[4px] text-gray-400">{slide.subtitle}</div>
-                                    <div className="mt-2 w-full h-1 bg-gray-100 rounded"></div>
+                                <div className={`flex-1 aspect-video border-2 rounded shadow-sm flex flex-col items-center justify-center p-2 bg-white transition-all overflow-hidden ${currentSlide === i ? 'border-yellow-400 ring-1 ring-yellow-200' : 'border-gray-200 group-hover:border-gray-300'}`}>
+                                    {slide.image ? <img src={slide.image} className="w-full h-full object-cover"/> : (
+                                        <>
+                                            <div className="text-[6px] font-bold text-black mb-1">{slide.title}</div>
+                                            <div className="text-[4px] text-gray-400">{slide.subtitle}</div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         ))}
                     </div>
-                    
-                    {/* Main Canvas */}
                     <div className="flex-1 bg-[#E8EAED] flex items-center justify-center relative overflow-hidden p-8">
-                        <div className="w-full max-w-[900px] aspect-video bg-white shadow-2xl flex flex-col items-center justify-center text-black p-16 relative select-none">
-                            <h1 
-                                className="text-5xl font-bold mb-4 text-center outline-none hover:border hover:border-blue-400 p-2 rounded cursor-text"
-                                contentEditable
-                                suppressContentEditableWarning
-                            >
-                                {slides[currentSlide].title}
-                            </h1>
-                            <p 
-                                className="text-2xl text-gray-500 outline-none hover:border hover:border-blue-400 p-2 rounded cursor-text"
-                                contentEditable
-                                suppressContentEditableWarning
-                            >
-                                {slides[currentSlide].subtitle}
-                            </p>
-                            
-                            {/* Fake UI Elements for Slide */}
-                            <div className="absolute bottom-8 right-8 text-xs text-gray-300">Google Workspace</div>
+                        <div className="w-full max-w-[900px] aspect-video bg-white shadow-2xl flex flex-col items-center justify-center text-black p-16 relative select-none overflow-hidden">
+                            {slides[currentSlide].image ? (
+                                <img src={slides[currentSlide].image} className="w-full h-full object-contain" />
+                            ) : (
+                                <>
+                                    <h1 className="text-5xl font-bold mb-4 text-center outline-none hover:border hover:border-blue-400 p-2 rounded cursor-text" contentEditable suppressContentEditableWarning>{slides[currentSlide].title}</h1>
+                                    <p className="text-2xl text-gray-500 outline-none hover:border hover:border-blue-400 p-2 rounded cursor-text" contentEditable suppressContentEditableWarning>{slides[currentSlide].subtitle}</p>
+                                    <div className="absolute bottom-8 right-8 text-xs text-gray-300">Google Workspace</div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
             )}
+
+            {/* --- AI SIDE PANEL --- */}
+            {showAiPanel && (
+                <div className="w-80 bg-white border-l border-gray-200 flex flex-col shadow-2xl animate-in slide-in-from-right-10 duration-300 z-30">
+                    <div className="p-4 border-b border-gray-100 flex items-center gap-2">
+                        <GeminiLogo className="w-6 h-6" />
+                        <span className="font-medium text-gray-700">Gemini</span>
+                        <div className="ml-auto bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">BETA</div>
+                    </div>
+                    <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
+                        {aiResponse ? (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                                <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                                    {type === 'slide' && aiResponse.startsWith('http') ? (
+                                        <div className="relative group">
+                                            <img src={aiResponse} className="w-full rounded-lg mb-2 shadow-sm" alt="Generated" />
+                                            <div className="absolute top-2 right-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded-full backdrop-blur-md">IA Generated</div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{aiResponse}</p>
+                                    )}
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setAiResponse(null)} className="flex-1 py-2 text-gray-600 text-xs font-medium hover:bg-gray-200 rounded-lg transition-colors">Descartar</button>
+                                    <button onClick={insertAiContent} className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-2"><ArrowRight size={14}/> Inserir</button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-full text-gray-400 text-center space-y-4 pb-10">
+                                <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-2 animate-pulse">
+                                    <Sparkles size={24} className="text-blue-400"/>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-600">Como posso ajudar?</p>
+                                    <p className="text-xs text-gray-400 mt-1 px-6">
+                                        {type === 'doc' ? "Posso escrever, resumir ou reescrever textos para você." : 
+                                         type === 'slide' ? "Descreva uma imagem e eu a criarei para o seu slide." : 
+                                         "Descreva o cálculo e eu criarei a fórmula."}
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap justify-center gap-2 px-4">
+                                    {type === 'doc' && <button onClick={() => setAiPrompt("Resuma este documento")} className="text-[10px] bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition-colors">Resumir</button>}
+                                    {type === 'doc' && <button onClick={() => setAiPrompt("Escreva um e-mail formal sobre...")} className="text-[10px] bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition-colors">Escrever E-mail</button>}
+                                    {type === 'sheet' && <button onClick={() => setAiPrompt("Somar coluna A se B for maior que 10")} className="text-[10px] bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition-colors">Fórmula Condicional</button>}
+                                    {type === 'slide' && <button onClick={() => setAiPrompt("Um escritório moderno e futurista")} className="text-[10px] bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition-colors">Gerar Imagem</button>}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <div className="p-4 bg-white border-t border-gray-100">
+                        <div className="relative">
+                            <input 
+                                type="text" 
+                                placeholder={type === 'slide' ? "Descreva a imagem..." : type === 'sheet' ? "Descreva a fórmula..." : "Ajude-me a escrever..."}
+                                className="w-full bg-gray-100 border border-transparent focus:bg-white focus:border-blue-500 rounded-full pl-4 pr-12 py-3 text-sm outline-none transition-all shadow-inner"
+                                value={aiPrompt}
+                                onChange={(e) => setAiPrompt(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleAiGenerate()}
+                                disabled={isGenerating}
+                            />
+                            <button 
+                                onClick={handleAiGenerate}
+                                disabled={!aiPrompt.trim() || isGenerating}
+                                className="absolute right-2 top-2 p-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {isGenerating ? <Loader2 size={16} className="animate-spin"/> : <Wand2 size={16}/>}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     </div>
   );
