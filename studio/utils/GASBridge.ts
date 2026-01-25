@@ -1,5 +1,4 @@
 
-
 import { GoogleIcons } from '../components/GoogleIcons';
 
 // Tipagem dos dados do Dashboard
@@ -120,8 +119,25 @@ class GASBridge {
   }
 
   // --- MAIL & OTHER METHODS ---
+  async getEmailsPaged(start: number, limit: number, folder: string, query: string = ''): Promise<any[]> {
+      if(this.isGasEnvironment()) return new Promise((r)=>(window as any).google.script.run.withSuccessHandler((res:string)=>r(JSON.parse(res))).getEmailsPaged(start, limit, folder, query));
+      return Promise.resolve([]);
+  }
+
+  async createLabel(name: string): Promise<boolean> {
+      if(this.isGasEnvironment()) return new Promise((r)=>(window as any).google.script.run.withSuccessHandler((res:string)=>r(JSON.parse(res).success)).createGmailLabel(name));
+      console.log(`[MOCK] Created label: ${name}`);
+      return Promise.resolve(true);
+  }
+
   async manageEmail(id: number | string, action: string): Promise<boolean> {
       if (this.isGasEnvironment()) return new Promise((resolve)=>(window as any).google.script.run.withSuccessHandler((r:string)=>resolve(JSON.parse(r).success)).manageEmail(id, action));
+      return Promise.resolve(true);
+  }
+
+  async batchManageEmails(ids: Array<number | string>, action: string): Promise<boolean> {
+      if (this.isGasEnvironment()) return new Promise((resolve)=>(window as any).google.script.run.withSuccessHandler((r:string)=>resolve(JSON.parse(r).success)).batchManageEmails(ids, action));
+      console.log(`[MOCK] Batch action ${action} on ${ids.length} emails`);
       return Promise.resolve(true);
   }
   
@@ -138,26 +154,47 @@ class GASBridge {
       return Promise.resolve(true);
   }
 
+  async saveDraft(to: string, subject: string, body: string): Promise<boolean> {
+      if (this.isGasEnvironment()) return new Promise((r)=>(window as any).google.script.run.withSuccessHandler((res:string)=>r(JSON.parse(res).success)).saveDraftReal(to, subject, body));
+      console.log(`[MOCK] Draft saved`);
+      return Promise.resolve(true);
+  }
+
   async getThreadDetails(threadId: string | number): Promise<any> {
       if (this.isGasEnvironment()) return new Promise((resolve)=>(window as any).google.script.run.withSuccessHandler((r:string)=>resolve(JSON.parse(r))).getThreadDetails(threadId));
       return Promise.resolve({ success: true, messages: [{
-          id: 1, from: "Mock Sender", senderInit: "M", to: "Me", date: "10:00", body: "This is a full mock email body content.", attachments: []
+          id: 1, from: "Mock Sender", senderInit: "M", to: "Me", date: "10:00", body: "This is a full mock email body content.", attachments: [{name: "mock.pdf", size: "10KB", id: 0, mimeType: "application/pdf"}]
       }] });
   }
+
+  async getEmailAttachment(messageId: string, attachmentIndex: number): Promise<FileContentResponse> {
+      if (this.isGasEnvironment()) return new Promise((resolve, reject)=>(window as any).google.script.run.withSuccessHandler((r:string)=>resolve(JSON.parse(r))).withFailureHandler(reject).getEmailAttachmentContent(messageId, attachmentIndex));
+      return Promise.resolve({ success: true, data: "mockbase64", name: "mock.pdf", mimeType: "application/pdf" });
+  }
   
+  // --- CONTACTS ---
+  async searchContacts(query: string): Promise<any[]> {
+      if (this.isGasEnvironment()) return new Promise((resolve) => (window as any).google.script.run.withSuccessHandler((r: string) => resolve(JSON.parse(r))).searchContacts(query));
+      // Mock
+      if (!query) return Promise.resolve([]);
+      return Promise.resolve([
+          {name: "Julia Silva", email: "julia@example.com", avatar: "J"},
+          {name: "Roberto Alves", email: "roberto@example.com", avatar: "R"}
+      ].filter(c => c.name.toLowerCase().includes(query.toLowerCase()) || c.email.toLowerCase().includes(query.toLowerCase())));
+  }
+
   // --- CALENDAR METHODS ---
   async createCalendarEvent(data: any): Promise<{success: boolean, id?: string}> { 
       if(this.isGasEnvironment()) return new Promise((r)=>(window as any).google.script.run.withSuccessHandler((res:string)=>r(JSON.parse(res))).createCalendarEvent({...data, start: data.start.toISOString(), end: data.end.toISOString()})); 
       return Promise.resolve({success:true}); 
   }
   
-  async updateCalendarEvent(id: string, start: Date, end: Date): Promise<{success: boolean}> { 
+  async updateCalendarEvent(data: any): Promise<{success: boolean}> { 
       if(this.isGasEnvironment()) {
           return new Promise((r) => (window as any).google.script.run
             .withSuccessHandler((res:string)=>r(JSON.parse(res)))
-            .updateCalendarEvent({ id, start: start.toISOString(), end: end.toISOString() })); 
+            .updateCalendarEvent({ ...data, start: new Date(data.start).toISOString(), end: new Date(data.end).toISOString() })); 
       }
-      console.log(`[MOCK] Updating event ${id} to ${start.toLocaleTimeString()} - ${end.toLocaleTimeString()}`);
       return Promise.resolve({success:true}); 
   }
   
@@ -175,6 +212,11 @@ class GASBridge {
   async uploadFileToDrive(d: string, n: string, m: string, p: any) { if(this.isGasEnvironment()) return new Promise((r)=>(window as any).google.script.run.withSuccessHandler((res:string)=>r(JSON.parse(res).success)).uploadFileToDrive(d,n,m,p)); return Promise.resolve(true); }
   async getFileContent(id: string): Promise<FileContentResponse> { if(this.isGasEnvironment()) return new Promise((r,rj)=>(window as any).google.script.run.withSuccessHandler((res:string)=>r(JSON.parse(res))).withFailureHandler(rj).getFileContent(id)); return Promise.resolve({success:false}); }
   
+  async moveDriveItem(itemId: string, targetFolderId: string): Promise<boolean> {
+      if(this.isGasEnvironment()) return new Promise((r)=>(window as any).google.script.run.withSuccessHandler((res:string)=>r(JSON.parse(res).success)).moveDriveItem(itemId, targetFolderId));
+      return Promise.resolve(true);
+  }
+
   // Salvar conteúdo de texto (Docs)
   async saveFileContent(id: string, content: string): Promise<boolean> {
       if(this.isGasEnvironment()) return new Promise((r)=>(window as any).google.script.run.withSuccessHandler((res:string)=>r(JSON.parse(res).success)).saveFileContent(id, content));
@@ -183,7 +225,10 @@ class GASBridge {
   }
 
   // --- TASKS & NOTES ---
-  async createTask(title: string): Promise<any> { if (this.isGasEnvironment()) return new Promise((resolve) => { (window as any).google.script.run.withSuccessHandler((res: string) => resolve(JSON.parse(res))).createTask(title); }); return Promise.resolve({ success: true, task: { id: Date.now(), title, completed: false, date: new Date().toISOString() } }); }
+  async createTask(title: string, details?: string): Promise<any> { 
+      if (this.isGasEnvironment()) return new Promise((resolve) => { (window as any).google.script.run.withSuccessHandler((res: string) => resolve(JSON.parse(res))).createTask(title, details); }); 
+      return Promise.resolve({ success: true, task: { id: Date.now(), title, details, completed: false, date: new Date().toISOString() } }); 
+  }
   async toggleTask(id: number | string): Promise<boolean> { if (this.isGasEnvironment()) return new Promise((resolve) => { (window as any).google.script.run.withSuccessHandler((res: string) => resolve(JSON.parse(res).success)).toggleTask(id); }); return Promise.resolve(true); }
   async deleteTask(id: number | string): Promise<boolean> { if (this.isGasEnvironment()) return new Promise((resolve) => { (window as any).google.script.run.withSuccessHandler((res: string) => resolve(JSON.parse(res).success)).deleteTask(id); }); return Promise.resolve(true); }
   async addNote(note: any): Promise<boolean> { if (this.isGasEnvironment()) return new Promise((resolve) => { (window as any).google.script.run.withSuccessHandler((res: string) => resolve(JSON.parse(res).success)).saveNote(note); }); return Promise.resolve(true); }

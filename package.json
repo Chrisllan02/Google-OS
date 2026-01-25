@@ -1,5 +1,5 @@
 {
-  "name": "google-os",
+  "name": "3.-google-os-🟡",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,7 +13,8 @@
     "react": "^19.2.3",
     "ogl": "1.0.11",
     "react-dom": "^19.2.3",
-    "@google/genai": "^1.37.0"
+    "@google/genai": "^1.37.0",
+    "peerjs": "1.5.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

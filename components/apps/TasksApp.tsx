@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { CheckCircle2, Settings, X, Search, Star, Plus, Trash2, Calendar, GripVertical, Loader2, AlignLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle2, Settings, X, Search, Star, Plus, Trash2, Calendar, GripVertical, Loader2, AlignLeft, ChevronRight, Mail } from 'lucide-react';
 import { bridge } from '../../utils/GASBridge';
 
 interface TasksAppProps {
   onClose: () => void;
   data: any;
   onUpdate?: (tasks: any[]) => void;
+  showToast?: (msg: string) => void;
 }
 
-export default function TasksApp({ onClose, data, onUpdate }: TasksAppProps) {
+export default function TasksApp({ onClose, data, onUpdate, showToast }: TasksAppProps) {
   const [tasks, setTasks] = useState<any[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [isAdding, setIsAdding] = useState(false);
@@ -19,6 +20,8 @@ export default function TasksApp({ onClose, data, onUpdate }: TasksAppProps) {
   const [activeTask, setActiveTask] = useState<any | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const toast = (msg: string) => showToast && showToast(msg);
 
   useEffect(() => {
       if (data?.tasks) {
@@ -56,10 +59,10 @@ export default function TasksApp({ onClose, data, onUpdate }: TasksAppProps) {
       
       setNewTaskTitle('');
       inputRef.current?.focus();
+      toast("Tarefa criada");
       
       try {
           const res = await bridge.createTask(newTask.title);
-          // Atualiza com ID real se necessário
           if (res.success && res.task) {
               const syncedTasks = updatedTasks.map(t => t.id === tempId ? res.task : t);
               updateParent(syncedTasks);
@@ -72,6 +75,9 @@ export default function TasksApp({ onClose, data, onUpdate }: TasksAppProps) {
   const toggleTask = async (id: number) => {
       const updatedTasks = tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
       updateParent(updatedTasks);
+      const isCompleted = updatedTasks.find(t => t.id === id)?.completed;
+      if (isCompleted) toast("Tarefa concluída");
+
       if (activeTask && activeTask.id === id) {
           setActiveTask({ ...activeTask, completed: !activeTask.completed });
       }
@@ -82,6 +88,7 @@ export default function TasksApp({ onClose, data, onUpdate }: TasksAppProps) {
       const updatedTasks = tasks.filter(t => t.id !== id);
       updateParent(updatedTasks);
       if (activeTask && activeTask.id === id) setActiveTask(null);
+      toast("Tarefa excluída");
       await bridge.deleteTask(id);
   };
 
@@ -192,7 +199,7 @@ export default function TasksApp({ onClose, data, onUpdate }: TasksAppProps) {
                                     </button>
                                     <div className="flex-1 min-w-0">
                                         <p className={`text-sm transition-all duration-300 ${t.completed ? 'text-white/40 line-through' : 'text-white'}`}>{t.title}</p>
-                                        {t.details && <p className="text-xs text-white/40 mt-1 truncate">{t.details}</p>}
+                                        {t.details && <p className="text-xs text-white/40 mt-1 truncate flex items-center gap-1"><Mail size={10} className="text-blue-400"/> {t.details}</p>}
                                         <div className="flex gap-2 mt-1">
                                             {t.date && <span className="text-[10px] border border-white/10 rounded-full px-2 py-0.5 text-white/50 flex items-center gap-1 w-fit"><Calendar size={10}/> {new Date(t.date).toLocaleDateString()}</span>}
                                         </div>

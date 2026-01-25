@@ -1,9 +1,11 @@
 
+
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, LayoutGrid, Loader2, CloudSun, Mail, HardDrive, FileText, 
   FileSpreadsheet, Presentation, Video, Plus, X, ArrowRight,
-  Home, CheckCircle2, Lightbulb, Calendar, LogOut, User, Settings
+  Home, CheckCircle2, Lightbulb, Calendar, LogOut, User, Settings, Info
 } from 'lucide-react';
 import AppViewer from './components/AppViewer';
 import Aurora from './components/Aurora';
@@ -51,6 +53,10 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('');
   const [menuSearchActive, setMenuSearchActive] = useState(false);
 
+  // Global Settings
+  const [darkMode, setDarkMode] = useState(true);
+  const [toasts, setToasts] = useState<{id: number, message: string}[]>([]);
+
   // Header Menus
   const [showAppLauncher, setShowAppLauncher] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -95,6 +101,24 @@ export default function App() {
       });
   }, []);
 
+  // Global Toast Function
+  const addToast = (message: string) => {
+      const id = Date.now();
+      setToasts(prev => [...prev, { id, message }]);
+      setTimeout(() => {
+          setToasts(prev => prev.filter(t => t.id !== id));
+      }, 4000);
+  };
+
+  // SYNC HANDLERS
+  const updateTasks = (newTasks: any[]) => {
+      setData(prev => prev ? { ...prev, tasks: newTasks } : null);
+  };
+
+  const updateNotes = (newNotes: any[]) => {
+      setData(prev => prev ? { ...prev, notes: newNotes } : null);
+  };
+
   // Click Outside Handlers for Menus
   useEffect(() => {
       const handleClickOutside = (event: MouseEvent) => {
@@ -108,15 +132,6 @@ export default function App() {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  // SYNC HANDLERS
-  const updateTasks = (newTasks: any[]) => {
-      setData(prev => prev ? { ...prev, tasks: newTasks } : null);
-  };
-
-  const updateNotes = (newNotes: any[]) => {
-      setData(prev => prev ? { ...prev, notes: newNotes } : null);
-  };
 
   useEffect(() => {
     if (aiMode && inputRef.current) {
@@ -229,15 +244,34 @@ export default function App() {
   ];
 
   const isLightMode = !!activeApp;
-  const glassCard = "bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[32px] shadow-2xl hover:border-white/20 transition-all duration-300";
-  const glassInner = "bg-white/5 hover:bg-white/10 border border-white/5 transition-colors";
+  const glassCard = darkMode 
+    ? "bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[32px] shadow-2xl hover:border-white/20 transition-all duration-300"
+    : "bg-white/60 backdrop-blur-3xl border border-black/5 rounded-[32px] shadow-xl hover:border-black/10 transition-all duration-300";
+  
+  const glassInner = darkMode
+    ? "bg-white/5 hover:bg-white/10 border border-white/5 transition-colors"
+    : "bg-black/5 hover:bg-black/10 border border-black/5 transition-colors";
+
+  const textColor = darkMode ? "text-[#E3E3E3]" : "text-[#202124]";
+  const subTextColor = darkMode ? "text-white/60" : "text-black/60";
 
   return (
-    <div className="min-h-screen bg-[#050505] text-[#E3E3E3] font-sans selection:bg-[#4E79F3]/30 overflow-hidden relative">
+    <div className={`min-h-screen font-sans overflow-hidden relative transition-colors duration-500 ${darkMode ? 'bg-[#050505] text-[#E3E3E3] selection:bg-[#4E79F3]/30' : 'bg-[#F0F2F5] text-[#202124] selection:bg-[#4E79F3]/20'}`}>
+      
       {/* Aurora Background Fixed Top */}
       <div className={`fixed top-0 left-0 right-0 h-[600px] z-0 pointer-events-none transition-opacity duration-1000 ${aiMode ? 'opacity-30' : 'opacity-100'}`}>
           <Aurora colorStops={["#4285F4", "#34A853", "#EA4335"]} speed={0.5} amplitude={1.2} />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050505]/40 to-[#050505]"></div>
+          <div className={`absolute inset-0 bg-gradient-to-b from-transparent ${darkMode ? 'via-[#050505]/40 to-[#050505]' : 'via-[#F0F2F5]/40 to-[#F0F2F5]'}`}></div>
+      </div>
+
+      {/* Global Toast Container */}
+      <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 pointer-events-none">
+          {toasts.map(toast => (
+              <div key={toast.id} className="bg-[#323232] text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300 border border-white/10 pointer-events-auto">
+                  <Info size={18} className="text-blue-400"/>
+                  <span className="text-sm font-medium">{toast.message}</span>
+              </div>
+          ))}
       </div>
 
       {activeApp && (
@@ -249,6 +283,9 @@ export default function App() {
               onOpenApp={openApp}
               onUpdateTasks={updateTasks}
               onUpdateNotes={updateNotes}
+              showToast={addToast}
+              toggleTheme={() => setDarkMode(!darkMode)}
+              isDarkMode={darkMode}
           />
       )}
 
@@ -278,23 +315,23 @@ export default function App() {
           </button>
 
           <div 
-              className={`relative flex items-center backdrop-blur-3xl border p-2 rounded-full shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] gap-2 pointer-events-auto transition-all duration-300 ${isLightMode ? 'bg-black/20 border-white/10' : 'bg-white/10 border-white/20'}`}
+              className={`relative flex items-center backdrop-blur-3xl border p-2 rounded-full shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] gap-2 pointer-events-auto transition-all duration-300 ${darkMode ? (isLightMode ? 'bg-black/20 border-white/10' : 'bg-white/10 border-white/20') : (isLightMode ? 'bg-white/40 border-black/5' : 'bg-white/60 border-white/40')}`}
               style={{ height: '72px' }}
           >
               {menuSearchActive ? (
                   <div className="flex items-center px-4 py-2 w-[500px] animate-in fade-in zoom-in duration-300">
-                      <GoogleIcons.Search className={`text-white/70 ml-2 mr-3 w-6 h-6`} stroke="white" />
+                      <GoogleIcons.Search className={`${darkMode ? 'text-white/70' : 'text-black/70'} ml-2 mr-3 w-6 h-6`} stroke={darkMode ? "white" : "black"} />
                       <input 
                           ref={menuInputRef}
                           type="text" 
                           placeholder="Pesquise ou fale com o Gemini" 
-                          className={`flex-1 bg-transparent outline-none text-white placeholder:text-white/40 h-full text-lg font-light`}
+                          className={`flex-1 bg-transparent outline-none ${darkMode ? 'text-white placeholder:text-white/40' : 'text-black placeholder:text-black/40'} h-full text-lg font-light`}
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                           autoFocus
                       />
-                      <button onClick={() => { setMenuSearchActive(false); setSearchQuery(''); }} className={`p-2 rounded-full ml-2 transition-all hover:bg-white/10 text-white/70 active:scale-90`}>
+                      <button onClick={() => { setMenuSearchActive(false); setSearchQuery(''); }} className={`p-2 rounded-full ml-2 transition-all ${darkMode ? 'hover:bg-white/10 text-white/70' : 'hover:bg-black/10 text-black/70'} active:scale-90`}>
                           <X size={20} />
                       </button>
                   </div>
@@ -303,15 +340,15 @@ export default function App() {
                       {quickCreateApps.map((app) => {
                           const isActive = activeTab === app.id;
                           const iconColor = app.color; 
-                          const textColor = isActive ? app.color : '#ffffff';
-                          const hoverBg = isLightMode ? 'hover:bg-white/10' : 'hover:bg-white/10';
+                          const appTextColor = isActive ? app.color : (darkMode ? '#ffffff' : '#202124');
+                          const hoverBg = isLightMode ? (darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5') : (darkMode ? 'hover:bg-white/10' : 'hover:bg-white/40');
 
                           return (
                             <button 
                                 key={app.id} 
                                 onClick={() => app.id === 'search' ? toggleSearch() : openApp(app.id)}
                                 className={`group relative flex items-center justify-center p-3 rounded-full transition-all duration-400 ease-[cubic-bezier(0.25,1,0.5,1)] active:scale-95 ${isActive ? '' : hoverBg}`}
-                                style={{ backgroundColor: isActive ? 'rgba(255,255,255,0.15)' : undefined }}
+                                style={{ backgroundColor: isActive ? (darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)') : undefined }}
                             >
                                 <div 
                                     className={`
@@ -319,7 +356,7 @@ export default function App() {
                                         ${isActive ? 'scale-110 -translate-y-1' : 'scale-100 translate-y-0'} 
                                         ${isActive 
                                             ? 'filter-none opacity-100 drop-shadow-[0_0_12px_rgba(255,255,255,0.3)]' 
-                                            : 'grayscale brightness-[2.5] contrast-125 opacity-70 drop-shadow-[0_2px_4px_rgba(255,255,255,0.1)] group-hover:filter-none group-hover:grayscale-0 group-hover:brightness-100 group-hover:opacity-100 group-hover:drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] group-hover:scale-110 group-hover:-translate-y-1'
+                                            : `grayscale brightness-[2.5] contrast-125 opacity-70 drop-shadow-[0_2px_4px_rgba(255,255,255,0.1)] group-hover:filter-none group-hover:grayscale-0 group-hover:brightness-100 group-hover:opacity-100 group-hover:drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] group-hover:scale-110 group-hover:-translate-y-1`
                                         }
                                     `}
                                     style={{ color: iconColor }}
@@ -334,7 +371,7 @@ export default function App() {
                                         })
                                     )}
                                 </div>
-                                <span className={`max-w-0 overflow-hidden whitespace-nowrap opacity-0 group-hover:max-w-[140px] group-hover:opacity-100 group-hover:ml-3 text-sm font-medium transition-all duration-300`} style={{ color: textColor }}>
+                                <span className={`max-w-0 overflow-hidden whitespace-nowrap opacity-0 group-hover:max-w-[140px] group-hover:opacity-100 group-hover:ml-3 text-sm font-medium transition-all duration-300`} style={{ color: appTextColor }}>
                                     {app.label}
                                 </span>
                             </button>
@@ -351,13 +388,13 @@ export default function App() {
         <header className={`relative mb-8 h-32 flex items-center px-4 justify-between transition-all duration-700 ${aiMode ? 'opacity-0 -translate-y-10 pointer-events-none' : 'opacity-100 translate-y-0'}`}>
             <div className="flex items-center gap-4 animate-in fade-in duration-300 relative z-10">
                 <div>
-                    <h1 className="text-5xl md:text-7xl font-bold text-[#E3E3E3] drop-shadow-md tracking-tight">
+                    <h1 className={`text-5xl md:text-7xl font-bold ${textColor} drop-shadow-md tracking-tight`}>
                        {getGreeting()}, <span className="bg-gradient-to-r from-[#4E79F3] via-[#9c51b6] to-[#E95C67] text-transparent bg-clip-text drop-shadow-sm">{data.user.name.split(' ')[0]}</span>
                     </h1>
                 </div>
             </div>
             <div className="flex items-center gap-4 animate-in fade-in duration-300 relative z-10">
-                <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-full text-xs font-medium text-[#E3E3E3]">
+                <div className={`hidden md:flex items-center gap-2 px-4 py-2 ${darkMode ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/5'} backdrop-blur-2xl border rounded-full text-xs font-medium ${textColor}`}>
                     <CloudSun size={14} className="text-[#FBBC05]" />
                     <span>{data.weather.temp}</span>
                 </div>
@@ -366,16 +403,16 @@ export default function App() {
                 <div className="relative" ref={launcherRef}>
                     <button 
                         onClick={() => setShowAppLauncher(!showAppLauncher)} 
-                        className={`p-2 rounded-full border border-transparent hover:border-white/10 text-[#E3E3E3] backdrop-blur-sm transition-all ${showAppLauncher ? 'bg-white/10' : 'hover:bg-white/10'}`}
+                        className={`p-2 rounded-full border border-transparent ${darkMode ? 'hover:bg-white/10 hover:border-white/10' : 'hover:bg-black/5 hover:border-black/5'} ${textColor} backdrop-blur-sm transition-all ${showAppLauncher ? (darkMode ? 'bg-white/10' : 'bg-black/5') : ''}`}
                     >
                         <LayoutGrid size={20} />
                     </button>
                     {showAppLauncher && (
-                        <div className="absolute top-12 right-0 w-[320px] bg-[#2d2e30]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in zoom-in duration-200 grid grid-cols-3 gap-2 max-h-[400px] overflow-y-auto custom-scrollbar">
+                        <div className={`absolute top-12 right-0 w-[320px] ${darkMode ? 'bg-[#2d2e30]/95 border-white/10' : 'bg-white/95 border-black/10'} backdrop-blur-xl border rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in zoom-in duration-200 grid grid-cols-3 gap-2 max-h-[400px] overflow-y-auto custom-scrollbar`}>
                             {launcherApps.map((app) => (
-                                <button key={app.id} onClick={() => openApp(app.id)} className="flex flex-col items-center justify-center p-3 rounded-xl hover:bg-white/5 transition-colors gap-2 group">
+                                <button key={app.id} onClick={() => openApp(app.id)} className={`flex flex-col items-center justify-center p-3 rounded-xl ${darkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors gap-2 group`}>
                                     <div className="transform group-hover:scale-110 transition-transform duration-200">{app.icon}</div>
-                                    <span className="text-xs text-white/80">{app.label}</span>
+                                    <span className={`text-xs ${darkMode ? 'text-white/80' : 'text-black/80'}`}>{app.label}</span>
                                 </button>
                             ))}
                         </div>
@@ -388,30 +425,30 @@ export default function App() {
                         src={data.user.avatar} 
                         alt="Profile" 
                         onClick={() => setShowProfileMenu(!showProfileMenu)}
-                        className="w-9 h-9 rounded-full border border-white/20 hover:ring-2 hover:ring-white/20 cursor-pointer transition-all" 
+                        className={`w-9 h-9 rounded-full border ${darkMode ? 'border-white/20 hover:ring-white/20' : 'border-black/10 hover:ring-black/10'} hover:ring-2 cursor-pointer transition-all`} 
                     />
                     {showProfileMenu && (
-                        <div className="absolute top-12 right-0 w-80 bg-[#2d2e30] border border-white/10 rounded-3xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden">
-                            <div className="bg-[#1f1f1f] rounded-[20px] p-4 flex flex-col items-center mb-1 border border-white/5 relative">
-                                <div className="absolute top-3 right-3 p-1 hover:bg-white/5 rounded-full cursor-pointer"><X size={16} className="text-white/50" onClick={() => setShowProfileMenu(false)}/></div>
-                                <img src={data.user.avatar} alt="Profile" className="w-20 h-20 rounded-full border-4 border-[#2d2e30] mb-2" />
-                                <h3 className="text-white font-medium text-lg">{data.user.name}</h3>
-                                <p className="text-white/60 text-sm mb-4">{data.user.email}</p>
-                                <button className="px-4 py-2 rounded-full border border-white/20 text-white/90 text-sm hover:bg-white/5 transition-colors">Gerenciar sua Conta do Google</button>
+                        <div className={`absolute top-12 right-0 w-80 ${darkMode ? 'bg-[#2d2e30] border-white/10' : 'bg-white border-black/10'} border rounded-3xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden`}>
+                            <div className={`${darkMode ? 'bg-[#1f1f1f] border-white/5' : 'bg-gray-50 border-black/5'} rounded-[20px] p-4 flex flex-col items-center mb-1 border relative`}>
+                                <div className={`absolute top-3 right-3 p-1 ${darkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'} rounded-full cursor-pointer`}><X size={16} className={subTextColor} onClick={() => setShowProfileMenu(false)}/></div>
+                                <img src={data.user.avatar} alt="Profile" className={`w-20 h-20 rounded-full border-4 ${darkMode ? 'border-[#2d2e30]' : 'border-white'} mb-2`} />
+                                <h3 className={`font-medium text-lg ${textColor}`}>{data.user.name}</h3>
+                                <p className={`${subTextColor} text-sm mb-4`}>{data.user.email}</p>
+                                <button className={`px-4 py-2 rounded-full border ${darkMode ? 'border-white/20 text-white/90 hover:bg-white/5' : 'border-black/20 text-black/80 hover:bg-black/5'} text-sm transition-colors`}>Gerenciar sua Conta do Google</button>
                             </div>
                             <div className="flex flex-col gap-1 p-1">
-                                <button className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-white/5 text-white/80 text-sm transition-colors text-left">
+                                <button className={`flex items-center gap-4 px-4 py-3 rounded-xl ${darkMode ? 'hover:bg-white/5 text-white/80' : 'hover:bg-black/5 text-black/80'} text-sm transition-colors text-left`}>
                                     <div className="w-8 flex justify-center"><User size={20}/></div>
                                     Adicionar outra conta
                                 </button>
-                                <button className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-white/5 text-white/80 text-sm transition-colors text-left border-t border-white/5">
+                                <button className={`flex items-center gap-4 px-4 py-3 rounded-xl ${darkMode ? 'hover:bg-white/5 text-white/80 border-t border-white/5' : 'hover:bg-black/5 text-black/80 border-t border-black/5'} text-sm transition-colors text-left`}>
                                     <div className="w-8 flex justify-center"><LogOut size={20}/></div>
                                     Sair de todas as contas
                                 </button>
-                                <div className="flex justify-center gap-4 py-2 text-[10px] text-white/30">
-                                    <span className="hover:text-white/50 cursor-pointer">Privacidade</span>
-                                    <span className="w-1 h-1 bg-white/20 rounded-full self-center"></span>
-                                    <span className="hover:text-white/50 cursor-pointer">Termos</span>
+                                <div className={`flex justify-center gap-4 py-2 text-[10px] ${darkMode ? 'text-white/30' : 'text-black/30'}`}>
+                                    <span className="hover:opacity-80 cursor-pointer">Privacidade</span>
+                                    <span className={`w-1 h-1 ${darkMode ? 'bg-white/20' : 'bg-black/20'} rounded-full self-center`}></span>
+                                    <span className="hover:opacity-80 cursor-pointer">Termos</span>
                                 </div>
                             </div>
                         </div>
@@ -427,17 +464,17 @@ export default function App() {
                 {/* 2. GMAIL */}
                 <div className={`${glassCard} md:col-span-8 p-6 h-[320px] flex flex-col`}>
                     <div className="flex justify-between items-center mb-4">
-                       <span className="font-bold text-[#E3E3E3] text-sm">Caixa de Entrada</span>
+                       <span className={`font-bold ${textColor} text-sm`}>Caixa de Entrada</span>
                        <Mail size={18} className="text-[#EA4335]" />
                     </div>
                     <div className="space-y-2 flex-1 overflow-hidden">
                       {data.emails.slice(0, 4).map((e: any) => (
-                        <div key={e.id} onClick={() => openApp('mail')} className="p-2 hover:bg-white/5 rounded-2xl cursor-pointer group transition-colors border border-transparent hover:border-white/5">
+                        <div key={e.id} onClick={() => openApp('mail')} className={`p-2 ${darkMode ? 'hover:bg-white/5 border-transparent hover:border-white/5' : 'hover:bg-black/5 border-transparent hover:border-black/5'} rounded-2xl cursor-pointer group transition-colors border`}>
                            <div className="flex justify-between items-start mb-1">
-                              <span className="font-medium text-xs text-[#E3E3E3]">{e.sender}</span>
-                              <span className="text-[10px] text-white/40">{e.time}</span>
+                              <span className={`font-medium text-xs ${textColor}`}>{e.sender}</span>
+                              <span className={`text-[10px] ${subTextColor}`}>{e.time}</span>
                            </div>
-                           <p className="text-xs text-white/60 truncate group-hover:text-[#E3E3E3] transition-colors">{e.subject}</p>
+                           <p className={`text-xs ${subTextColor} truncate group-hover:${textColor} transition-colors`}>{e.subject}</p>
                         </div>
                       ))}
                     </div>
@@ -449,24 +486,24 @@ export default function App() {
                 {/* 3. DRIVE */}
                 <div className={`${glassCard} md:col-span-4 p-6 flex flex-col h-[320px]`}>
                     <div className="flex justify-between items-center mb-4">
-                        <span className="text-white/60 text-xs font-bold uppercase">Meu Drive</span>
+                        <span className={`${subTextColor} text-xs font-bold uppercase`}>Meu Drive</span>
                         <HardDrive size={18} className="text-[#34A853]" />
                     </div>
                     <div className="space-y-2 flex-1 overflow-hidden">
                         {data.files.slice(0, 4).map((f: any) => (
-                          <div key={f.id} onClick={() => openApp(f.type, f)} className="flex items-center gap-2 p-2 rounded-xl hover:bg-white/5 cursor-pointer group transition-colors border border-transparent hover:border-white/5">
-                             <div className="p-1.5 bg-white/5 rounded-lg group-hover:bg-white/10">
+                          <div key={f.id} onClick={() => openApp(f.type, f)} className={`flex items-center gap-2 p-2 rounded-xl ${darkMode ? 'hover:bg-white/5 hover:border-white/5' : 'hover:bg-black/5 hover:border-black/5'} cursor-pointer group transition-colors border border-transparent`}>
+                             <div className={`p-1.5 ${darkMode ? 'bg-white/5 group-hover:bg-white/10' : 'bg-black/5 group-hover:bg-black/10'} rounded-lg`}>
                                {getFileIcon(f.type)}
                              </div>
                              <div className="overflow-hidden min-w-0">
-                               <p className="text-xs font-medium truncate text-[#E3E3E3] group-hover:text-blue-400 transition-colors">{f.name}</p>
-                               <p className="text-[10px] text-white/40 truncate">{f.date}</p>
+                               <p className={`text-xs font-medium truncate ${textColor} group-hover:text-blue-400 transition-colors`}>{f.name}</p>
+                               <p className={`text-[10px] ${subTextColor} truncate`}>{f.date}</p>
                              </div>
                           </div>
                         ))}
                     </div>
-                    <div className="mt-auto pt-2 border-t border-white/5">
-                        <div className="w-full bg-white/10 h-1 rounded-full overflow-hidden">
+                    <div className={`mt-auto pt-2 border-t ${darkMode ? 'border-white/5' : 'border-black/5'}`}>
+                        <div className={`w-full ${darkMode ? 'bg-white/10' : 'bg-black/10'} h-1 rounded-full overflow-hidden`}>
                            <div className="bg-[#34A853] h-full w-[78%] rounded-full shadow-[0_0_10px_rgba(52,168,83,0.5)]"></div>
                         </div>
                     </div>
@@ -475,24 +512,24 @@ export default function App() {
                 {/* 4. KEEP */}
                 <div className={`${glassCard} md:col-span-6 p-6 flex flex-col h-[280px]`}>
                     <div className="flex justify-between items-center mb-4">
-                        <span className="text-white/60 text-xs font-bold uppercase tracking-wider">Notas</span>
+                        <span className={`${subTextColor} text-xs font-bold uppercase tracking-wider`}>Notas</span>
                         <Lightbulb size={18} className="text-[#FBBC05]" />
                     </div>
                     <div className="flex-1 grid grid-cols-2 gap-3 overflow-hidden">
                         <div onClick={() => openApp('keep')} className={`p-3 rounded-2xl cursor-pointer flex flex-col items-center justify-center text-center transition-colors group ${glassInner}`}>
                             <Plus size={24} className="text-[#FBBC05] mb-2 group-hover:scale-110 transition-transform" />
-                            <span className="text-xs font-medium text-[#E3E3E3]">Nova Nota</span>
+                            <span className={`text-xs font-medium ${textColor}`}>Nova Nota</span>
                         </div>
                         {data.notes && data.notes.slice(0, 3).map((note: any) => {
                             // Map Keep color to tailwind class or default style
-                            const noteColorClass = keepColors[note.color || 'default']?.split(' ')[0] || 'bg-white/5';
+                            const noteColorClass = keepColors[note.color || 'default']?.split(' ')[0] || (darkMode ? 'bg-white/5' : 'bg-black/5');
                             // Remove border from class string if needed for dashboard consistency
-                            const finalClass = noteColorClass.replace('bg-', 'bg-opacity-20 bg-') + ' border border-white/5';
+                            const finalClass = noteColorClass.replace('bg-', 'bg-opacity-20 bg-') + (darkMode ? ' border border-white/5' : ' border border-black/5');
                             
                             return (
                                 <div key={note.id} onClick={() => openApp('keep')} className={`p-3 rounded-2xl cursor-pointer flex flex-col hover:brightness-110 transition-all ${finalClass}`}>
-                                    <h4 className="text-xs font-bold text-[#E3E3E3] mb-1 truncate">{note.title || "Sem título"}</h4>
-                                    <p className="text-[10px] text-white/60 line-clamp-3 leading-relaxed">{note.content}</p>
+                                    <h4 className={`text-xs font-bold ${textColor} mb-1 truncate`}>{note.title || "Sem título"}</h4>
+                                    <p className={`text-[10px] ${subTextColor} line-clamp-3 leading-relaxed`}>{note.content}</p>
                                 </div>
                             );
                         })}
@@ -502,17 +539,17 @@ export default function App() {
                 {/* 5. TASKS */}
                 <div className={`${glassCard} md:col-span-6 p-6 flex flex-col h-[280px]`}>
                     <div className="flex justify-between items-center mb-4">
-                        <span className="text-white/60 text-xs font-bold uppercase tracking-wider">Tarefas</span>
+                        <span className={`${subTextColor} text-xs font-bold uppercase tracking-wider`}>Tarefas</span>
                         <CheckCircle2 size={18} className="text-[#4E79F3]" />
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2">
                         {data.tasks && data.tasks.slice(0, 5).map((task: any) => (
-                            <div key={task.id} onClick={() => openApp('tasks')} className="group flex items-start gap-3 p-3 rounded-2xl hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/5">
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 mt-0.5 ${task.completed ? 'bg-[#4E79F3] border-[#4E79F3]' : 'border-white/40 group-hover:border-white'}`}>
+                            <div key={task.id} onClick={() => openApp('tasks')} className={`group flex items-start gap-3 p-3 rounded-2xl ${darkMode ? 'hover:bg-white/5 hover:border-white/5' : 'hover:bg-black/5 hover:border-black/5'} cursor-pointer transition-colors border border-transparent`}>
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 mt-0.5 ${task.completed ? 'bg-[#4E79F3] border-[#4E79F3]' : `border-${darkMode ? 'white/40 group-hover:border-white' : 'black/20 group-hover:border-black/60'}`}`}>
                                     {task.completed && <CheckCircle2 size={14} className="text-white" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <span className={`text-sm block truncate ${task.completed ? 'text-white/40 line-through' : 'text-[#E3E3E3]'}`}>
+                                    <span className={`text-sm block truncate ${task.completed ? `${subTextColor} line-through` : textColor}`}>
                                         {task.title}
                                     </span>
                                     {task.date && (
@@ -524,7 +561,7 @@ export default function App() {
                                 </div>
                             </div>
                         ))}
-                        <div onClick={() => openApp('tasks')} className="flex items-center gap-3 p-3 rounded-2xl hover:bg-white/5 cursor-pointer transition-colors text-white/60 hover:text-white border border-transparent hover:border-white/5">
+                        <div onClick={() => openApp('tasks')} className={`flex items-center gap-3 p-3 rounded-2xl ${darkMode ? 'hover:bg-white/5 hover:text-white hover:border-white/5 text-white/60' : 'hover:bg-black/5 hover:text-black hover:border-black/5 text-black/60'} cursor-pointer transition-colors border border-transparent`}>
                             <Plus size={20} />
                             <span className="text-sm font-medium">Adicionar tarefa</span>
                         </div>
@@ -538,7 +575,7 @@ export default function App() {
         <div className={`absolute inset-0 w-full flex flex-col z-20 pointer-events-none ${aiMode ? 'pointer-events-auto' : ''}`}>
             {/* ... chat overlay code ... */}
             <div className={`flex justify-end p-2 transition-opacity duration-500 ${aiMode ? 'opacity-100' : 'opacity-0'}`}>
-                <button onClick={() => setAiMode(false)} className="px-4 py-2 bg-black/60 backdrop-blur-xl border border-white/10 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition flex items-center gap-2 shadow-2xl">
+                <button onClick={() => setAiMode(false)} className={`px-4 py-2 ${darkMode ? 'bg-black/60 border-white/10 text-white/60 hover:text-white hover:bg-white/10' : 'bg-white/60 border-black/10 text-black/60 hover:text-black hover:bg-black/10'} backdrop-blur-xl border rounded-full transition flex items-center gap-2 shadow-2xl`}>
                     <span className="text-xs font-medium">Fechar Chat</span>
                     <X size={16} />
                 </button>
@@ -548,16 +585,16 @@ export default function App() {
                 {chatHistory.map((msg, i) => (
                     <div key={i} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'} mb-6`}>
                         {msg.role === 'assistant' && (
-                            <div className="w-8 h-8 mr-3 rounded-full border border-white/10 flex items-center justify-center bg-black/40 backdrop-blur-md shrink-0">
+                            <div className={`w-8 h-8 mr-3 rounded-full border ${darkMode ? 'border-white/10 bg-black/40' : 'border-black/10 bg-white/40'} flex items-center justify-center backdrop-blur-md shrink-0`}>
                                 <GeminiLogo className="w-5 h-5" />
                             </div>
                         )}
-                        <div className={`max-w-[80%] p-4 rounded-2xl text-[15px] leading-relaxed shadow-lg backdrop-blur-md border border-white/5 ${msg.role === 'user' ? 'bg-[#4E79F3]/20 text-white rounded-tr-sm' : 'text-[#E3E3E3] bg-white/5 rounded-tl-sm'}`}>
+                        <div className={`max-w-[80%] p-4 rounded-2xl text-[15px] leading-relaxed shadow-lg backdrop-blur-md border ${msg.role === 'user' ? 'bg-[#4E79F3]/20 text-white rounded-tr-sm border-white/5' : (darkMode ? 'text-[#E3E3E3] bg-white/5 border-white/5' : 'text-black bg-white/60 border-black/5')} rounded-tl-sm`}>
                             {msg.text}
                         </div>
                     </div>
                 ))}
-                {isTyping && <div className="text-white/40 pl-14 text-xs animate-pulse">Gemini está digitando...</div>}
+                {isTyping && <div className={`${subTextColor} pl-14 text-xs animate-pulse`}>Gemini está digitando...</div>}
                 <div className="h-24"></div> 
             </div>
         </div>
@@ -568,11 +605,11 @@ export default function App() {
                 <div className={`absolute -inset-[2px] rounded-[32px] overflow-hidden pointer-events-none transition-opacity duration-500 ${aiMode && isInputFocused ? 'opacity-100' : 'opacity-0'}`}>
                     <div className="absolute top-1/2 left-1/2 w-[200%] h-[200%] -translate-x-1/2 -translate-y-1/2 animate-[spin_3s_linear_infinite]" style={{ background: 'conic-gradient(from 0deg, transparent 0 340deg, #4285F4 345deg, #EA4335 350deg, #FBBC05 355deg, #34A853 360deg)' }}></div>
                 </div>
-                <div className={`relative flex items-center w-full transition-all duration-300 bg-black/60 backdrop-blur-2xl rounded-full border border-white/10 h-16 px-2`}>
-                    <button className={`p-3 rounded-full transition-colors bg-white/10 hover:bg-white/20 text-white ml-1`}><Plus size={24} /></button>
-                    <input ref={inputRef} type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Digite uma mensagem para o Gemini..." className="flex-1 bg-transparent border-none outline-none text-[#E3E3E3] px-3 h-12 placeholder:text-white/40 text-base" onFocus={() => setIsInputFocused(true)} onBlur={() => setIsInputFocused(false)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} />
+                <div className={`relative flex items-center w-full transition-all duration-300 ${darkMode ? 'bg-black/60 border-white/10' : 'bg-white/60 border-black/10'} backdrop-blur-2xl rounded-full border h-16 px-2`}>
+                    <button className={`p-3 rounded-full transition-colors ${darkMode ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-black/5 hover:bg-black/10 text-black'} ml-1`}><Plus size={24} /></button>
+                    <input ref={inputRef} type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Digite uma mensagem para o Gemini..." className={`flex-1 bg-transparent border-none outline-none ${darkMode ? 'text-[#E3E3E3] placeholder:text-white/40' : 'text-[#202124] placeholder:text-black/40'} px-3 h-12 text-base`} onFocus={() => setIsInputFocused(true)} onBlur={() => setIsInputFocused(false)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} />
                     <div className="flex items-center gap-1 pr-1">
-                        {searchQuery && <button onClick={(e) => { e.stopPropagation(); handleSendMessage(); }} className="p-2.5 bg-white text-black hover:bg-gray-200 rounded-full transition shadow-lg mr-1"><ArrowRight size={20} /></button>}
+                        {searchQuery && <button onClick={(e) => { e.stopPropagation(); handleSendMessage(); }} className="p-2.5 bg-[#4E79F3] text-white hover:bg-blue-600 rounded-full transition shadow-lg mr-1"><ArrowRight size={20} /></button>}
                     </div>
                 </div>
             </div>

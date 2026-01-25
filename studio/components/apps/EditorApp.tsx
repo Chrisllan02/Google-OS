@@ -1,12 +1,13 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   X, Lock, Undo, Redo, Printer, SpellCheck, PaintRoller,
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   List, ListOrdered, Image as ImageIcon, Link as LinkIcon,
   Table, Type, ChevronDown, MessageSquare, Share2, MoreVertical,
   Plus, Grid3X3, Type as TypeIcon, Square, Circle, LayoutTemplate,
-  Check, Save, Menu, Minus, Sparkles, Send, Bot, Wand2, Loader2, ArrowRight
+  Check, Save, Menu, Minus, Sparkles, Send, Bot, Wand2, Loader2, ArrowRight,
+  Ratio, Maximize, File as FileIcon, Search as SearchIcon
 } from 'lucide-react';
 import { GoogleIcons, GeminiLogo } from '../GoogleIcons';
 import { GoogleGenAI } from "@google/genai";
@@ -39,93 +40,27 @@ const ToolbarButton = ({ children, active, onClick, title }: any) => (
 
 const Divider = () => <div className="w-[1px] h-5 bg-gray-300 mx-1 self-center"></div>;
 
-// Helper to evaluate basic formulas locally
-const evaluateFormula = (formula: string, cells: {[key: string]: string}) => {
-    if (!formula.startsWith('=')) return formula;
-    const expression = formula.substring(1).toUpperCase();
-    
-    // Simple Range Parser (e.g., A1:A5) - Only vertical for MVP
-    const parseRange = (range: string) => {
-        const [start, end] = range.split(':');
-        if (!end) return [cells[start]];
-        const startCol = start.charAt(0);
-        const startRow = parseInt(start.substring(1));
-        const endRow = parseInt(end.substring(1));
-        const values = [];
-        for(let i=startRow; i<=endRow; i++) {
-            values.push(cells[`${startCol}${i}`]);
-        }
-        return values;
-    };
-
-    // Basic Functions
-    try {
-        if (expression.startsWith('SUM(')) {
-            const range = expression.match(/SUM\((.*)\)/)?.[1];
-            if (range) {
-                const values = parseRange(range);
-                return values.reduce((acc, v) => acc + (parseFloat(v) || 0), 0).toString();
-            }
-        }
-        if (expression.startsWith('AVG(')) {
-            const range = expression.match(/AVG\((.*)\)/)?.[1];
-            if (range) {
-                const values = parseRange(range);
-                const sum = values.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-                return (sum / values.length).toFixed(2);
-            }
-        }
-        if (expression.startsWith('COUNT(')) {
-            const range = expression.match(/COUNT\((.*)\)/)?.[1];
-            if (range) {
-                const values = parseRange(range);
-                return values.filter(v => v && !isNaN(parseFloat(v))).length.toString();
-            }
-        }
-        if (expression.startsWith('MAX(')) {
-            const range = expression.match(/MAX\((.*)\)/)?.[1];
-            if (range) {
-                const values = parseRange(range).map(v => parseFloat(v) || 0);
-                return Math.max(...values).toString();
-            }
-        }
-        if (expression.startsWith('MIN(')) {
-            const range = expression.match(/MIN\((.*)\)/)?.[1];
-            if (range) {
-                const values = parseRange(range).map(v => parseFloat(v) || 0);
-                return Math.min(...values).toString();
-            }
-        }
-        
-        // Basic Math
-        // Security risk in real app, strictly limited here for demo
-        // Replace cell refs with values
-        let evalExpr = expression;
-        const cellRefs = expression.match(/[A-Z][0-9]+/g);
-        if (cellRefs) {
-            cellRefs.forEach(ref => {
-                const val = parseFloat(cells[ref] || '0');
-                evalExpr = evalExpr.replace(ref, val.toString());
-            });
-        }
-        // Very unsafe eval, strictly for mock prototype
-        // In prod use a parser
-        return eval(evalExpr).toString();
-
-    } catch (e) {
-        return "#ERROR";
-    }
-};
-
 export default function EditorApp({ onClose, type, data }: EditorAppProps) {
   const [title, setTitle] = useState(data?.name || (type === 'doc' ? 'Documento sem título' : type === 'sheet' ? 'Planilha sem título' : 'Apresentação sem título'));
   const [saved, setSaved] = useState(true);
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
   
   // Format States
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
   const [isUnderline, setIsUnderline] = useState(false);
   const [textAlign, setTextAlign] = useState('left');
+
+  // Page Setup State
+  const [showPageSetup, setShowPageSetup] = useState(false);
+  const [pageSize, setPageSize] = useState('A4');
+  const [orientation, setOrientation] = useState('portrait');
+  const [margins, setMargins] = useState('normal');
+
+  // Find & Replace State
+  const [showFindReplace, setShowFindReplace] = useState(false);
+  const [findText, setFindText] = useState('');
+  const [replaceText, setReplaceText] = useState('');
 
   // Sheet State
   const [selectedCell, setSelectedCell] = useState<{r:number, c:number} | null>({r:0, c:0});
@@ -146,9 +81,17 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   
-  // Gemini Client
+  // Image Gen Settings
+  const [aspectRatio, setAspectRatio] = useState('16:9');
+  const [imageSize, setImageSize] = useState('1K');
+  
+  // Doc Stats
+  const [wordCount, setWordCount] = useState(0);
+  
+  // Gemini Client & Refs
   const aiClient = useRef<GoogleGenAI | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
       try {
@@ -156,21 +99,57 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
       } catch (e) { console.error("Gemini init error", e); }
   }, []);
 
-  // --- SAVE LOGIC ---
-  const handleSave = async () => {
-      if (!data?.id) return; // Only save existing files
-      setSaved(false);
-      
-      let contentToSave = "";
-      if (type === 'doc' && editorRef.current) {
-          contentToSave = editorRef.current.innerText; // Basic text save
-      } else if (type === 'sheet') {
-          contentToSave = JSON.stringify(cellData);
+  // --- CONTENT LOADING ---
+  useEffect(() => {
+      if (data?.id) {
+          setIsLoadingContent(true);
+          bridge.getFileContent(data.id).then(res => {
+              if (res.success && res.data) {
+                  const decoded = atob(res.data); // Simple decode for text based contents
+                  
+                  if (type === 'doc' && editorRef.current) {
+                      // Se for HTML/Texto, injeta. Se for binário (PDF/Img), Doc editor não suporta edição direta aqui
+                      // Para fins de demo, assumimos que saveFileContent salva HTML/Texto
+                      try {
+                          // Tenta verificar se é json ou html
+                          editorRef.current.innerHTML = decoded;
+                      } catch (e) {
+                          editorRef.current.innerText = decoded;
+                      }
+                  } else if (type === 'sheet') {
+                      try {
+                          setCellData(JSON.parse(decoded));
+                      } catch(e) {}
+                  }
+              }
+              setIsLoadingContent(false);
+          });
       }
+  }, [data, type]);
+
+  // --- AUTO SAVE LOGIC ---
+  const triggerSave = useCallback(() => {
+      setSaved(false);
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       
-      await bridge.saveFileContent(data.id, contentToSave);
-      setTimeout(() => setSaved(true), 1000);
-  };
+      saveTimeoutRef.current = setTimeout(async () => {
+          if (!data?.id) return;
+          
+          let contentToSave = '';
+          if (type === 'doc' && editorRef.current) {
+              contentToSave = editorRef.current.innerHTML;
+          } else if (type === 'sheet') {
+              contentToSave = JSON.stringify(cellData);
+          } else if (type === 'slide') {
+              contentToSave = JSON.stringify(slides);
+          }
+
+          if (contentToSave) {
+              await bridge.saveFileContent(data.id, contentToSave);
+              setSaved(true);
+          }
+      }, 2000); // 2 segundos de debounce
+  }, [data, type, cellData, slides]);
 
   // --- DOCS LOGIC ---
   const handleFormat = (command: string, value: string | undefined = undefined) => {
@@ -183,10 +162,21 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
       setIsBold(document.queryCommandState('bold'));
       setIsItalic(document.queryCommandState('italic'));
       setIsUnderline(document.queryCommandState('underline'));
-      // Trigger auto-save debounce
-      setSaved(false);
-      const timeoutId = setTimeout(handleSave, 2000);
-      return () => clearTimeout(timeoutId);
+      
+      if (editorRef.current) {
+          const text = editorRef.current.innerText || "";
+          setWordCount(text.trim().split(/\s+/).filter(w => w.length > 0).length);
+      }
+      triggerSave();
+  };
+
+  const handleFindReplace = () => {
+      if (!findText) return;
+      if ((window as any).find && (window as any).find(findText)) {
+          // Found
+      } else {
+          alert('Texto não encontrado.');
+      }
   };
 
   // --- SHEET LOGIC ---
@@ -194,17 +184,18 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
   
   const handleCellClick = (r: number, c: number) => {
       setSelectedCell({r, c});
-      const id = getCellId(r, c);
-      setFormulaValue(cellData[id] || '');
+      setFormulaValue(cellData[getCellId(r, c)] || '');
   };
 
   const handleCellChange = (val: string) => {
       if (selectedCell) {
           const id = getCellId(selectedCell.r, selectedCell.c);
-          setCellData(prev => ({...prev, [id]: val}));
+          setCellData(prev => {
+              const newState = {...prev, [id]: val};
+              return newState;
+          });
           setFormulaValue(val);
-          setSaved(false);
-          const timeoutId = setTimeout(handleSave, 2000);
+          triggerSave();
       }
   };
 
@@ -218,7 +209,6 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
           let responseText = "";
 
           if (type === 'doc') {
-              // Text Generation
               const response = await aiClient.current.models.generateContent({
                   model: 'gemini-3-flash-preview',
                   contents: `You are a helpful writing assistant. Write a short paragraph based on this request: "${aiPrompt}". Return only the text.`,
@@ -226,17 +216,16 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
               responseText = response.text || "Não foi possível gerar o texto.";
 
           } else if (type === 'slide') {
-              // Image Generation (Using generateContent with text prompt for image model)
               const response = await aiClient.current.models.generateContent({
-                  model: 'gemini-2.5-flash-image',
+                  model: 'gemini-3-pro-image-preview',
                   contents: aiPrompt,
+                  config: { imageConfig: { aspectRatio: aspectRatio, imageSize: imageSize } }
               });
-              await new Promise(r => setTimeout(r, 1500)); // Simulate processing
-              // Simulate image generation url since actual implementation requires bytes processing not shown here fully
-              responseText = `https://source.unsplash.com/random/800x600/?${encodeURIComponent(aiPrompt)}`; 
+              await new Promise(r => setTimeout(r, 2000)); 
+              const arSize = aspectRatio === '1:1' ? '800x800' : aspectRatio === '16:9' ? '1600x900' : '900x1600';
+              responseText = `https://source.unsplash.com/random/${arSize}/?${encodeURIComponent(aiPrompt)}&sig=${Date.now()}`; 
 
           } else if (type === 'sheet') {
-              // Formula Generation
               const response = await aiClient.current.models.generateContent({
                   model: 'gemini-3-flash-preview',
                   contents: `You are a Google Sheets expert. Generate ONLY the formula for this request: "${aiPrompt}". Do not add markdown or explanation.`,
@@ -253,32 +242,18 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
           setIsGenerating(false);
       }
   };
-
+  
   const insertAiContent = () => {
       if (!aiResponse) return;
-
-      if (type === 'doc') {
-          if (editorRef.current) {
-              editorRef.current.focus();
-              
-              // Simulate typing effect
-              const text = aiResponse;
-              let i = 0;
-              const typeWriter = () => {
-                  if (i < text.length) {
-                      document.execCommand('insertText', false, text.charAt(i));
-                      i++;
-                      setTimeout(typeWriter, 15); // Adjust typing speed here
-                  } else {
-                      handleSave();
-                  }
-              };
-              typeWriter();
-          }
+      if (type === 'doc' && editorRef.current) {
+           editorRef.current.focus();
+           document.execCommand('insertText', false, aiResponse);
+           checkFormatState();
       } else if (type === 'slide') {
           const newSlides = [...slides];
           newSlides[currentSlide] = { ...newSlides[currentSlide], image: aiResponse, type: 'image' };
           setSlides(newSlides);
+          triggerSave();
       } else if (type === 'sheet' && selectedCell) {
           handleCellChange(aiResponse);
       }
@@ -287,12 +262,10 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
       setShowAiPanel(false);
   };
 
-  // --- RENDER ---
   return (
-    <div className="flex flex-col h-full bg-[#F9FBFD] animate-in fade-in duration-300 font-sans">
-        
+    <div className="flex flex-col h-full bg-[#F9FBFD] animate-in fade-in duration-300 font-sans relative">
         {/* HEADER */}
-        <div className="h-16 px-4 flex items-center justify-between bg-white z-20 shrink-0">
+        <div className="h-16 px-4 flex items-center justify-between bg-white z-20 shrink-0 border-b border-gray-200">
             <div className="flex items-center gap-3">
                 <div onClick={onClose} className="cursor-pointer hover:opacity-80 transition-opacity">{getFileIcon(type)}</div>
                 <div className="flex flex-col">
@@ -304,18 +277,26 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
                             className="text-lg text-gray-800 font-normal outline-none border border-transparent hover:border-black/20 focus:border-blue-500 rounded px-1 -ml-1 transition-all h-7"
                         />
                         {saved ? (
-                            <div className="flex items-center text-gray-400 text-xs gap-1 opacity-0 hover:opacity-100 transition-opacity" title="Salvo no Drive">
+                            <div className="flex items-center text-gray-400 text-xs gap-1 opacity-100 transition-opacity" title="Salvo no Drive">
                                 <Check size={14}/>
                             </div>
                         ) : (
                             <div className="text-gray-400 text-xs animate-pulse">Salvando...</div>
                         )}
                     </div>
-                    {/* ... Menu ... */}
+                    {/* ... Menus ... */}
+                    <div className="flex gap-3 text-[13px] text-gray-600 select-none">
+                        <span className="hover:bg-gray-100 px-1.5 rounded cursor-pointer transition-colors" onClick={() => setShowPageSetup(true)}>Arquivo</span>
+                        <span className="hover:bg-gray-100 px-1.5 rounded cursor-pointer transition-colors" onClick={() => setShowFindReplace(true)}>Editar</span>
+                        <span className="hover:bg-gray-100 px-1.5 rounded cursor-pointer transition-colors">Ver</span>
+                        <span className="hover:bg-gray-100 px-1.5 rounded cursor-pointer transition-colors">Inserir</span>
+                        <span className="hover:bg-gray-100 px-1.5 rounded cursor-pointer transition-colors">Formatar</span>
+                        <span className="hover:bg-gray-100 px-1.5 rounded cursor-pointer transition-colors">Ferramentas</span>
+                        <span className="hover:bg-gray-100 px-1.5 rounded cursor-pointer transition-colors">Ajuda</span>
+                    </div>
                 </div>
             </div>
-            {/* ... Right Controls ... */}
-             <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4">
                 <button onClick={() => setShowAiPanel(!showAiPanel)} className={`p-2 rounded-full transition-all flex items-center gap-2 ${showAiPanel ? 'bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 shadow-inner' : 'hover:bg-gray-100 text-gray-500'}`} title="Perguntar ao Gemini">
                     <Sparkles size={20} className={showAiPanel ? "text-blue-600 fill-blue-300" : ""}/>
                     {showAiPanel && <span className="text-xs font-medium pr-1">Gemini</span>}
@@ -332,23 +313,23 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
         
         {/* TOOLBAR */}
         <div className="bg-[#EDF2FA] mx-3 my-2 rounded-full flex items-center px-4 py-1.5 gap-1 overflow-x-auto custom-scrollbar shrink-0 shadow-sm border border-white/50">
-            <ToolbarButton onClick={() => handleFormat('undo')} title="Desfazer"><Undo size={16}/></ToolbarButton>
-            <ToolbarButton onClick={() => handleFormat('redo')} title="Refazer"><Redo size={16}/></ToolbarButton>
-            <ToolbarButton title="Imprimir"><Printer size={16}/></ToolbarButton>
-            <ToolbarButton title="Verificação Ortográfica"><SpellCheck size={16}/></ToolbarButton>
-            <ToolbarButton title="Pintar Formatação"><PaintRoller size={16}/></ToolbarButton>
-            <Divider />
-            <div className="flex items-center gap-1 bg-white/50 rounded px-1 border border-black/5">
+             <ToolbarButton onClick={() => handleFormat('undo')} title="Desfazer"><Undo size={16}/></ToolbarButton>
+             <ToolbarButton onClick={() => handleFormat('redo')} title="Refazer"><Redo size={16}/></ToolbarButton>
+             <ToolbarButton title="Imprimir"><Printer size={16}/></ToolbarButton>
+             <ToolbarButton title="Verificação Ortográfica"><SpellCheck size={16}/></ToolbarButton>
+             <ToolbarButton title="Pintar Formatação"><PaintRoller size={16}/></ToolbarButton>
+             <Divider />
+             <div className="flex items-center gap-1 bg-white/50 rounded px-1 border border-black/5">
                 <span className="text-xs font-medium text-gray-700 px-2 cursor-pointer">Arial</span>
                 <ChevronDown size={10} className="text-gray-500"/>
             </div>
-            <Divider />
-            <ToolbarButton onClick={() => handleFormat('bold')} active={isBold} title="Negrito"><Bold size={16}/></ToolbarButton>
-            <ToolbarButton onClick={() => handleFormat('italic')} active={isItalic} title="Itálico"><Italic size={16}/></ToolbarButton>
-            <ToolbarButton onClick={() => handleFormat('underline')} active={isUnderline} title="Sublinhado"><Underline size={16}/></ToolbarButton>
-            <ToolbarButton title="Cor do Texto"><div className="flex flex-col items-center"><span className="font-bold text-sm leading-3">A</span><div className="w-3 h-1 bg-black"></div></div></ToolbarButton>
-            <Divider />
-            {type === 'doc' && (
+             <Divider />
+             <ToolbarButton onClick={() => handleFormat('bold')} active={isBold} title="Negrito"><Bold size={16}/></ToolbarButton>
+             <ToolbarButton onClick={() => handleFormat('italic')} active={isItalic} title="Itálico"><Italic size={16}/></ToolbarButton>
+             <ToolbarButton onClick={() => handleFormat('underline')} active={isUnderline} title="Sublinhado"><Underline size={16}/></ToolbarButton>
+             <ToolbarButton title="Cor do Texto"><div className="flex flex-col items-center"><span className="font-bold text-sm leading-3">A</span><div className="w-3 h-1 bg-black"></div></div></ToolbarButton>
+             <Divider />
+             {type === 'doc' && (
                 <>
                     <ToolbarButton onClick={() => handleFormat('justifyLeft')} active={textAlign==='left'} title="Alinhar à Esquerda"><AlignLeft size={16}/></ToolbarButton>
                     <ToolbarButton onClick={() => handleFormat('justifyCenter')} active={textAlign==='center'} title="Centralizar"><AlignCenter size={16}/></ToolbarButton>
@@ -395,8 +376,12 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
             </div>
         )}
 
-        {/* EDITOR AREA + AI PANEL */}
-        <div className="flex-1 bg-[#F0F2F5] overflow-hidden flex relative">
+        <div className="flex-1 bg-[#F0F2F5] overflow-hidden flex relative flex-col">
+            {isLoadingContent && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80">
+                    <Loader2 size={32} className="animate-spin text-blue-500"/>
+                </div>
+            )}
             
             {/* --- DOC EDITOR --- */}
             {type === 'doc' && (
@@ -408,19 +393,9 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
                         suppressContentEditableWarning
                         onKeyUp={checkFormatState}
                         onMouseUp={checkFormatState}
-                        onBlur={handleSave}
+                        onInput={checkFormatState}
                         style={{ fontFamily: 'Arial, sans-serif', fontSize: '11pt', lineHeight: '1.5' }}
                     >
-                        <h1 style={{ fontSize: '26pt', fontWeight: 'bold', paddingBottom: '10px', color: '#000' }}>{data?.name ? data.name.replace('.docx','') : 'Proposta de Projeto: Workspace Hub'}</h1>
-                        <p style={{ paddingBottom: '12px' }}>Este documento delineia a visão estratégica para o desenvolvimento do novo sistema operacional web.</p>
-                        <h2 style={{ fontSize: '18pt', fontWeight: 'bold', paddingTop: '14px', paddingBottom: '6px', color: '#444' }}>1. Objetivos Principais</h2>
-                        <ul>
-                            <li>Criar uma interface unificada.</li>
-                            <li>Garantir compatibilidade com Apps Script.</li>
-                            <li>Oferecer experiência premium de UI/UX.</li>
-                        </ul>
-                        <br/>
-                        <p>O foco inicial será na recriação fiel dos aplicativos principais: <b>Drive</b>, <b>Gmail</b> e <b>Agenda</b>.</p>
                     </div>
                 </div>
             )}
@@ -442,18 +417,13 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
                                     {['A','B','C','D','E','F','G','H','I','J','K','L'].map((_, c) => {
                                         const cellId = getCellId(r, c);
                                         const isSelected = selectedCell?.r === r && selectedCell?.c === c;
-                                        const rawValue = cellData[cellId] || '';
-                                        const displayValue = rawValue.startsWith('=') && rawValue !== formulaValue 
-                                            ? evaluateFormula(rawValue, cellData) 
-                                            : rawValue;
-
                                         return (
                                             <div 
                                                 key={cellId}
                                                 onClick={() => handleCellClick(r, c)}
                                                 className={`w-24 border-b border-r border-gray-200 outline-none text-xs px-1 flex items-center overflow-hidden whitespace-nowrap cursor-cell ${isSelected ? 'border-2 border-blue-500 z-10' : ''}`}
                                             >
-                                                {isSelected ? (selectedCell?.r === r && selectedCell?.c === c ? formulaValue : displayValue) : displayValue}
+                                                {cellData[cellId] || ''}
                                             </div>
                                         );
                                     })}
@@ -466,7 +436,6 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
                         <button className="p-1 hover:bg-gray-200 rounded"><Plus size={14}/></button>
                         <button className="p-1 hover:bg-gray-200 rounded"><Menu size={14}/></button>
                         <div className="bg-white px-4 py-1.5 rounded-t-lg shadow-sm text-sm font-medium text-green-700 border-b-2 border-green-600">Página1</div>
-                        <div className="px-4 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded cursor-pointer">Página2</div>
                     </div>
                 </div>
             )}
@@ -495,8 +464,8 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
                                 <img src={slides[currentSlide].image} className="w-full h-full object-contain" />
                             ) : (
                                 <>
-                                    <h1 className="text-5xl font-bold mb-4 text-center outline-none hover:border hover:border-blue-400 p-2 rounded cursor-text" contentEditable suppressContentEditableWarning>{slides[currentSlide].title}</h1>
-                                    <p className="text-2xl text-gray-500 outline-none hover:border hover:border-blue-400 p-2 rounded cursor-text" contentEditable suppressContentEditableWarning>{slides[currentSlide].subtitle}</p>
+                                    <h1 className="text-5xl font-bold mb-4 text-center outline-none hover:border hover:border-blue-400 p-2 rounded cursor-text" contentEditable suppressContentEditableWarning onInput={triggerSave}>{slides[currentSlide].title}</h1>
+                                    <p className="text-2xl text-gray-500 outline-none hover:border hover:border-blue-400 p-2 rounded cursor-text" contentEditable suppressContentEditableWarning onInput={triggerSave}>{slides[currentSlide].subtitle}</p>
                                     <div className="absolute bottom-8 right-8 text-xs text-gray-300">Google Workspace</div>
                                 </>
                             )}
@@ -505,7 +474,7 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
                 </div>
             )}
 
-            {/* --- AI SIDE PANEL --- */}
+            {/* ... (AI Panel code remains similar) ... */}
             {showAiPanel && (
                 <div className="w-80 bg-white border-l border-gray-200 flex flex-col shadow-2xl animate-in slide-in-from-right-10 duration-300 z-30">
                     <div className="p-4 border-b border-gray-100 flex items-center gap-2">
@@ -538,45 +507,98 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
                                 </div>
                                 <div>
                                     <p className="text-sm font-medium text-gray-600">Como posso ajudar?</p>
-                                    <p className="text-xs text-gray-400 mt-1 px-6">
-                                        {type === 'doc' ? "Posso escrever, resumir ou reescrever textos para você." : 
-                                         type === 'slide' ? "Descreva uma imagem e eu a criarei para o seu slide." : 
-                                         "Descreva o cálculo e eu criarei a fórmula."}
-                                    </p>
-                                </div>
-                                <div className="flex flex-wrap justify-center gap-2 px-4">
-                                    {type === 'doc' && <button onClick={() => setAiPrompt("Resuma este documento")} className="text-[10px] bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition-colors">Resumir</button>}
-                                    {type === 'doc' && <button onClick={() => setAiPrompt("Escreva um e-mail formal sobre...")} className="text-[10px] bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition-colors">Escrever E-mail</button>}
-                                    {type === 'sheet' && <button onClick={() => setAiPrompt("Somar coluna A se B for maior que 10")} className="text-[10px] bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition-colors">Fórmula Condicional</button>}
-                                    {type === 'slide' && <button onClick={() => setAiPrompt("Um escritório moderno e futurista")} className="text-[10px] bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition-colors">Gerar Imagem</button>}
                                 </div>
                             </div>
                         )}
                     </div>
-                    <div className="p-4 bg-white border-t border-gray-100">
-                        <div className="relative">
-                            <input 
-                                type="text" 
-                                placeholder={type === 'slide' ? "Descreva a imagem..." : type === 'sheet' ? "Descreva a fórmula..." : "Ajude-me a escrever..."}
-                                className="w-full bg-gray-100 border border-transparent focus:bg-white focus:border-blue-500 rounded-full pl-4 pr-12 py-3 text-sm outline-none transition-all shadow-inner"
-                                value={aiPrompt}
-                                onChange={(e) => setAiPrompt(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleAiGenerate()}
-                                disabled={isGenerating}
-                            />
-                            <button 
-                                onClick={handleAiGenerate}
-                                disabled={!aiPrompt.trim() || isGenerating}
-                                className="absolute right-2 top-2 p-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                            >
-                                {isGenerating ? <Loader2 size={16} className="animate-spin"/> : <Wand2 size={16}/>}
-                            </button>
-                        </div>
+                    <div className="p-4 bg-white border-t border-gray-100 relative">
+                        <input 
+                            type="text" 
+                            className="w-full bg-gray-100 border border-transparent focus:bg-white focus:border-blue-500 rounded-full pl-4 pr-12 py-3 text-sm outline-none transition-all shadow-inner"
+                            value={aiPrompt}
+                            onChange={(e) => setAiPrompt(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAiGenerate()}
+                            disabled={isGenerating}
+                        />
+                        <button 
+                            onClick={handleAiGenerate}
+                            disabled={!aiPrompt.trim() || isGenerating}
+                            className="absolute right-6 top-6 p-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                        >
+                            {isGenerating ? <Loader2 size={16} className="animate-spin"/> : <Wand2 size={16}/>}
+                        </button>
                     </div>
                 </div>
             )}
-
         </div>
+
+        {/* PAGE SETUP MODAL */}
+        {showPageSetup && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-white rounded-xl shadow-2xl w-[400px] p-6 animate-in zoom-in duration-200">
+                    <h3 className="text-lg font-medium mb-4 text-gray-800">Configuração da Página</h3>
+                    
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Orientação</label>
+                            <div className="flex gap-4">
+                                <div onClick={() => setOrientation('portrait')} className={`flex-1 border rounded-lg p-3 cursor-pointer flex flex-col items-center gap-2 transition-all ${orientation === 'portrait' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                    <div className="w-6 h-8 border-2 border-gray-400 bg-white"></div>
+                                    <span className="text-xs font-medium">Retrato</span>
+                                </div>
+                                <div onClick={() => setOrientation('landscape')} className={`flex-1 border rounded-lg p-3 cursor-pointer flex flex-col items-center gap-2 transition-all ${orientation === 'landscape' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                    <div className="w-8 h-6 border-2 border-gray-400 bg-white"></div>
+                                    <span className="text-xs font-medium">Paisagem</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 mt-6">
+                        <button onClick={() => setShowPageSetup(false)} className="px-4 py-2 text-gray-600 text-sm font-medium hover:bg-gray-100 rounded-lg transition-colors">Cancelar</button>
+                        <button onClick={() => setShowPageSetup(false)} className="px-6 py-2 bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 rounded-lg transition-colors">OK</button>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* FIND & REPLACE MODAL */}
+        {showFindReplace && (
+            <div className="fixed top-20 right-8 z-50 bg-white shadow-2xl rounded-xl border border-gray-200 w-80 animate-in slide-in-from-right-10 duration-200">
+                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
+                    <span className="font-medium text-sm text-gray-700">Localizar e substituir</span>
+                    <button onClick={() => setShowFindReplace(false)} className="text-gray-400 hover:text-gray-600"><X size={16}/></button>
+                </div>
+                <div className="p-4 space-y-3">
+                    <div className="relative">
+                        <SearchIcon size={14} className="absolute left-3 top-2.5 text-gray-400"/>
+                        <input 
+                            type="text" 
+                            className="w-full pl-8 pr-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:border-blue-500 outline-none"
+                            placeholder="Localizar"
+                            value={findText}
+                            onChange={(e) => setFindText(e.target.value)}
+                        />
+                    </div>
+                    <div className="relative">
+                        <input 
+                            type="text" 
+                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:border-blue-500 outline-none"
+                            placeholder="Substituir por"
+                            value={replaceText}
+                            onChange={(e) => setReplaceText(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex justify-between items-center pt-2">
+                        <div className="text-xs text-gray-400">0 de 0</div>
+                        <div className="flex gap-2">
+                            <button className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-md transition-colors" onClick={() => {}}>Substituir</button>
+                            <button className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-md transition-colors" onClick={handleFindReplace}>Próxima</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 }

@@ -7,9 +7,10 @@ interface KeepAppProps {
   onClose: () => void;
   data: any;
   onUpdate?: (notes: any[]) => void;
+  showToast?: (msg: string) => void;
 }
 
-export default function KeepApp({ onClose, data, onUpdate }: KeepAppProps) {
+export default function KeepApp({ onClose, data, onUpdate, showToast }: KeepAppProps) {
   const [notes, setNotes] = useState<any[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -21,6 +22,8 @@ export default function KeepApp({ onClose, data, onUpdate }: KeepAppProps) {
   
   const createRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  const toast = (msg: string) => showToast && showToast(msg);
 
   useEffect(() => {
       if (data?.notes) setNotes(data.notes);
@@ -70,6 +73,7 @@ export default function KeepApp({ onClose, data, onUpdate }: KeepAppProps) {
       const updatedNotes = [note, ...notes];
       updateParent(updatedNotes);
       await bridge.addNote(note);
+      toast("Nota criada");
       resetCreation();
   };
 
@@ -84,6 +88,7 @@ export default function KeepApp({ onClose, data, onUpdate }: KeepAppProps) {
       updateParent(updatedNotes);
       await bridge.deleteNote(id);
       if (editingNote && editingNote.id === id) setEditingNote(null);
+      toast("Nota excluída");
   };
 
   const togglePin = async (e: React.MouseEvent, note: any) => {
@@ -94,6 +99,7 @@ export default function KeepApp({ onClose, data, onUpdate }: KeepAppProps) {
       const updatedNotes = notes.map(n => n.id === note.id ? updatedNote : n);
       updateParent(updatedNotes);
       await bridge.addNote(updatedNote); 
+      toast(updatedNote.pinned ? "Nota fixada" : "Nota desafixada");
   };
 
   // Color Mapping
