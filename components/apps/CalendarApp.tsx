@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   ChevronLeft, ChevronRight, Search, Settings, HelpCircle, 
   Menu, Plus, Calendar as CalendarIcon, MapPin, Users, 
-  Video, X, Clock, AlignLeft, Check, MoreVertical
+  Video, X, Clock, AlignLeft, Check, MoreVertical, RotateCw
 } from 'lucide-react';
 import { GoogleIcons } from '../GoogleIcons';
 import { bridge } from '../../utils/GASBridge';
@@ -15,6 +15,87 @@ interface CalendarAppProps {
   showToast?: (msg: string) => void;
 }
 
+// --- CALENDAR ENGINE HELPERS ---
+const expandEvents = (events: any[], viewDate: Date, viewMode: 'day' | 'week' | 'month') => {
+    const expanded: any[] = [];
+    let viewStart = new Date(viewDate);
+    let viewEnd = new Date(viewDate);
+
+    if (viewMode === 'day') {
+        viewStart.setHours(0,0,0,0);
+        viewEnd.setHours(23,59,59,999);
+    } else if (viewMode === 'week') {
+        const day = viewStart.getDay();
+        const diff = viewStart.getDate() - day;
+        viewStart = new Date(viewStart.setDate(diff));
+        viewStart.setHours(0,0,0,0);
+        viewEnd = new Date(viewStart);
+        viewEnd.setDate(viewStart.getDate() + 6);
+        viewEnd.setHours(23,59,59,999);
+    } else if (viewMode === 'month') {
+        viewStart = new Date(viewStart.getFullYear(), viewStart.getMonth(), 1);
+        viewEnd = new Date(viewStart.getFullYear(), viewStart.getMonth() + 1, 0);
+        viewEnd.setHours(23,59,59,999);
+    }
+
+    events.forEach(ev => {
+        const evStart = new Date(ev.start);
+        const evEnd = new Date(ev.end);
+        if (ev.recurrence === 'none' || !ev.recurrence) {
+            if (evStart <= viewEnd && evEnd >= viewStart) expanded.push(ev);
+            return;
+        }
+        let currentIter = new Date(evStart);
+        // Safety Break for infinite loops
+        let safety = 0;
+        while (currentIter <= viewEnd && safety < 100) {
+            safety++;
+            if (currentIter >= viewStart) {
+                const duration = evEnd.getTime() - evStart.getTime();
+                const projectedStart = new Date(currentIter);
+                const projectedEnd = new Date(currentIter.getTime() + duration);
+                // Check if this instance falls within view
+                if (projectedStart <= viewEnd && projectedEnd >= viewStart) {
+                    expanded.push({ ...ev, start: projectedStart, end: projectedEnd, isVirtual: true, id: ev.id + "_" + safety });
+                }
+            }
+            if (ev.recurrence === 'daily') currentIter.setDate(currentIter.getDate() + 1);
+            else if (ev.recurrence === 'weekly') currentIter.setDate(currentIter.getDate() + 7);
+            else break;
+        }
+    });
+    return expanded;
+};
+
+const arrangeEvents = (events: any[]) => {
+    // Basic overlapping logic for day view
+    const timedEvents = events.filter(e => !e.isAllDay);
+    const sorted = [...timedEvents].sort((a, b) => {
+        if (a.start.getTime() === b.start.getTime()) return b.end.getTime() - a.end.getTime(); 
+        return a.start.getTime() - b.start.getTime();
+    });
+    const columns: any[][] = [];
+    const packedEvents: any[] = [];
+    sorted.forEach((event) => {
+        let placed = false;
+        for (let i = 0; i < columns.length; i++) {
+            const col = columns[i];
+            const lastEventInCol = col[col.length - 1];
+            if (lastEventInCol.end.getTime() <= event.start.getTime()) {
+                col.push(event);
+                packedEvents.push({ ...event, colIndex: i });
+                placed = true;
+                break;
+            }
+        }
+        if (!placed) {
+            columns.push([event]);
+            packedEvents.push({ ...event, colIndex: columns.length - 1 });
+        }
+    });
+    return packedEvents.map(ev => ({ ...ev, widthPercent: 100 / columns.length, leftPercent: (ev.colIndex * 100) / columns.length }));
+};
+
 export default function CalendarApp({ onClose, data, onOpenApp, showToast }: CalendarAppProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<'day' | 'week' | 'month'>('week');
@@ -22,6 +103,9 @@ export default function CalendarApp({ onClose, data, onOpenApp, showToast }: Cal
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newEvent, setNewEvent] = useState({ title: '', start: '', end: '', description: '' });
+  
+  // Drag State
+  const [dragState, setDragState] = useState<{ id: number | string; type: 'move' | 'resize'; startY: number; originalStart: Date; originalEnd: Date; } | null>(null);
 
   const toast = (msg: string) => showToast && showToast(msg);
 
@@ -35,6 +119,59 @@ export default function CalendarApp({ onClose, data, onOpenApp, showToast }: Cal
       })));
     }
   }, [data]);
+
+  // --- DRAG LOGIC ---
+  useEffect(() => {
+      const handleGlobalMouseMove = (e: MouseEvent) => {
+          if (!dragState) return;
+          const pixelDiff = e.clientY - dragState.startY;
+          const snappedMinutes = Math.round(pixelDiff / 15) * 15; // Snap to 15m (approx 15px)
+          
+          setEvents(prev => prev.map(ev => {
+              if (ev.id !== dragState.id) return ev;
+              
+              const newStart = new Date(dragState.originalStart);
+              const newEnd = new Date(dragState.originalEnd);
+              
+              if (dragState.type === 'move') { 
+                  newStart.setMinutes(dragState.originalStart.getMinutes() + snappedMinutes); 
+                  newEnd.setMinutes(dragState.originalEnd.getMinutes() + snappedMinutes); 
+              } else if (dragState.type === 'resize') { 
+                  newEnd.setMinutes(dragState.originalEnd.getMinutes() + snappedMinutes); 
+                  if (newEnd <= newStart) newEnd.setMinutes(newStart.getMinutes() + 15); // Minimum 15m
+              }
+              return { ...ev, start: newStart, end: newEnd };
+          }));
+      };
+
+      const handleGlobalMouseUp = async () => {
+          if (dragState) {
+              const event = events.find(e => e.id === dragState.id);
+              if (event && !event.isVirtual) { 
+                  await bridge.updateCalendarEvent(event); 
+                  toast('Agenda atualizada'); 
+              }
+              setDragState(null); 
+              document.body.style.cursor = '';
+          }
+      };
+
+      if (dragState) { 
+          window.addEventListener('mousemove', handleGlobalMouseMove); 
+          window.addEventListener('mouseup', handleGlobalMouseUp); 
+          document.body.style.cursor = dragState.type === 'move' ? 'grabbing' : 'ns-resize'; 
+      }
+      return () => { 
+          window.removeEventListener('mousemove', handleGlobalMouseMove); 
+          window.removeEventListener('mouseup', handleGlobalMouseUp); 
+      };
+  }, [dragState, events]);
+
+  const handleMouseDown = (e: React.MouseEvent, id: string, type: 'move' | 'resize', start: Date, end: Date) => {
+      e.stopPropagation();
+      setDragState({ id, type, startY: e.clientY, originalStart: start, originalEnd: end });
+  };
+
 
   const handlePrev = () => {
     const newDate = new Date(currentDate);
@@ -65,11 +202,18 @@ export default function CalendarApp({ onClose, data, onOpenApp, showToast }: Cal
     d.setDate(diff);
     return d;
   });
+  
+  // Calculate Expanded & Arranged Events
+  const expandedEvents = expandEvents(events, currentDate, view);
+  
+  // Filter for Day View specifically for Arrange
+  const dayEvents = view === 'day' ? arrangeEvents(expandedEvents.filter(ev => new Date(ev.start).getDate() === currentDate.getDate())) : [];
+
 
   const handleCreateEvent = async () => {
       if (!newEvent.title) return;
       const start = new Date(currentDate);
-      start.setHours(9, 0, 0); // Default 9 AM
+      start.setHours(9, 0, 0); 
       const end = new Date(start);
       end.setHours(10, 0, 0);
 
@@ -83,12 +227,10 @@ export default function CalendarApp({ onClose, data, onOpenApp, showToast }: Cal
           colorId: '1'
       };
 
-      // Optimistic Update
       setEvents(prev => [...prev, { ...event, start, end }]);
       setIsCreating(false);
       setNewEvent({ title: '', start: '', end: '', description: '' });
       toast("Evento criado com sucesso");
-      
       await bridge.createCalendarEvent(event);
   };
 
@@ -189,54 +331,67 @@ export default function CalendarApp({ onClose, data, onOpenApp, showToast }: Cal
                             <div key={h} className="absolute w-full border-b border-gray-100 h-[60px]" style={{ top: h * 60 }}></div>
                         ))}
 
-                        {/* Events Render */}
-                        {events.map((ev: any) => {
-                            // Filter logic for current view
-                            const evStart = new Date(ev.start);
-                            const evEnd = new Date(ev.end);
-                            
-                            // Simplified view logic
-                            let isVisible = false;
-                            let left = 0;
-                            let width = 100;
-                            
-                            if (view === 'week') {
-                                const startOfWeek = weekDays[0];
-                                const endOfWeek = new Date(weekDays[6]);
-                                endOfWeek.setHours(23,59,59);
-                                if (evStart >= startOfWeek && evStart <= endOfWeek) {
-                                    isVisible = true;
-                                    left = (evStart.getDay()) * (100/7);
-                                    width = (100/7) - 1;
-                                }
-                            } else if (view === 'day') {
-                                if (evStart.getDate() === currentDate.getDate()) {
-                                    isVisible = true;
-                                }
-                            }
-
-                            if (!isVisible && view !== 'month') return null;
-
-                            const startH = evStart.getHours() + (evStart.getMinutes()/60);
-                            const duration = (evEnd.getTime() - evStart.getTime()) / (1000 * 60 * 60);
-
-                            return (
-                                <div 
-                                    key={ev.id}
-                                    onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev); }}
-                                    className={`absolute rounded-[4px] px-2 py-1 text-xs text-white cursor-pointer shadow-sm hover:brightness-105 border-l-4 border-black/10 overflow-hidden z-10 transition-all ${ev.color || 'bg-blue-600'}`}
-                                    style={{ 
-                                        top: `${startH * 60}px`, 
-                                        height: `${duration * 60}px`,
-                                        left: `${left}%`,
-                                        width: `${width}%`
-                                    }}
-                                >
-                                    <span className="font-medium">{ev.title}</span>
-                                    <div className="text-[10px] opacity-90">{evStart.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - {evEnd.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
-                                </div>
-                            );
-                        })}
+                        {/* Events Render (Logic Split by View) */}
+                        {view === 'day' ? (
+                             // DAY VIEW - Uses Packed Events logic
+                             dayEvents.map((ev: any) => {
+                                const startH = ev.start.getHours(); const startM = ev.start.getMinutes();
+                                const duration = (ev.end.getTime() - ev.start.getTime()) / (1000 * 60 * 60);
+                                const top = startH * 60 + startM; 
+                                const height = duration * 60;
+                                return (
+                                    <div 
+                                        key={ev.id}
+                                        onMouseDown={(e) => !ev.isVirtual && handleMouseDown(e, ev.id, 'move', ev.start, ev.end)}
+                                        onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev); }}
+                                        className={`absolute rounded-[4px] px-2 py-1 text-xs text-white cursor-pointer shadow-sm hover:brightness-105 border-l-4 border-black/10 overflow-hidden z-10 transition-all ${ev.color || 'bg-blue-600'} ${dragState?.id === ev.id ? 'opacity-80 z-50 ring-2 ring-blue-400 scale-105 shadow-xl' : ''}`}
+                                        style={{ 
+                                            top: `${top}px`, 
+                                            height: `${Math.max(25, height)}px`,
+                                            left: `${ev.leftPercent}%`,
+                                            width: `calc(${ev.widthPercent}% - 4px)`
+                                        }}
+                                    >
+                                        <span className="font-medium flex items-center gap-1">{ev.title} {ev.recurrence !== 'none' && <RotateCw size={10}/>}</span>
+                                        <div className="text-[10px] opacity-90">{ev.start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - {ev.end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                                        {!ev.isVirtual && (<div className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize" onMouseDown={(e) => handleMouseDown(e, ev.id, 'resize', ev.start, ev.end)}></div>)}
+                                    </div>
+                                );
+                             })
+                        ) : view === 'week' ? (
+                            // WEEK VIEW - Simple column logic
+                            Array.from({length: 7}).map((_, i) => {
+                                const d = new Date(currentDate);
+                                d.setDate(d.getDate() - d.getDay() + i);
+                                // Filter events for this specific day column
+                                const dayEvs = expandedEvents.filter(ev => new Date(ev.start).toDateString() === d.toDateString() && !ev.isAllDay);
+                                
+                                return (
+                                    <div key={i} className="absolute top-0 bottom-0 border-l border-gray-200" style={{ left: `${(i) * (100/7)}%`, width: `${100/7}%` }}>
+                                        {dayEvs.map((ev: any) => {
+                                             const startH = ev.start.getHours(); const startM = ev.start.getMinutes();
+                                             const duration = (ev.end.getTime() - ev.start.getTime()) / (1000 * 60 * 60);
+                                             const top = startH * 60 + startM; const height = duration * 60;
+                                             return (
+                                                 <div 
+                                                    key={ev.id}
+                                                    onClick={(e) => { e.stopPropagation(); setSelectedEvent(ev); }}
+                                                    className={`absolute left-0.5 right-1 rounded-[4px] px-1 py-0.5 text-[10px] text-white cursor-pointer hover:brightness-105 border-l-4 border-black/10 overflow-hidden z-10 ${ev.color || 'bg-blue-600'}`}
+                                                    style={{ top: `${top}px`, height: `${Math.max(20, height)}px` }}
+                                                 >
+                                                     <div className="font-bold truncate">{ev.title}</div>
+                                                 </div>
+                                             )
+                                        })}
+                                    </div>
+                                )
+                            })
+                        ) : (
+                            // MONTH VIEW (Simple List)
+                            null 
+                        )}
+                        
+                        {/* Month View Logic is handled differently in grid above if needed, here simplified to Day/Week for main engine */}
                     </div>
                 </div>
             </div>

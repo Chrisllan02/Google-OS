@@ -23,6 +23,20 @@ interface RemoteParticipant {
     cam: boolean;
 }
 
+const RemoteVideo: React.FC<{ peer: RemoteParticipant }> = ({ peer }) => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    useEffect(() => {
+        if (videoRef.current) videoRef.current.srcObject = peer.stream;
+    }, [peer.stream]);
+    
+    return (
+        <div className="bg-[#3C4043] rounded-xl relative overflow-hidden flex items-center justify-center group border-2 border-transparent">
+            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+            <span className="absolute bottom-3 left-3 text-white text-xs font-medium shadow-black drop-shadow-md bg-black/40 px-2 py-1 rounded backdrop-blur-sm">Convidado</span>
+        </div>
+    );
+};
+
 export default function MeetApp({ onClose, data }: MeetAppProps) {
   // Navigation State
   const [view, setView] = useState<'home' | 'lobby' | 'call'>('home');
@@ -46,7 +60,6 @@ export default function MeetApp({ onClose, data }: MeetAppProps) {
   const [captionsOn, setCaptionsOn] = useState(false);
   const [sidePanel, setSidePanel] = useState<'none' | 'chat' | 'people' | 'info' | 'activities'>('none');
   const [chatMessage, setChatMessage] = useState('');
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showReactionMenu, setShowReactionMenu] = useState(false);
   const [floatingEmojis, setFloatingEmojis] = useState<{id: number, emoji: string, left: number}[]>([]);
   const [volumeLevel, setVolumeLevel] = useState(0); 
@@ -273,21 +286,6 @@ export default function MeetApp({ onClose, data }: MeetAppProps) {
       setSidePanel(sidePanel === panel ? 'none' : panel);
   };
 
-  // --- RENDER HELPERS ---
-  const RemoteVideo = ({ peer }: { peer: RemoteParticipant }) => {
-      const videoRef = useRef<HTMLVideoElement>(null);
-      useEffect(() => {
-          if (videoRef.current) videoRef.current.srcObject = peer.stream;
-      }, [peer.stream]);
-      
-      return (
-          <div className="bg-[#3C4043] rounded-xl relative overflow-hidden flex items-center justify-center group border-2 border-transparent">
-              <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-              <span className="absolute bottom-3 left-3 text-white text-xs font-medium shadow-black drop-shadow-md bg-black/40 px-2 py-1 rounded backdrop-blur-sm">Convidado</span>
-          </div>
-      );
-  };
-
   // --- HOME SCREEN ---
   if (view === 'home') {
       return (
@@ -406,8 +404,8 @@ export default function MeetApp({ onClose, data }: MeetAppProps) {
                         <div className="absolute top-4 right-4 bg-[#202124]/60 p-2 rounded-full backdrop-blur-md">
                              <div className="flex gap-1 h-4 items-end">
                                 <div className="w-1 bg-blue-400 rounded-full transition-all duration-75" style={{ height: `${Math.min(100, Math.max(20, volumeLevel * 1.5))}%` }}></div>
-                                <div className="w-1 bg-blue-400 rounded-full transition-all duration-75 delay-75" style={{ height: `${Math.min(100, Math.max(15, volumeLevel * 1.2))}%` }}></div>
-                                <div className="w-1 bg-blue-400 rounded-full transition-all duration-75 delay-100" style={{ height: `${Math.min(100, Math.max(10, volumeLevel * 0.8))}%` }}></div>
+                                <div className="w-1 bg-blue-400 rounded-full transition-all duration-75" style={{ height: `${Math.min(100, Math.max(15, volumeLevel * 1.2))}%` }}></div>
+                                <div className="w-1 bg-blue-400 rounded-full transition-all duration-75" style={{ height: `${Math.min(100, Math.max(10, volumeLevel * 0.8))}%` }}></div>
                             </div>
                         </div>
                         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-4">
@@ -630,7 +628,7 @@ export default function MeetApp({ onClose, data }: MeetAppProps) {
         </div>
 
         {/* BOTTOM CONTROL BAR */}
-        <div className="h-20 bg-[#202124] flex items-center justify-between px-4 md:px-6 pb-4 shrink-0 fixed bottom-0 left-0 right-0 z-50">
+        <div className="h-20 bg-[#202124] flex items-center justify-between px-6 pb-4 shrink-0 fixed bottom-0 left-0 right-0 z-50">
             <div className="w-1/4 text-white text-base font-medium flex items-center gap-4">
                 <span className="hidden md:block">{currentTime.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                 <div className="h-4 w-[1px] bg-white/20 hidden md:block"></div>

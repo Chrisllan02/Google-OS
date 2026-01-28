@@ -24,6 +24,20 @@ interface RemoteParticipant {
     cam: boolean;
 }
 
+const RemoteVideo: React.FC<{ peer: RemoteParticipant }> = ({ peer }) => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    useEffect(() => {
+        if (videoRef.current) videoRef.current.srcObject = peer.stream;
+    }, [peer.stream]);
+    
+    return (
+        <div className="bg-[#3C4043] rounded-xl relative overflow-hidden flex items-center justify-center group border-2 border-transparent">
+            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+            <span className="absolute bottom-3 left-3 text-white text-xs font-medium shadow-black drop-shadow-md bg-black/40 px-2 py-1 rounded backdrop-blur-sm">Convidado</span>
+        </div>
+    );
+};
+
 export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
   // Navigation State
   const [view, setView] = useState<'home' | 'lobby' | 'call'>('home');
@@ -266,21 +280,6 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
 
   const toggleSidePanel = (panel: 'chat' | 'people' | 'info' | 'activities') => {
       setSidePanel(sidePanel === panel ? 'none' : panel);
-  };
-
-  // --- RENDER HELPERS ---
-  const RemoteVideo = ({ peer }: { peer: RemoteParticipant }) => {
-      const videoRef = useRef<HTMLVideoElement>(null);
-      useEffect(() => {
-          if (videoRef.current) videoRef.current.srcObject = peer.stream;
-      }, [peer.stream]);
-      
-      return (
-          <div className="bg-[#3C4043] rounded-xl relative overflow-hidden flex items-center justify-center group border-2 border-transparent">
-              <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-              <span className="absolute bottom-3 left-3 text-white text-xs font-medium shadow-black drop-shadow-md bg-black/40 px-2 py-1 rounded backdrop-blur-sm">Convidado</span>
-          </div>
-      );
   };
 
   // --- HOME SCREEN ---
