@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Settings, X, Mail, FileText, User, Calendar, ExternalLink, HardDrive, ArrowRight, Globe, MapPin, Loader2, Sparkles, Star } from 'lucide-react';
 import { GoogleIcons, GeminiLogo } from '../GoogleIcons';
+import { bridge, SearchResults } from '../../utils/GASBridge';
 import { GoogleGenAI } from "@google/genai";
 
 interface SearchAppProps {
@@ -25,22 +26,85 @@ const getFileIcon = (type: string) => {
 export default function SearchApp({ onClose, data, searchQuery = '', onOpenApp }: SearchAppProps) {
   const [localQuery, setLocalQuery] = useState(searchQuery);
   const [mode, setMode] = useState<'workspace' | 'web'>('workspace');
+  
+  // States for Backend Results
+  const [workspaceResults, setWorkspaceResults] = useState<SearchResults>({ emails: [], files: [], events: [] });
+  const [isSearching, setIsSearching] = useState(false);
+  const [workspaceSummary, setWorkspaceSummary] = useState<string | null>(null); // New state for AI summary
+
+  // States for Gemini Web Search
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [groundingSources, setGroundingSources] = useState<any[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   
   const aiClient = useRef<GoogleGenAI | null>(null);
-
-  useEffect(() => {
-      setLocalQuery(searchQuery);
-      if (searchQuery && mode === 'web') handleWebSearch();
-  }, [searchQuery]);
+  const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
       try {
           aiClient.current = new GoogleGenAI({ apiKey: process.env.API_KEY });
       } catch (e) { console.error(e); }
   }, []);
+
+  // Sync prop searchQuery to localQuery and trigger search
+  useEffect(() => {
+      setLocalQuery(searchQuery);
+      if (searchQuery) {
+          if (mode === 'workspace') performWorkspaceSearch(searchQuery);
+          else handleWebSearch();
+      }
+  }, [searchQuery]);
+
+  const generateWorkspaceSummary = async (results: SearchResults, query: string) => {
+      if (!aiClient.current) return;
+      
+      const context = `
+      Query: ${query}
+      Emails found: ${results.emails.length} (Subjects: ${results.emails.map(e => e.subject).join(', ')})
+      Files found: ${results.files.length} (Names: ${results.files.map(f => f.name).join(', ')})
+      Events found: ${results.events.length}
+      `;
+
+      try {
+          const response = await aiClient.current.models.generateContent({
+              model: 'gemini-3-flash-preview',
+              contents: `Act as a personal assistant. Based on this search data, give a 1-sentence summary of what was found for the user. Data: ${context}`
+          });
+          setWorkspaceSummary(response.text || null);
+      } catch(e) {
+          console.warn("Summary failed", e);
+      }
+  };
+
+  const performWorkspaceSearch = async (query: string) => {
+      if (!query || query.length < 2) return;
+      setIsSearching(true);
+      setWorkspaceSummary(null);
+      try {
+          const results = await bridge.searchAll(query);
+          setWorkspaceResults(results);
+          if (results.emails.length > 0 || results.files.length > 0) {
+              generateWorkspaceSummary(results, query);
+          }
+      } catch (e) {
+          console.error("Workspace Search Error", e);
+      } finally {
+          setIsSearching(false);
+      }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      setLocalQuery(val);
+      
+      // Debounce search in workspace mode
+      if (mode === 'workspace') {
+          if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+          debounceTimeout.current = setTimeout(() => {
+              performWorkspaceSearch(val);
+          }, 600); // 600ms delay
+      }
+  };
 
   const handleWebSearch = async () => {
       if (!localQuery.trim() || !aiClient.current) return;
@@ -49,11 +113,7 @@ export default function SearchApp({ onClose, data, searchQuery = '', onOpenApp }
       setGroundingSources([]);
 
       try {
-          // Determine if we need Maps or Search based on query keywords (simple heuristic)
           const isLocationQuery = /onde|fica|perto|restaurante|mapa|local|endereço/i.test(localQuery);
-          
-          // Maps grounding is only supported in Gemini 2.5 series models.
-          // Search grounding we use Gemini 3 Flash Preview.
           const model = isLocationQuery ? 'gemini-2.5-flash' : 'gemini-3-flash-preview';
           const tools = isLocationQuery ? [{googleMaps: {}}] : [{googleSearch: {}}];
 
@@ -64,8 +124,6 @@ export default function SearchApp({ onClose, data, searchQuery = '', onOpenApp }
           });
 
           setAiResponse(response.text || "Não encontrei informações sobre isso.");
-          
-          // Extract Grounding Metadata
           const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
           setGroundingSources(chunks);
 
@@ -80,27 +138,13 @@ export default function SearchApp({ onClose, data, searchQuery = '', onOpenApp }
   const handleKeyDown = (e: React.KeyboardEvent) => {
       if (e.key === 'Enter') {
           if (mode === 'web') handleWebSearch();
+          else performWorkspaceSearch(localQuery);
       }
   };
 
   const appHeaderClass = "h-16 px-6 flex items-center justify-between shrink-0 border-b border-white/5 backdrop-blur-xl z-20 bg-black/20";
 
-  // Filter Data Logic (Workspace Mode)
-  const filterEmails = data?.emails?.filter((e:any) => 
-      e.subject.toLowerCase().includes(localQuery.toLowerCase()) || 
-      e.sender.toLowerCase().includes(localQuery.toLowerCase())
-  ) || [];
-
-  const filterFiles = data?.files?.filter((f:any) => 
-      f.name.toLowerCase().includes(localQuery.toLowerCase())
-  ) || [];
-
-  const filterContacts = [
-      { name: 'Julia Silva', email: 'julia@example.com', avatar: 'J', color: 'bg-purple-600' },
-      { name: 'Roberto Alves', email: 'roberto@example.com', avatar: 'R', color: 'bg-orange-500' }
-  ].filter(c => c.name.toLowerCase().includes(localQuery.toLowerCase()));
-
-  const hasResults = filterEmails.length > 0 || filterFiles.length > 0 || filterContacts.length > 0;
+  const hasResults = workspaceResults.emails.length > 0 || workspaceResults.files.length > 0 || workspaceResults.events.length > 0;
 
   return (
     <div className="flex flex-col h-full bg-[#202124] text-white font-sans">
@@ -120,7 +164,7 @@ export default function SearchApp({ onClose, data, searchQuery = '', onOpenApp }
                         placeholder={mode === 'workspace' ? "Pesquisar no Workspace..." : "Perguntar ao Google..."}
                         className="bg-transparent border-none outline-none ml-3 w-full text-white placeholder:text-white/30 text-sm font-light" 
                         value={localQuery}
-                        onChange={(e) => setLocalQuery(e.target.value)}
+                        onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
                         autoFocus
                     />
@@ -129,13 +173,13 @@ export default function SearchApp({ onClose, data, searchQuery = '', onOpenApp }
                     {/* MODE SWITCHER */}
                     <div className="flex bg-black/40 rounded-full p-0.5 border border-white/10 ml-2">
                         <button 
-                            onClick={() => setMode('workspace')} 
+                            onClick={() => { setMode('workspace'); if(localQuery) performWorkspaceSearch(localQuery); }} 
                             className={`px-3 py-1 rounded-full text-[10px] font-medium transition-all flex items-center gap-1 ${mode === 'workspace' ? 'bg-white/20 text-white shadow-sm' : 'text-white/40 hover:text-white'}`}
                         >
                             <HardDrive size={10}/> Workspace
                         </button>
                         <button 
-                            onClick={() => setMode('web')} 
+                            onClick={() => { setMode('web'); if(localQuery) handleWebSearch(); }} 
                             className={`px-3 py-1 rounded-full text-[10px] font-medium transition-all flex items-center gap-1 ${mode === 'web' ? 'bg-blue-600 text-white shadow-sm' : 'text-white/40 hover:text-white'}`}
                         >
                             <Globe size={10}/> Web
@@ -156,43 +200,53 @@ export default function SearchApp({ onClose, data, searchQuery = '', onOpenApp }
                         <GoogleIcons.Search className="w-16 h-16 text-white/30" stroke="currentColor"/>
                     </div>
                     <p className="text-white/60 text-xl font-light text-center max-w-md">
-                        {mode === 'workspace' ? "Digite para pesquisar em e-mails, arquivos e contatos." : "Faça perguntas sobre o mundo real usando o Google Search e Maps."}
+                        {mode === 'workspace' ? "Digite para pesquisar em e-mails, arquivos e agenda." : "Faça perguntas sobre o mundo real usando o Google Search e Maps."}
                     </p>
                 </div>
             ) : mode === 'workspace' ? (
-                // WORKSPACE RESULTS
-                !hasResults ? (
-                    <div className="flex flex-col items-center justify-center h-full opacity-50">
-                        <Search size={48} className="text-white/20 mb-4"/>
-                        <p className="text-white text-xl">Nenhum resultado local para "{localQuery}"</p>
-                        <button onClick={() => { setMode('web'); handleWebSearch(); }} className="mt-4 text-blue-400 hover:underline">Pesquisar na Web</button>
+                // WORKSPACE RESULTS (Backend Driven)
+                isSearching ? (
+                    <div className="flex items-center justify-center h-full">
+                        <Loader2 size={32} className="animate-spin text-blue-500"/>
                     </div>
                 ) : (
                     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-                        {/* CONTACTS */}
-                        {filterContacts.length > 0 && (
+                        {/* AI SUMMARY CARD */}
+                        {workspaceSummary && (
+                            <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-white/10 p-4 rounded-xl flex items-start gap-3 shadow-lg">
+                                <Sparkles size={20} className="text-blue-400 mt-0.5 shrink-0"/>
+                                <div>
+                                    <h4 className="text-sm font-medium text-blue-300 mb-1">Resumo Inteligente</h4>
+                                    <p className="text-sm text-white/80 leading-relaxed">{workspaceSummary}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* CALENDAR EVENTS */}
+                        {workspaceResults.events && workspaceResults.events.length > 0 && (
                             <div>
-                                <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider mb-4 flex items-center gap-2"><User size={14}/> Pessoas</h3>
+                                <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider mb-4 flex items-center gap-2"><Calendar size={14}/> Agenda</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {filterContacts.map((c:any, i:number) => (
-                                        <div key={i} className="bg-[#303134] hover:bg-[#3c4043] p-3 rounded-xl cursor-pointer transition-all border border-white/5 hover:border-white/10 flex items-center gap-3 group">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0 ${c.color}`}>{c.avatar}</div>
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="text-white font-medium truncate text-sm">{c.name}</h4>
-                                                <p className="text-xs text-white/40 truncate">{c.email}</p>
+                                    {workspaceResults.events.map((ev:any, i:number) => (
+                                        <div key={i} className="bg-[#303134] hover:bg-[#3c4043] p-3 rounded-xl cursor-pointer transition-all border border-white/5 hover:border-white/10 flex flex-col gap-1 group">
+                                            <div className="flex justify-between items-start">
+                                                <h4 className="text-white font-medium truncate text-sm">{ev.title}</h4>
+                                                <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded">Evento</span>
                                             </div>
-                                            <button className="p-2 hover:bg-white/10 rounded-full text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => onOpenApp && onOpenApp('mail')}><Mail size={16}/></button>
+                                            <p className="text-xs text-white/40">{new Date(ev.start).toLocaleDateString()} {new Date(ev.start).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
+                                            {ev.location && <p className="text-[10px] text-white/30 flex items-center gap-1"><MapPin size={10}/> {ev.location}</p>}
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         )}
+
                         {/* FILES */}
-                        {filterFiles.length > 0 && (
+                        {workspaceResults.files && workspaceResults.files.length > 0 && (
                             <div>
                                 <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider mb-4 flex items-center gap-2"><HardDrive size={14}/> Arquivos</h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                    {filterFiles.map((f:any) => (
+                                    {workspaceResults.files.map((f:any) => (
                                         <div key={f.id} onClick={() => onOpenApp && onOpenApp(f.type, f)} className="bg-[#303134] hover:bg-[#3c4043] p-3 rounded-xl cursor-pointer transition-all border border-white/5 hover:border-white/10 flex items-center gap-3 group relative overflow-hidden">
                                             <div className="p-2 bg-white/5 rounded-lg group-hover:bg-white/10 transition-colors shrink-0">{getFileIcon(f.type)}</div>
                                             <div className="flex-1 min-w-0">
@@ -204,12 +258,13 @@ export default function SearchApp({ onClose, data, searchQuery = '', onOpenApp }
                                 </div>
                             </div>
                         )}
+
                         {/* EMAILS */}
-                        {filterEmails.length > 0 && (
+                        {workspaceResults.emails && workspaceResults.emails.length > 0 && (
                             <div>
                                 <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider mb-4 flex items-center gap-2"><Mail size={14}/> E-mails</h3>
                                 <div className="grid gap-2">
-                                    {filterEmails.map((e:any) => (
+                                    {workspaceResults.emails.map((e:any) => (
                                         <div key={e.id} onClick={() => onOpenApp && onOpenApp('mail')} className="bg-[#303134] hover:bg-[#3c4043] px-4 py-3 rounded-xl cursor-pointer transition-all border border-white/5 hover:border-white/10 flex items-center gap-4 group">
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${e.color || 'bg-blue-600'}`}>{e.senderInit || e.sender[0]}</div>
                                             <div className="flex-1 min-w-0">
@@ -227,10 +282,17 @@ export default function SearchApp({ onClose, data, searchQuery = '', onOpenApp }
                                 </div>
                             </div>
                         )}
+
+                        {!hasResults && (
+                             <div className="text-center text-white/40 mt-10">
+                                 <p>Nenhum resultado encontrado no Workspace para "{localQuery}".</p>
+                                 <button onClick={() => { setMode('web'); handleWebSearch(); }} className="text-blue-400 hover:underline mt-2 text-sm">Tentar pesquisar na Web</button>
+                             </div>
+                        )}
                     </div>
                 )
             ) : (
-                // WEB SEARCH (GEMINI)
+                // WEB SEARCH (GEMINI) - Same as previous
                 <div className="max-w-4xl mx-auto h-full flex flex-col">
                     {isGenerating ? (
                         <div className="flex flex-col items-center justify-center h-full text-white/50">
@@ -269,24 +331,11 @@ export default function SearchApp({ onClose, data, searchQuery = '', onOpenApp }
                                                     </a>
                                                 );
                                             } else if (source.maps) {
-                                                // Maps grounding chunk (Rich Visualization)
                                                 return (
-                                                    <div key={i} className="bg-[#202124] p-0 rounded-xl border border-white/5 flex flex-col overflow-hidden hover:border-white/20 transition-all cursor-pointer">
-                                                        <div className="h-24 bg-gray-700 relative">
-                                                            {/* Placeholder Map Pattern */}
-                                                            <div className="absolute inset-0 opacity-30" style={{backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '10px 10px'}}></div>
-                                                            <div className="absolute top-2 right-2 bg-white/10 backdrop-blur-md p-1.5 rounded-full"><ExternalLink size={12}/></div>
-                                                        </div>
-                                                        <div className="p-4">
-                                                            <div className="flex items-start justify-between">
-                                                                <div>
-                                                                    <h4 className="text-white font-medium text-sm">{source.maps.title}</h4>
-                                                                    <p className="text-xs text-white/60 mt-1 flex items-center gap-1"><MapPin size={10} className="text-red-400"/> {source.maps.placeId ? "Local verificado" : "Endereço aproximado"}</p>
-                                                                </div>
-                                                                <div className="flex items-center gap-1 text-[10px] text-yellow-400 bg-yellow-400/10 px-1.5 py-0.5 rounded">
-                                                                    <Star size={10} fill="currentColor"/> 4.5
-                                                                </div>
-                                                            </div>
+                                                    <div key={i} className="bg-[#202124] p-4 rounded-xl border border-white/5 flex items-center gap-3">
+                                                        <MapPin size={20} className="text-red-400"/>
+                                                        <div>
+                                                            <h4 className="text-white font-medium text-sm">{source.maps.title}</h4>
                                                         </div>
                                                     </div>
                                                 )

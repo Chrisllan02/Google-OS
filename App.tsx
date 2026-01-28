@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, LayoutGrid, Loader2, CloudSun, Mail, HardDrive, FileText, 
   FileSpreadsheet, Presentation, Video, Plus, X, ArrowRight,
-  Home, CheckCircle2, Lightbulb
+  Home, CheckCircle2, Lightbulb, Calendar, LogOut, User, Settings, Info, Bell, Trash2,
+  ExternalLink, Globe
 } from 'lucide-react';
 import AppViewer from './components/AppViewer';
 import Aurora from './components/Aurora';
@@ -12,14 +12,19 @@ import { GoogleIcons, GeminiLogo } from './components/GoogleIcons';
 import { bridge, DashboardData } from './utils/GASBridge';
 import { GoogleGenAI, Chat } from "@google/genai";
 
-// Helper for file icons used in dashboard widgets
-const getFileIcon = (type: string) => {
-    switch(type) {
-        case 'sheet': return <GoogleIcons.Sheets className="w-5 h-5" />;
-        case 'slide': return <GoogleIcons.Slides className="w-5 h-5" />;
-        case 'doc': return <GoogleIcons.Docs className="w-5 h-5" />;
-        default: return <FileText className="w-5 h-5 text-gray-400" />;
-    }
+const keepColors: {[key:string]: string} = {
+    default: 'bg-[#202124] border-white/20',
+    red: 'bg-[#5c2b29] border-transparent',
+    orange: 'bg-[#614a19] border-transparent',
+    yellow: 'bg-[#635d19] border-transparent',
+    green: 'bg-[#345920] border-transparent',
+    teal: 'bg-[#16504b] border-transparent',
+    blue: 'bg-[#2d555e] border-transparent',
+    darkblue: 'bg-[#1e3a5f] border-transparent',
+    purple: 'bg-[#42275e] border-transparent',
+    pink: 'bg-[#5b2245] border-transparent',
+    brown: 'bg-[#442f19] border-transparent',
+    gray: 'bg-[#3c3f43] border-transparent'
 };
 
 export default function App() {
@@ -29,13 +34,28 @@ export default function App() {
   const [isTyping, setIsTyping] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false); 
-  const [chatHistory, setChatHistory] = useState<Array<{role: string, text: string}>>([]);
+  const [chatHistory, setChatHistory] = useState<Array<{role: string, text: string, sources?: any[]}>>([]);
   const [activeApp, setActiveApp] = useState<{type: string, data?: any} | null>(null); 
   
   const [activeTab, setActiveTab] = useState('');
   const [menuSearchActive, setMenuSearchActive] = useState(false);
 
-  // Gemini State
+  const [darkMode, setDarkMode] = useState(true);
+  const [auroraSettings, setAuroraSettings] = useState({ colorStops: ["#4285F4", "#34A853", "#EA4335"], speed: 0.5 });
+  const [toasts, setToasts] = useState<{id: number, message: string}[]>([]);
+  
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<{id: number, title: string, text: string, time: string, read: boolean}[]>([
+      { id: 1, title: 'Bem-vindo', text: 'Bem-vindo ao Workspace OS.', time: 'Agora', read: false },
+      { id: 2, title: 'Dica do Gemini', text: 'Tente digitar "Criar documento" na barra de busca.', time: '1 min', read: false }
+  ]);
+
+  const [showAppLauncher, setShowAppLauncher] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const launcherRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
+
   const chatSession = useRef<Chat | null>(null);
   const aiClient = useRef<GoogleGenAI | null>(null);
 
@@ -43,7 +63,6 @@ export default function App() {
   const inputRef = useRef<HTMLInputElement>(null);
   const menuInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize Gemini
   useEffect(() => {
     try {
         if (!aiClient.current) {
@@ -52,6 +71,7 @@ export default function App() {
                 model: 'gemini-3-flash-preview',
                 config: {
                     systemInstruction: "Você é um assistente inteligente do Google Workspace OS. Você ajuda o usuário a gerenciar seus e-mails, arquivos do Drive, agenda e tarefas. Seja conciso, útil e amigável. Use formatação Markdown simples quando necessário.",
+                    tools: [{googleSearch: {}}]
                 },
             });
         }
@@ -60,7 +80,6 @@ export default function App() {
     }
   }, []);
 
-  // FETCH DATA VIA BRIDGE
   useEffect(() => {
     bridge.getInitialData()
       .then((res) => {
@@ -73,7 +92,15 @@ export default function App() {
       });
   }, []);
 
-  // SYNC HANDLERS
+  const addToast = (message: string) => {
+      const id = Date.now();
+      setToasts(prev => [...prev, { id, message }]);
+      setTimeout(() => {
+          setToasts(prev => prev.filter(t => t.id !== id));
+      }, 4000);
+      setNotifications(prev => [{ id, title: 'Sistema', text: message, time: 'Agora', read: false }, ...prev]);
+  };
+
   const updateTasks = (newTasks: any[]) => {
       setData(prev => prev ? { ...prev, tasks: newTasks } : null);
   };
@@ -81,6 +108,22 @@ export default function App() {
   const updateNotes = (newNotes: any[]) => {
       setData(prev => prev ? { ...prev, notes: newNotes } : null);
   };
+
+  useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+          if (launcherRef.current && !launcherRef.current.contains(event.target as Node)) {
+              setShowAppLauncher(false);
+          }
+          if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+              setShowProfileMenu(false);
+          }
+          if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+              setShowNotifications(false);
+          }
+      };
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (aiMode && inputRef.current) {
@@ -101,6 +144,18 @@ export default function App() {
     }
   }, [chatHistory, isTyping]);
 
+  const handleCommandIntent = (text: string): boolean => {
+      const lower = text.toLowerCase();
+      if (lower.includes('abrir drive') || lower.includes('ir para o drive')) { openApp('drive'); setChatHistory(prev => [...prev, { role: 'assistant', text: 'Abrindo o Google Drive...' }]); return true; }
+      if (lower.includes('criar documento') || lower.includes('novo doc')) { openApp('doc'); setChatHistory(prev => [...prev, { role: 'assistant', text: 'Criando um novo Documento Google...' }]); return true; }
+      if (lower.includes('criar planilha') || lower.includes('nova planilha')) { openApp('sheet'); setChatHistory(prev => [...prev, { role: 'assistant', text: 'Criando uma nova Planilha...' }]); return true; }
+      if (lower.includes('criar slide') || lower.includes('nova apresentação')) { openApp('slide'); setChatHistory(prev => [...prev, { role: 'assistant', text: 'Criando nova Apresentação...' }]); return true; }
+      if (lower.includes('ver email') || lower.includes('abrir gmail')) { openApp('mail'); setChatHistory(prev => [...prev, { role: 'assistant', text: 'Abrindo sua Caixa de Entrada...' }]); return true; }
+      if (lower.includes('minha agenda') || lower.includes('calendário')) { openApp('calendar'); setChatHistory(prev => [...prev, { role: 'assistant', text: 'Abrindo Google Agenda...' }]); return true; }
+      if (lower.includes('nova tarefa') || lower.includes('criar tarefa')) { openApp('tasks'); setChatHistory(prev => [...prev, { role: 'assistant', text: 'Abrindo Tarefas...' }]); return true; }
+      return false;
+  };
+
   const handleSendMessage = async () => {
     if (!searchQuery.trim()) return;
     const text = searchQuery;
@@ -109,36 +164,31 @@ export default function App() {
     setSearchQuery('');
     if (menuSearchActive) setMenuSearchActive(false);
     setAiMode(true);
-    setIsTyping(true);
 
+    if (handleCommandIntent(text)) {
+        return;
+    }
+
+    setIsTyping(true);
     try {
         if (!chatSession.current) throw new Error("Chat session not initialized");
-
         setChatHistory(prev => [...prev, { role: 'assistant', text: '' }]);
-
-        const result = await chatSession.current.sendMessageStream({ message: text });
-        
-        let fullResponse = "";
-        
-        for await (const chunk of result) {
-            const chunkText = chunk.text || "";
-            fullResponse += chunkText;
-            
-            setChatHistory(prev => {
-                const newHistory = [...prev];
-                const lastMsgIndex = newHistory.length - 1;
-                if (lastMsgIndex >= 0 && newHistory[lastMsgIndex].role === 'assistant') {
-                    newHistory[lastMsgIndex] = { ...newHistory[lastMsgIndex], text: fullResponse };
-                }
-                return newHistory;
-            });
-            setIsTyping(false);
-        }
-
+        const result = await chatSession.current.sendMessage({ message: text });
+        const sources = result.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+        const responseText = result.text || "";
+        setChatHistory(prev => {
+            const newHistory = [...prev];
+            const lastMsgIndex = newHistory.length - 1;
+            if (lastMsgIndex >= 0 && newHistory[lastMsgIndex].role === 'assistant') {
+                newHistory[lastMsgIndex] = { ...newHistory[lastMsgIndex], text: responseText, sources: sources };
+            }
+            return newHistory;
+        });
     } catch (error) {
         console.error("Gemini Error:", error);
-        setIsTyping(false);
         setChatHistory(prev => [...prev, { role: 'assistant', text: "Desculpe, não consegui processar sua solicitação no momento." }]);
+    } finally {
+        setIsTyping(false);
     }
   };
 
@@ -153,6 +203,7 @@ export default function App() {
     setAiMode(false);
     setActiveApp({ type, data: fileData });
     setActiveTab(type);
+    setShowAppLauncher(false);
   };
 
   const toggleSearch = () => {
@@ -165,12 +216,7 @@ export default function App() {
   }
 
   const quickCreateApps = [
-    { 
-      id: 'search', label: "Pesquisar", 
-      icon: <Search size={18} />, 
-      color: '#4E79F3', activeColor: '#202124', lightColor: '#F0F4F9',
-      iconColor: 'url(#gemini-gradient-search)' 
-    },
+    { id: 'search', label: "Pesquisar", icon: <Search size={18} />, color: '#4E79F3', activeColor: '#202124', lightColor: '#F0F4F9', iconColor: 'url(#gemini-gradient-search)' },
     { id: 'mail', label: "Gmail", icon: <GoogleIcons.GmailGlass className="w-6 h-6" />, color: '#EA4335', lightColor: '#FCE8E6' },
     { id: 'drive', label: "Drive", icon: <GoogleIcons.DriveGlass className="w-6 h-6" />, color: '#34A853', lightColor: '#E6F4EA', isGlass: true },
     { id: 'doc', label: "Docs", icon: <GoogleIcons.DocsGlass className="w-6 h-6" />, color: '#4285F4', lightColor: '#E8F0FE', isGlass: true },
@@ -179,16 +225,47 @@ export default function App() {
     { id: 'meet', label: "Meet", icon: <GoogleIcons.MeetGlass className="w-6 h-6" />, color: '#EA4335', lightColor: '#FCE8E6', isGlass: true },
   ];
 
+  const launcherApps = [
+      { id: 'mail', label: 'Gmail', icon: <GoogleIcons.GmailGlass className="w-10 h-10"/> },
+      { id: 'drive', label: 'Drive', icon: <GoogleIcons.DriveGlass className="w-10 h-10"/> },
+      { id: 'meet', label: 'Meet', icon: <GoogleIcons.MeetGlass className="w-10 h-10"/> },
+      { id: 'doc', label: 'Docs', icon: <GoogleIcons.DocsGlass className="w-10 h-10"/> },
+      { id: 'sheet', label: 'Sheets', icon: <GoogleIcons.SheetsGlass className="w-10 h-10"/> },
+      { id: 'slide', label: 'Slides', icon: <GoogleIcons.SlidesGlass className="w-10 h-10"/> },
+      { id: 'tasks', label: 'Tarefas', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><CheckCircle2 className="text-[#4E79F3]"/></div> },
+      { id: 'keep', label: 'Keep', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Lightbulb className="text-[#FBBC05]"/></div> },
+      { id: 'search', label: 'Busca', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Search className="text-white"/></div> },
+  ];
+
   const isLightMode = !!activeApp;
-  const glassCard = "bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[32px] shadow-2xl hover:border-white/20 transition-all duration-300";
-  const glassInner = "bg-white/5 hover:bg-white/10 border border-white/5 transition-colors";
+  const glassCard = darkMode ? "bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[32px] shadow-2xl hover:border-white/20 transition-all duration-300" : "bg-white/60 backdrop-blur-3xl border border-black/5 rounded-[32px] shadow-xl hover:border-black/10 transition-all duration-300";
+  const glassInner = darkMode ? "bg-white/5 hover:bg-white/10 border border-white/5 transition-colors" : "bg-black/5 hover:bg-black/10 border border-black/5 transition-colors";
+  const textColor = darkMode ? "text-[#E3E3E3]" : "text-[#202124]";
+  const subTextColor = darkMode ? "text-white/60" : "text-black/60";
+
+  const getFileIcon = (type: string) => {
+    switch(type) {
+        case 'sheet': return <GoogleIcons.Sheets className="w-5 h-5" />;
+        case 'slide': return <GoogleIcons.Slides className="w-5 h-5" />;
+        case 'doc': return <GoogleIcons.Docs className="w-5 h-5" />;
+        default: return <FileText className="w-5 h-5 text-gray-400" />;
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-[#E3E3E3] font-sans selection:bg-[#4E79F3]/30 overflow-hidden relative">
-      {/* Aurora Background Fixed Top */}
+    <div className={`min-h-screen font-sans overflow-hidden relative transition-colors duration-500 ${darkMode ? 'bg-[#050505] text-[#E3E3E3] selection:bg-[#4E79F3]/30' : 'bg-[#F0F2F5] text-[#202124] selection:bg-[#4E79F3]/20'}`}>
       <div className={`fixed top-0 left-0 right-0 h-[600px] z-0 pointer-events-none transition-opacity duration-1000 ${aiMode ? 'opacity-30' : 'opacity-100'}`}>
-          <Aurora colorStops={["#4285F4", "#34A853", "#EA4335"]} speed={0.5} amplitude={1.2} />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050505]/40 to-[#050505]"></div>
+          <Aurora colorStops={auroraSettings.colorStops} speed={auroraSettings.speed} amplitude={1.2} />
+          <div className={`absolute inset-0 bg-gradient-to-b from-transparent ${darkMode ? 'via-[#050505]/40 to-[#050505]' : 'via-[#F0F2F5]/40 to-[#F0F2F5]'}`}></div>
+      </div>
+
+      <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 pointer-events-none">
+          {toasts.map(toast => (
+              <div key={toast.id} className="bg-[#323232] text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300 border border-white/10 pointer-events-auto">
+                  <Info size={18} className="text-blue-400"/>
+                  <span className="text-sm font-medium">{toast.message}</span>
+              </div>
+          ))}
       </div>
 
       {activeApp && (
@@ -200,12 +277,14 @@ export default function App() {
               onOpenApp={openApp}
               onUpdateTasks={updateTasks}
               onUpdateNotes={updateNotes}
+              showToast={addToast}
+              toggleTheme={() => setDarkMode(!darkMode)}
+              isDarkMode={darkMode}
+              onUpdateTheme={(settings: any) => setAuroraSettings(settings)}
           />
       )}
 
-      {/* --- MENU FLUTUANTE INFERIOR --- */}
       <div className={`fixed bottom-8 left-0 right-0 z-[60] flex justify-center items-center gap-3 px-4 pointer-events-none transition-all duration-500 ${aiMode ? 'opacity-0 translate-y-20' : 'opacity-100 translate-y-0'}`}>
-          
           <button 
               onClick={(e) => {
                   const btn = e.currentTarget;
@@ -229,23 +308,23 @@ export default function App() {
           </button>
 
           <div 
-              className={`relative flex items-center backdrop-blur-3xl border p-2 rounded-full shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] gap-2 pointer-events-auto transition-all duration-300 ${isLightMode ? 'bg-black/20 border-white/10' : 'bg-white/10 border-white/20'}`}
+              className={`relative flex items-center backdrop-blur-3xl border p-2 rounded-full shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] gap-2 pointer-events-auto transition-all duration-300 ${darkMode ? (isLightMode ? 'bg-black/20 border-white/10' : 'bg-white/10 border-white/20') : (isLightMode ? 'bg-white/40 border-black/5' : 'bg-white/60 border-white/40')}`}
               style={{ height: '72px' }}
           >
               {menuSearchActive ? (
                   <div className="flex items-center px-4 py-2 w-[500px] animate-in fade-in zoom-in duration-300">
-                      <GoogleIcons.Search className={`text-white/70 ml-2 mr-3 w-6 h-6`} stroke="white" />
+                      <GoogleIcons.Search className={`${darkMode ? 'text-white/70' : 'text-black/70'} ml-2 mr-3 w-6 h-6`} stroke={darkMode ? "white" : "black"} />
                       <input 
                           ref={menuInputRef}
                           type="text" 
                           placeholder="Pesquise ou fale com o Gemini" 
-                          className={`flex-1 bg-transparent outline-none text-white placeholder:text-white/40 h-full text-lg font-light`}
+                          className={`flex-1 bg-transparent outline-none ${darkMode ? 'text-white placeholder:text-white/40' : 'text-black placeholder:text-black/40'} h-full text-lg font-light`}
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                           autoFocus
                       />
-                      <button onClick={() => { setMenuSearchActive(false); setSearchQuery(''); }} className={`p-2 rounded-full ml-2 transition-all hover:bg-white/10 text-white/70 active:scale-90`}>
+                      <button onClick={() => { setMenuSearchActive(false); setSearchQuery(''); }} className={`p-2 rounded-full ml-2 transition-all ${darkMode ? 'hover:bg-white/10 text-white/70' : 'hover:bg-black/10 text-black/70'} active:scale-90`}>
                           <X size={20} />
                       </button>
                   </div>
@@ -254,38 +333,23 @@ export default function App() {
                       {quickCreateApps.map((app) => {
                           const isActive = activeTab === app.id;
                           const iconColor = app.color; 
-                          const textColor = isActive ? app.color : '#ffffff';
-                          const hoverBg = isLightMode ? 'hover:bg-white/10' : 'hover:bg-white/10';
+                          const appTextColor = isActive ? app.color : (darkMode ? '#ffffff' : '#202124');
+                          const hoverBg = isLightMode ? (darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5') : (darkMode ? 'hover:bg-white/10' : 'hover:bg-white/40');
 
                           return (
                             <button 
                                 key={app.id} 
                                 onClick={() => app.id === 'search' ? toggleSearch() : openApp(app.id)}
                                 className={`group relative flex items-center justify-center p-3 rounded-full transition-all duration-400 ease-[cubic-bezier(0.25,1,0.5,1)] active:scale-95 ${isActive ? '' : hoverBg}`}
-                                style={{ backgroundColor: isActive ? 'rgba(255,255,255,0.15)' : undefined }}
+                                style={{ backgroundColor: isActive ? (darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)') : undefined }}
                             >
                                 <div 
-                                    className={`
-                                        transition-all duration-400 ease-[cubic-bezier(0.25,1,0.5,1)]
-                                        ${isActive ? 'scale-110 -translate-y-1' : 'scale-100 translate-y-0'} 
-                                        ${isActive 
-                                            ? 'filter-none opacity-100 drop-shadow-[0_0_12px_rgba(255,255,255,0.3)]' 
-                                            : 'grayscale brightness-[2.5] contrast-125 opacity-70 drop-shadow-[0_2px_4px_rgba(255,255,255,0.1)] group-hover:filter-none group-hover:grayscale-0 group-hover:brightness-100 group-hover:opacity-100 group-hover:drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] group-hover:scale-110 group-hover:-translate-y-1'
-                                        }
-                                    `}
+                                    className={`transition-all duration-400 ease-[cubic-bezier(0.25,1,0.5,1)] ${isActive ? 'scale-110 -translate-y-1' : 'scale-100 translate-y-0'} ${isActive ? 'filter-none opacity-100 drop-shadow-[0_0_12px_rgba(255,255,255,0.3)]' : `grayscale brightness-[2.5] contrast-125 opacity-70 drop-shadow-[0_2px_4px_rgba(255,255,255,0.1)] group-hover:filter-none group-hover:grayscale-0 group-hover:brightness-100 group-hover:opacity-100 group-hover:drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] group-hover:scale-110 group-hover:-translate-y-1`}`}
                                     style={{ color: iconColor }}
                                 >
-                                    {app.id === 'search' ? (
-                                        <GoogleIcons.Search className="w-6 h-6" stroke={isActive || 'group-hover' ? app.color : "currentColor"} />
-                                    ) : (
-                                        React.cloneElement(app.icon as React.ReactElement<any>, { 
-                                            size: 24, 
-                                            color: iconColor, 
-                                            className: `transition-colors duration-200`
-                                        })
-                                    )}
+                                    {app.id === 'search' ? <GoogleIcons.Search className="w-6 h-6" stroke={isActive || 'group-hover' ? app.color : "currentColor"} /> : React.cloneElement(app.icon as React.ReactElement<any>, { size: 24, color: iconColor, className: `transition-colors duration-200` })}
                                 </div>
-                                <span className={`max-w-0 overflow-hidden whitespace-nowrap opacity-0 group-hover:max-w-[140px] group-hover:opacity-100 group-hover:ml-3 text-sm font-medium transition-all duration-300`} style={{ color: textColor }}>
+                                <span className={`max-w-0 overflow-hidden whitespace-nowrap opacity-0 group-hover:max-w-[140px] group-hover:opacity-100 group-hover:ml-3 text-sm font-medium transition-all duration-300`} style={{ color: appTextColor }}>
                                     {app.label}
                                 </span>
                             </button>
@@ -297,164 +361,246 @@ export default function App() {
       </div>
 
       <div className="max-w-7xl mx-auto p-4 md:p-8 flex flex-col h-screen relative z-10 pb-28">
-        
-        {/* HEADER */}
         <header className={`relative mb-8 h-32 flex items-center px-4 justify-between transition-all duration-700 ${aiMode ? 'opacity-0 -translate-y-10 pointer-events-none' : 'opacity-100 translate-y-0'}`}>
             <div className="flex items-center gap-4 animate-in fade-in duration-300 relative z-10">
                 <div>
-                    <h1 className="text-5xl md:text-7xl font-bold text-[#E3E3E3] drop-shadow-md tracking-tight">
+                    <h1 className={`text-5xl md:text-7xl font-bold ${textColor} drop-shadow-md tracking-tight`}>
                        {getGreeting()}, <span className="bg-gradient-to-r from-[#4E79F3] via-[#9c51b6] to-[#E95C67] text-transparent bg-clip-text drop-shadow-sm">{data.user.name.split(' ')[0]}</span>
                     </h1>
                 </div>
             </div>
             <div className="flex items-center gap-4 animate-in fade-in duration-300 relative z-10">
-                <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-full text-xs font-medium text-[#E3E3E3]">
+                <div className={`hidden md:flex items-center gap-2 px-4 py-2 ${darkMode ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/5'} backdrop-blur-2xl border rounded-full text-xs font-medium ${textColor}`}>
                     <CloudSun size={14} className="text-[#FBBC05]" />
                     <span>{data.weather.temp}</span>
                 </div>
-                <button className="p-2 rounded-full hover:bg-white/10 border border-transparent hover:border-white/10 text-[#E3E3E3] backdrop-blur-sm"><LayoutGrid size={20} /></button>
-                <img src={data.user.avatar} alt="Profile" className="w-9 h-9 rounded-full border border-white/20 hover:ring-2 hover:ring-white/20 cursor-pointer transition-all" />
+                
+                <div className="relative" ref={notificationRef}>
+                     <button onClick={() => setShowNotifications(!showNotifications)} className={`p-2 rounded-full border border-transparent relative ${darkMode ? 'hover:bg-white/10 hover:border-white/10' : 'hover:bg-black/5 hover:border-black/5'} ${textColor} backdrop-blur-sm transition-all`}>
+                         <Bell size={20} />
+                         {notifications.some(n => !n.read) && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#EA4335] rounded-full"></span>}
+                     </button>
+                     {showNotifications && (
+                         <div className={`absolute top-12 right-0 w-[360px] ${darkMode ? 'bg-[#2d2e30]/95 border-white/10' : 'bg-white/95 border-black/10'} backdrop-blur-xl border rounded-2xl shadow-2xl p-0 z-50 animate-in fade-in zoom-in duration-200 overflow-hidden flex flex-col`}>
+                            <div className={`p-4 border-b ${darkMode ? 'border-white/10' : 'border-black/5'} flex justify-between items-center`}>
+                                <span className={`text-sm font-medium ${textColor}`}>Notificações</span>
+                                <button className={`text-xs ${subTextColor} hover:text-blue-400`} onClick={() => setNotifications([])}>Limpar tudo</button>
+                            </div>
+                            <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-2 space-y-1">
+                                {notifications.length === 0 ? <div className={`p-6 text-center text-xs ${subTextColor}`}>Nenhuma notificação nova</div> : notifications.map(n => (
+                                    <div key={n.id} className={`p-3 rounded-xl flex items-start gap-3 ${darkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors relative group`}>
+                                        <div className="p-2 bg-[#4E79F3]/10 rounded-full text-[#4E79F3]"><Info size={16}/></div>
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-baseline"><h4 className={`text-sm font-medium ${textColor}`}>{n.title}</h4><span className={`text-[10px] ${subTextColor}`}>{n.time}</span></div>
+                                            <p className={`text-xs ${subTextColor} mt-0.5 leading-relaxed`}>{n.text}</p>
+                                        </div>
+                                        <button onClick={(e) => { e.stopPropagation(); setNotifications(prev => prev.filter(item => item.id !== n.id)); }} className="absolute top-2 right-2 p-1 text-white/20 hover:text-white opacity-0 group-hover:opacity-100 transition-all"><X size={12}/></button>
+                                    </div>
+                                ))}
+                            </div>
+                         </div>
+                     )}
+                </div>
+
+                <div className="relative" ref={launcherRef}>
+                    <button onClick={() => setShowAppLauncher(!showAppLauncher)} className={`p-2 rounded-full border border-transparent ${darkMode ? 'hover:bg-white/10 hover:border-white/10' : 'hover:bg-black/5 hover:border-black/5'} ${textColor} backdrop-blur-sm transition-all ${showAppLauncher ? (darkMode ? 'bg-white/10' : 'bg-black/5') : ''}`}>
+                        <LayoutGrid size={20} />
+                    </button>
+                    {showAppLauncher && (
+                        <div className={`absolute top-12 right-0 w-[320px] ${darkMode ? 'bg-[#2d2e30]/95 border-white/10' : 'bg-white/95 border-black/10'} backdrop-blur-xl border rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in zoom-in duration-200 grid grid-cols-3 gap-2 max-h-[400px] overflow-y-auto custom-scrollbar`}>
+                            {launcherApps.map((app) => (
+                                <button key={app.id} onClick={() => openApp(app.id)} className={`flex flex-col items-center justify-center p-3 rounded-xl ${darkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors gap-2 group`}>
+                                    <div className="transform group-hover:scale-110 transition-transform duration-200">{app.icon}</div>
+                                    <span className={`text-xs ${darkMode ? 'text-white/80' : 'text-black/80'}`}>{app.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <div className="relative" ref={profileRef}>
+                    <img src={data.user.avatar} alt="Profile" onClick={() => setShowProfileMenu(!showProfileMenu)} className={`w-9 h-9 rounded-full border ${darkMode ? 'border-white/20 hover:ring-white/20' : 'border-black/10 hover:ring-black/10'} hover:ring-2 cursor-pointer transition-all`} />
+                    {showProfileMenu && (
+                        <div className={`absolute top-12 right-0 w-80 ${darkMode ? 'bg-[#2d2e30] border-white/10' : 'bg-white border-black/10'} border rounded-3xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden`}>
+                            <div className={`${darkMode ? 'bg-[#1f1f1f] border-white/5' : 'bg-gray-50 border-black/5'} rounded-[20px] p-4 flex flex-col items-center mb-1 border relative`}>
+                                <div className={`absolute top-3 right-3 p-1 ${darkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'} rounded-full cursor-pointer`}><X size={16} className={subTextColor} onClick={() => setShowProfileMenu(false)}/></div>
+                                <img src={data.user.avatar} alt="Profile" className={`w-20 h-20 rounded-full border-4 ${darkMode ? 'border-[#2d2e30]' : 'border-white'} mb-2`} />
+                                <h3 className={`font-medium text-lg ${textColor}`}>{data.user.name}</h3>
+                                <p className={`${subTextColor} text-sm mb-4`}>{data.user.email}</p>
+                                <button className={`px-4 py-2 rounded-full border ${darkMode ? 'border-white/20 text-white/90 hover:bg-white/5' : 'border-black/20 text-black/80 hover:bg-black/5'} text-sm transition-colors`}>Gerenciar sua Conta do Google</button>
+                            </div>
+                            <div className="flex flex-col gap-1 p-1">
+                                <button className={`flex items-center gap-4 px-4 py-3 rounded-xl ${darkMode ? 'hover:bg-white/5 text-white/80' : 'hover:bg-black/5 text-black/80'} text-sm transition-colors text-left`}>
+                                    <div className="w-8 flex justify-center"><User size={20}/></div>
+                                    Adicionar outra conta
+                                </button>
+                                <button className={`flex items-center gap-4 px-4 py-3 rounded-xl ${darkMode ? 'hover:bg-white/5 text-white/80 border-t border-white/5' : 'hover:bg-black/5 text-black/80 border-t border-black/5'} text-sm transition-colors text-left`}>
+                                    <div className="w-8 flex justify-center"><LogOut size={20}/></div>
+                                    Sair de todas as contas
+                                </button>
+                                <div className={`flex justify-center gap-4 py-2 text-[10px] ${darkMode ? 'text-white/30' : 'text-black/30'}`}>
+                                    <span className="hover:opacity-80 cursor-pointer">Privacidade</span>
+                                    <span className={`w-1 h-1 ${darkMode ? 'bg-white/20' : 'bg-black/20'} rounded-full self-center`}></span>
+                                    <span className="hover:opacity-80 cursor-pointer">Termos</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </header>
 
         <div className="flex-1 relative w-full overflow-y-auto pr-2 custom-scrollbar">
-            {/* Widgets Grid */}
             <div className={`grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-min transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${aiMode ? 'opacity-30 scale-[0.98] blur-sm pointer-events-none' : 'opacity-100 scale-100 blur-0'}`}>
-                
-                {/* 2. GMAIL */}
                 <div className={`${glassCard} md:col-span-8 p-6 h-[320px] flex flex-col`}>
                     <div className="flex justify-between items-center mb-4">
-                       <span className="font-bold text-[#E3E3E3] text-sm">Caixa de Entrada</span>
+                       <span className={`font-bold ${textColor} text-sm`}>Caixa de Entrada</span>
                        <Mail size={18} className="text-[#EA4335]" />
                     </div>
                     <div className="space-y-2 flex-1 overflow-hidden">
                       {data.emails.slice(0, 4).map((e: any) => (
-                        <div key={e.id} onClick={() => openApp('mail')} className="p-2 hover:bg-white/5 rounded-2xl cursor-pointer group transition-colors border border-transparent hover:border-white/5">
+                        <div key={e.id} onClick={() => openApp('mail')} className={`p-2 ${darkMode ? 'hover:bg-white/5 border-transparent hover:border-white/5' : 'hover:bg-black/5 border-transparent hover:border-black/5'} rounded-2xl cursor-pointer group transition-colors border`}>
                            <div className="flex justify-between items-start mb-1">
-                              <span className="font-medium text-xs text-[#E3E3E3]">{e.sender}</span>
-                              <span className="text-[10px] text-white/40">{e.time}</span>
+                              <span className={`font-medium text-xs ${textColor}`}>{e.sender}</span>
+                              <span className={`text-[10px] ${subTextColor}`}>{e.time}</span>
                            </div>
-                           <p className="text-xs text-white/60 truncate group-hover:text-[#E3E3E3] transition-colors">{e.subject}</p>
+                           <p className={`text-xs ${subTextColor} truncate group-hover:${textColor} transition-colors`}>{e.subject}</p>
                         </div>
                       ))}
                     </div>
-                    <button onClick={() => openApp('mail')} className="w-full mt-2 py-2 text-xs text-[#EA4335] font-medium hover:bg-[#EA4335]/10 rounded-xl transition bg-[#EA4335]/5 border border-[#EA4335]/20">
-                      Escrever Email
-                    </button>
+                    <button onClick={() => openApp('mail')} className="w-full mt-2 py-2 text-xs text-[#EA4335] font-medium hover:bg-[#EA4335]/10 rounded-xl transition bg-[#EA4335]/5 border border-[#EA4335]/20">Escrever Email</button>
                 </div>
 
-                {/* 3. DRIVE */}
                 <div className={`${glassCard} md:col-span-4 p-6 flex flex-col h-[320px]`}>
                     <div className="flex justify-between items-center mb-4">
-                        <span className="text-white/60 text-xs font-bold uppercase">Meu Drive</span>
+                        <span className={`${subTextColor} text-xs font-bold uppercase`}>Meu Drive</span>
                         <HardDrive size={18} className="text-[#34A853]" />
                     </div>
                     <div className="space-y-2 flex-1 overflow-hidden">
                         {data.files.slice(0, 4).map((f: any) => (
-                          <div key={f.id} onClick={() => openApp(f.type, f)} className="flex items-center gap-2 p-2 rounded-xl hover:bg-white/5 cursor-pointer group transition-colors border border-transparent hover:border-white/5">
-                             <div className="p-1.5 bg-white/5 rounded-lg group-hover:bg-white/10">
-                               {getFileIcon(f.type)}
-                             </div>
+                          <div key={f.id} onClick={() => openApp(f.type, f)} className={`flex items-center gap-2 p-2 rounded-xl ${darkMode ? 'hover:bg-white/5 hover:border-white/5' : 'hover:bg-black/5 hover:border-black/5'} cursor-pointer group transition-colors border border-transparent`}>
+                             <div className={`p-1.5 ${darkMode ? 'bg-white/5 group-hover:bg-white/10' : 'bg-black/5 group-hover:bg-black/10'} rounded-lg`}>{getFileIcon(f.type)}</div>
                              <div className="overflow-hidden min-w-0">
-                               <p className="text-xs font-medium truncate text-[#E3E3E3] group-hover:text-blue-400 transition-colors">{f.name}</p>
-                               <p className="text-[10px] text-white/40 truncate">{f.date}</p>
+                               <p className={`text-xs font-medium truncate ${textColor} group-hover:text-blue-400 transition-colors`}>{f.name}</p>
+                               <p className={`text-[10px] ${subTextColor} truncate`}>{f.date}</p>
                              </div>
                           </div>
                         ))}
                     </div>
-                    <div className="mt-auto pt-2 border-t border-white/5">
-                        <div className="w-full bg-white/10 h-1 rounded-full overflow-hidden">
-                           <div className="bg-[#34A853] h-full w-[78%] rounded-full shadow-[0_0_10px_rgba(52,168,83,0.5)]"></div>
-                        </div>
+                    <div className={`mt-auto pt-2 border-t ${darkMode ? 'border-white/5' : 'border-black/5'}`}>
+                        <div className={`w-full ${darkMode ? 'bg-white/10' : 'bg-black/10'} h-1 rounded-full overflow-hidden`}><div className="bg-[#34A853] h-full w-[78%] rounded-full shadow-[0_0_10px_rgba(52,168,83,0.5)]"></div></div>
                     </div>
                 </div>
 
-                {/* 4. KEEP */}
                 <div className={`${glassCard} md:col-span-6 p-6 flex flex-col h-[280px]`}>
                     <div className="flex justify-between items-center mb-4">
-                        <span className="text-white/60 text-xs font-bold uppercase tracking-wider">Notas</span>
+                        <span className={`${subTextColor} text-xs font-bold uppercase tracking-wider`}>Notas</span>
                         <Lightbulb size={18} className="text-[#FBBC05]" />
                     </div>
                     <div className="flex-1 grid grid-cols-2 gap-3 overflow-hidden">
                         <div onClick={() => openApp('keep')} className={`p-3 rounded-2xl cursor-pointer flex flex-col items-center justify-center text-center transition-colors group ${glassInner}`}>
                             <Plus size={24} className="text-[#FBBC05] mb-2 group-hover:scale-110 transition-transform" />
-                            <span className="text-xs font-medium text-[#E3E3E3]">Nova Nota</span>
+                            <span className={`text-xs font-medium ${textColor}`}>Nova Nota</span>
                         </div>
-                        {data.notes && data.notes.slice(0, 3).map((note: any) => (
-                            <div key={note.id} onClick={() => openApp('keep')} className={`p-3 rounded-2xl cursor-pointer flex flex-col ${glassInner}`}>
-                                <h4 className="text-xs font-bold text-[#E3E3E3] mb-1 truncate">{note.title || "Sem título"}</h4>
-                                <p className="text-[10px] text-white/60 line-clamp-3 leading-relaxed">{note.content}</p>
-                            </div>
-                        ))}
+                        {data.notes && data.notes.slice(0, 3).map((note: any) => {
+                            const noteColorClass = keepColors[note.color || 'default']?.split(' ')[0] || (darkMode ? 'bg-white/5' : 'bg-black/5');
+                            const finalClass = noteColorClass.replace('bg-', 'bg-opacity-20 bg-') + (darkMode ? ' border border-white/5' : ' border border-black/5');
+                            return (
+                                <div key={note.id} onClick={() => openApp('keep')} className={`p-3 rounded-2xl cursor-pointer flex flex-col hover:brightness-110 transition-all ${finalClass}`}>
+                                    <h4 className={`text-xs font-bold ${textColor} mb-1 truncate`}>{note.title || "Sem título"}</h4>
+                                    <p className={`text-[10px] ${subTextColor} line-clamp-3 leading-relaxed`}>{note.content}</p>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
-                {/* 5. TASKS */}
                 <div className={`${glassCard} md:col-span-6 p-6 flex flex-col h-[280px]`}>
                     <div className="flex justify-between items-center mb-4">
-                        <span className="text-white/60 text-xs font-bold uppercase tracking-wider">Tarefas</span>
+                        <span className={`${subTextColor} text-xs font-bold uppercase tracking-wider`}>Tarefas</span>
                         <CheckCircle2 size={18} className="text-[#4E79F3]" />
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2">
                         {data.tasks && data.tasks.slice(0, 5).map((task: any) => (
-                            <div key={task.id} onClick={() => openApp('tasks')} className="group flex items-center gap-3 p-3 rounded-2xl hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/5">
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${task.completed ? 'bg-[#4E79F3] border-[#4E79F3]' : 'border-white/40 group-hover:border-white'}`}>
+                            <div key={task.id} onClick={() => openApp('tasks')} className={`group flex items-start gap-3 p-3 rounded-2xl ${darkMode ? 'hover:bg-white/5 hover:border-white/5' : 'hover:bg-black/5 hover:border-black/5'} cursor-pointer transition-colors border border-transparent`}>
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 mt-0.5 ${task.completed ? 'bg-[#4E79F3] border-[#4E79F3]' : `border-${darkMode ? 'white/40 group-hover:border-white' : 'black/20 group-hover:border-black/60'}`}`}>
                                     {task.completed && <CheckCircle2 size={14} className="text-white" />}
                                 </div>
-                                <span className={`text-sm flex-1 ${task.completed ? 'text-white/40 line-through' : 'text-[#E3E3E3]'}`}>
-                                    {task.title}
-                                </span>
+                                <div className="flex-1 min-w-0">
+                                    <span className={`text-sm block truncate ${task.completed ? `${subTextColor} line-through` : textColor}`}>{task.title}</span>
+                                    {task.date && (
+                                        <div className="flex items-center gap-1 mt-1 text-[10px] text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded-full w-fit">
+                                            <Calendar size={10} />
+                                            {new Date(task.date).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ))}
-                        <div onClick={() => openApp('tasks')} className="flex items-center gap-3 p-3 rounded-2xl hover:bg-white/5 cursor-pointer transition-colors text-white/60 hover:text-white border border-transparent hover:border-white/5">
+                        <div onClick={() => openApp('tasks')} className={`flex items-center gap-3 p-3 rounded-2xl ${darkMode ? 'hover:bg-white/5 hover:text-white hover:border-white/5 text-white/60' : 'hover:bg-black/5 hover:text-black hover:border-black/5 text-black/60'} cursor-pointer transition-colors border border-transparent`}>
                             <Plus size={20} />
                             <span className="text-sm font-medium">Adicionar tarefa</span>
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
 
-        {/* --- CHAT OVERLAY --- */}
         <div className={`absolute inset-0 w-full flex flex-col z-20 pointer-events-none ${aiMode ? 'pointer-events-auto' : ''}`}>
-            {/* ... chat overlay code ... */}
             <div className={`flex justify-end p-2 transition-opacity duration-500 ${aiMode ? 'opacity-100' : 'opacity-0'}`}>
-                <button onClick={() => setAiMode(false)} className="px-4 py-2 bg-black/60 backdrop-blur-xl border border-white/10 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition flex items-center gap-2 shadow-2xl">
+                <button onClick={() => setAiMode(false)} className={`px-4 py-2 ${darkMode ? 'bg-black/60 border-white/10 text-white/60 hover:text-white hover:bg-white/10' : 'bg-white/60 border-black/10 text-black/60 hover:text-black hover:bg-black/10'} backdrop-blur-xl border rounded-full transition flex items-center gap-2 shadow-2xl`}>
                     <span className="text-xs font-medium">Fechar Chat</span>
                     <X size={16} />
                 </button>
             </div>
             <div ref={chatContainerRef} className={`flex-1 overflow-y-auto px-4 md:px-20 py-4 scroll-smooth transition-all duration-700 ${aiMode ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-                {/* Chat content... */}
                 {chatHistory.map((msg, i) => (
                     <div key={i} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'} mb-6`}>
                         {msg.role === 'assistant' && (
-                            <div className="w-8 h-8 mr-3 rounded-full border border-white/10 flex items-center justify-center bg-black/40 backdrop-blur-md shrink-0">
+                            <div className={`w-8 h-8 mr-3 rounded-full border ${darkMode ? 'border-white/10 bg-black/40' : 'border-black/10 bg-white/40'} flex items-center justify-center backdrop-blur-md shrink-0`}>
                                 <GeminiLogo className="w-5 h-5" />
                             </div>
                         )}
-                        <div className={`max-w-[80%] p-4 rounded-2xl text-[15px] leading-relaxed shadow-lg backdrop-blur-md border border-white/5 ${msg.role === 'user' ? 'bg-[#4E79F3]/20 text-white rounded-tr-sm' : 'text-[#E3E3E3] bg-white/5 rounded-tl-sm'}`}>
-                            {msg.text}
+                        <div className={`max-w-[80%] p-4 rounded-2xl text-[15px] leading-relaxed shadow-lg backdrop-blur-md border ${msg.role === 'user' ? 'bg-[#4E79F3]/20 text-white rounded-tr-sm border-white/5' : (darkMode ? 'text-[#E3E3E3] bg-white/5 border-white/5' : 'text-black bg-white/60 border-black/5')} rounded-tl-sm flex flex-col gap-2`}>
+                            <div>{msg.text}</div>
+                            {msg.sources && msg.sources.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {msg.sources.slice(0, 4).map((source, idx) => (
+                                        <a 
+                                            key={idx} 
+                                            href={source.web?.uri} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 p-2 rounded bg-black/20 hover:bg-black/30 transition-colors border border-white/5 group"
+                                        >
+                                            <div className="p-1 bg-white/5 rounded-full"><Globe size={10} className="text-blue-400"/></div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[10px] font-medium truncate text-blue-300 group-hover:underline">{source.web?.title}</p>
+                                                <p className="text-[9px] text-white/40 truncate">{source.web?.uri}</p>
+                                            </div>
+                                            <ExternalLink size={10} className="text-white/20"/>
+                                        </a>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))}
-                {isTyping && <div className="text-white/40 pl-14 text-xs animate-pulse">Gemini está digitando...</div>}
+                {isTyping && <div className={`${subTextColor} pl-14 text-xs animate-pulse`}>Gemini está digitando...</div>}
                 <div className="h-24"></div> 
             </div>
         </div>
 
-        {/* BARRA DE ENTRADA CHAT */}
         <div className={`absolute left-0 right-0 mx-auto w-full max-w-3xl z-30 transition-all duration-[800ms] ease-[cubic-bezier(0.23,1,0.32,1)] ${aiMode ? 'bottom-8 opacity-100 translate-y-0 pointer-events-auto' : 'bottom-[-100px] opacity-0 translate-y-10 pointer-events-none'}`}>
             <div className={`relative w-full rounded-full group transition-all duration-500 shadow-[0_0_50px_rgba(78,121,243,0.3)]`}>
                 <div className={`absolute -inset-[2px] rounded-[32px] overflow-hidden pointer-events-none transition-opacity duration-500 ${aiMode && isInputFocused ? 'opacity-100' : 'opacity-0'}`}>
                     <div className="absolute top-1/2 left-1/2 w-[200%] h-[200%] -translate-x-1/2 -translate-y-1/2 animate-[spin_3s_linear_infinite]" style={{ background: 'conic-gradient(from 0deg, transparent 0 340deg, #4285F4 345deg, #EA4335 350deg, #FBBC05 355deg, #34A853 360deg)' }}></div>
                 </div>
-                <div className={`relative flex items-center w-full transition-all duration-300 bg-black/60 backdrop-blur-2xl rounded-full border border-white/10 h-16 px-2`}>
-                    <button className={`p-3 rounded-full transition-colors bg-white/10 hover:bg-white/20 text-white ml-1`}><Plus size={24} /></button>
-                    <input ref={inputRef} type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Digite uma mensagem para o Gemini..." className="flex-1 bg-transparent border-none outline-none text-[#E3E3E3] px-3 h-12 placeholder:text-white/40 text-base" onFocus={() => setIsInputFocused(true)} onBlur={() => setIsInputFocused(false)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} />
+                <div className={`relative flex items-center w-full transition-all duration-300 ${darkMode ? 'bg-black/60 border-white/10' : 'bg-white/60 border-black/10'} backdrop-blur-2xl rounded-full border h-16 px-2`}>
+                    <button className={`p-3 rounded-full transition-colors ${darkMode ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-black/5 hover:bg-black/10 text-black'} ml-1`}><Plus size={24} /></button>
+                    <input ref={inputRef} type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Digite uma mensagem ou comando (ex: criar documento)..." className={`flex-1 bg-transparent border-none outline-none ${darkMode ? 'text-[#E3E3E3] placeholder:text-white/40' : 'text-[#202124] placeholder:text-black/40'} px-3 h-12 text-base`} onFocus={() => setIsInputFocused(true)} onBlur={() => setIsInputFocused(false)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} />
                     <div className="flex items-center gap-1 pr-1">
-                        {searchQuery && <button onClick={(e) => { e.stopPropagation(); handleSendMessage(); }} className="p-2.5 bg-white text-black hover:bg-gray-200 rounded-full transition shadow-lg mr-1"><ArrowRight size={20} /></button>}
+                        {searchQuery && <button onClick={(e) => { e.stopPropagation(); handleSendMessage(); }} className="p-2.5 bg-[#4E79F3] text-white hover:bg-blue-600 rounded-full transition shadow-lg mr-1"><ArrowRight size={20} /></button>}
                     </div>
                 </div>
             </div>

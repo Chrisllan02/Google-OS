@@ -1,7 +1,6 @@
 import React from 'react';
 
 const loaderStyles = `
-/* --- CONFIGURAÇÕES GERAIS --- */
 .google-loader-container {
     margin: 0;
     padding: 0;
@@ -32,7 +31,6 @@ const loaderStyles = `
     margin-bottom: 5px; 
 }
 
-/* --- WRAPPER DAS BOLINHAS --- */
 .balls-wrapper {
     position: absolute;
     display: flex;
@@ -42,7 +40,6 @@ const loaderStyles = `
     height: 100%;
 }
 
-/* CONTAINER DE POSIÇÃO (Eixo X) */
 .ball-pos {
     margin: 0 12px;
     width: 20px;
@@ -50,23 +47,17 @@ const loaderStyles = `
     animation: moveX 8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 
-/* BOLINHA VISUAL (Eixo Y + Escala) */
 .ball {
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    
     backdrop-filter: blur(0px);
     background-color: var(--bg-color);
     border: 1px solid rgba(255, 255, 255, 0.4);
     box-shadow: 0 0 12px var(--glow-color);
-    
-    animation: 
-        bounceY 1.2s ease-in-out infinite, 
-        scaleBalls 8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+    animation: bounceY 1.2s ease-in-out infinite, scaleBalls 8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 
-/* --- CORES E DISTÂNCIAS --- */
 .pos-blue   { --offset: 66px; } 
 .pos-red    { --offset: 22px; }
 .pos-yellow { --offset: -22px; }
@@ -76,8 +67,6 @@ const loaderStyles = `
 .red    { --glow-color: #ea4436; --bg-color: rgba(234, 68, 54, 0.95); animation-delay: 0.1s; }
 .yellow { --glow-color: #fbbd06; --bg-color: rgba(251, 189, 6, 0.95); animation-delay: 0.2s; }
 .green  { --glow-color: #34a952; --bg-color: rgba(52, 169, 82, 0.95); animation-delay: 0.3s; }
-
-/* --- KEYFRAMES FLUIDOS --- */
 
 @keyframes moveX {
     0% { transform: translateX(0); }
@@ -101,7 +90,6 @@ const loaderStyles = `
     50% { transform: translateY(-12px); }
 }
 
-/* --- ÍCONE G --- */
 .icons-wrapper {
     position: absolute;
     width: 100%;
@@ -137,47 +125,18 @@ const loaderStyles = `
     mask-size: contain;
     -webkit-mask-position: center;
     mask-position: center;
-
     background: conic-gradient(from 45deg, #4285f5 0%, #ea4436 25%, #fbbd06 50%, #34a952 75%, #4285f5 100%);
-    
-    /* BRILHO AUMENTADO: 3 Camadas de Drop-Shadow */
-    /* 1. Brilho branco intenso no centro (núcleo) */
-    /* 2. Brilho azulado médio */
-    /* 3. Aura ampla e difusa */
-    filter: 
-        drop-shadow(0 0 5px rgba(255, 255, 255, 1)) 
-        drop-shadow(0 0 20px rgba(66, 133, 245, 0.8)) 
-        drop-shadow(0 0 40px rgba(66, 133, 245, 0.4));
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 1)) drop-shadow(0 0 20px rgba(66, 133, 245, 0.8)) drop-shadow(0 0 40px rgba(66, 133, 245, 0.4));
 }
 
-/* Transição do G */
 @keyframes googleTransition {
-    0%, 40% { 
-        opacity: 0; 
-        transform: scale(0) rotate(-180deg); 
-    }
-    45% { 
-        opacity: 1; 
-        transform: scale(1); 
-        filter: blur(0px);
-    }
-    85% { 
-        opacity: 1; 
-        transform: scale(1) rotate(0deg); 
-    }
-    90% { 
-        opacity: 0; 
-        transform: scale(0.2) rotate(180deg); 
-        filter: blur(0px);
-    }
-    100% { 
-        opacity: 0; 
-        transform: scale(0); 
-    }
+    0%, 40% { opacity: 0; transform: scale(0) rotate(-180deg); }
+    45% { opacity: 1; transform: scale(1); filter: blur(0px); }
+    85% { opacity: 1; transform: scale(1) rotate(0deg); }
+    90% { opacity: 0; transform: scale(0.2) rotate(180deg); filter: blur(0px); }
+    100% { opacity: 0; transform: scale(0); }
 }
 
-
-/* --- TEXTO DE CARREGAMENTO --- */
 .card {
     background-color: transparent; 
     padding: 0; 
@@ -192,8 +151,6 @@ const loaderStyles = `
     font-family: "Poppins", sans-serif;
     font-weight: 500;
     font-size: 18px; 
-    -webkit-box-sizing: content-box;
-    box-sizing: content-box;
     height: 30px; 
     display: flex;
     align-items: center; 
@@ -201,13 +158,7 @@ const loaderStyles = `
     width: 300px;
 }
 
-.loader p {
-    margin: 0;
-    padding-right: 12px;
-    line-height: 30px; 
-    text-align: right; 
-    flex: 1; 
-}
+.loader p { margin: 0; padding-right: 12px; line-height: 30px; text-align: right; flex: 1; }
 
 .words {
     overflow: hidden;
@@ -216,19 +167,14 @@ const loaderStyles = `
     flex-direction: column;
     text-align: left;
     flex: 1;
-    position: relative; /* Ensure ::after is positioned relative to this */
+    position: relative;
 }
 
 .words::after {
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-        #050505 0%,
-        transparent 25%,
-        transparent 75%,
-        #050505 100%
-    );
+    background: linear-gradient(#050505 0%, transparent 25%, transparent 75%, #050505 100%);
     z-index: 20;
 }
 
@@ -261,30 +207,18 @@ export default function GoogleLoader() {
         <style>{loaderStyles}</style>
         <div className="google-loader-container">
             <div className="visual-container">
-                {/* Wrapper das Bolinhas */}
                 <div className="balls-wrapper">
-                    <div className="ball-pos pos-blue">
-                        <div className="ball blue"></div>
-                    </div>
-                    <div className="ball-pos pos-red">
-                        <div className="ball red"></div>
-                    </div>
-                    <div className="ball-pos pos-yellow">
-                        <div className="ball yellow"></div>
-                    </div>
-                    <div className="ball-pos pos-green">
-                        <div className="ball green"></div>
-                    </div>
+                    <div className="ball-pos pos-blue"><div className="ball blue"></div></div>
+                    <div className="ball-pos pos-red"><div className="ball red"></div></div>
+                    <div className="ball-pos pos-yellow"><div className="ball yellow"></div></div>
+                    <div className="ball-pos pos-green"><div className="ball green"></div></div>
                 </div>
-
-                {/* Wrapper do Ícone G */}
                 <div className="icons-wrapper">
                     <div className="icon-box google-icon">
                         <div className="neon-mask g-mask"></div>
                     </div>
                 </div>
             </div>
-
             <div className="card">
                 <div className="loader">
                     <p>Carregando</p>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import MailApp from './apps/MailApp';
 import DriveApp from './apps/DriveApp';
@@ -21,15 +20,13 @@ interface AppViewerProps {
   showToast?: (msg: string) => void;
   toggleTheme?: () => void;
   isDarkMode?: boolean;
+  onUpdateTheme?: (settings: any) => void;
 }
 
-export default function AppViewer({ type, onClose, data, searchQuery, onOpenApp, onUpdateTasks, onUpdateNotes, showToast, toggleTheme, isDarkMode }: AppViewerProps) {
+export default function AppViewer({ type, onClose, data, searchQuery, onOpenApp, onUpdateTasks, onUpdateNotes, showToast, toggleTheme, isDarkMode, onUpdateTheme }: AppViewerProps) {
   const glassContainer = isDarkMode 
     ? "bg-black/60 backdrop-blur-3xl border border-white/10 shadow-2xl text-white" 
     : "bg-white/80 backdrop-blur-3xl border border-black/10 shadow-2xl text-black";
-
-  // Helper to safely call toast if it exists
-  const safeToast = (msg: string) => showToast && showToast(msg);
 
   const renderApp = () => {
     switch (type) {
@@ -43,7 +40,7 @@ export default function AppViewer({ type, onClose, data, searchQuery, onOpenApp,
         case 'keep': return <KeepApp onClose={onClose} data={data} onUpdate={onUpdateNotes} showToast={showToast} />;
         case 'tasks': return <TasksApp onClose={onClose} data={data} onUpdate={onUpdateTasks} showToast={showToast} />;
         case 'search': return <SearchApp onClose={onClose} data={data} searchQuery={searchQuery} onOpenApp={onOpenApp} />;
-        case 'settings': return <SettingsApp onClose={onClose} data={data} toggleTheme={toggleTheme} isDarkMode={isDarkMode} showToast={showToast} />;
+        case 'settings': return <SettingsApp onClose={onClose} data={data} toggleTheme={toggleTheme} isDarkMode={isDarkMode} showToast={showToast} onUpdateTheme={onUpdateTheme} />;
         default: return null;
     }
   };

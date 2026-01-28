@@ -3,8 +3,7 @@ import React, { useState } from 'react';
 import { 
   User, Moon, Bell, Shield, HardDrive, 
   LogOut, X, ChevronRight, ToggleLeft, ToggleRight,
-  Monitor, Smartphone, Globe, RefreshCcw, CreditCard, Laptop,
-  Mail, Calendar
+  Monitor, Mail, Calendar, Palette
 } from 'lucide-react';
 
 interface SettingsAppProps {
@@ -13,14 +12,14 @@ interface SettingsAppProps {
   toggleTheme?: () => void;
   isDarkMode?: boolean;
   showToast?: (msg: string) => void;
+  onUpdateTheme?: (settings: any) => void;
 }
 
-export default function SettingsApp({ onClose, data, toggleTheme, isDarkMode, showToast }: SettingsAppProps) {
+export default function SettingsApp({ onClose, data, toggleTheme, isDarkMode, showToast, onUpdateTheme }: SettingsAppProps) {
   const [activeTab, setActiveTab] = useState('profile');
   const [emailNotif, setEmailNotif] = useState(true);
   const [calNotif, setCalNotif] = useState(true);
 
-  // Helper function for toast
   const toast = (msg: string) => showToast && showToast(msg);
 
   const handleToggleTheme = () => {
@@ -34,6 +33,13 @@ export default function SettingsApp({ onClose, data, toggleTheme, isDarkMode, sh
   const handleToggleNotification = (setting: string, setter: (val: boolean) => void, val: boolean) => {
       setter(!val);
       toast(`Notificações de ${setting} ${!val ? 'ativadas' : 'desativadas'}`);
+  };
+
+  const changeAurora = (colors: string[], name: string) => {
+      if (onUpdateTheme) {
+          onUpdateTheme({ colorStops: colors, speed: 0.5 });
+          toast(`Tema ${name} aplicado`);
+      }
   };
 
   const tabs = [
@@ -142,7 +148,7 @@ export default function SettingsApp({ onClose, data, toggleTheme, isDarkMode, sh
             )}
 
             {activeTab === 'appearance' && (
-              <div className="space-y-6">
+              <div className="space-y-8">
                 <div className={`${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200'} rounded-2xl border p-5 flex items-center justify-between shadow-sm`}>
                   <div className="flex items-center gap-4">
                     <div className={`p-3 ${isDarkMode ? 'bg-white/10' : 'bg-blue-50'} rounded-full`}>
@@ -158,18 +164,31 @@ export default function SettingsApp({ onClose, data, toggleTheme, isDarkMode, sh
                   </button>
                 </div>
                 
-                <h4 className={`text-xs font-bold ${isDarkMode ? 'text-white/40' : 'text-gray-400'} uppercase tracking-wider px-2`}>Tema do Sistema</h4>
-                <div className="grid grid-cols-3 gap-4">
-                   <div onClick={() => !isDarkMode && handleToggleTheme()} className={`aspect-video rounded-xl border-2 cursor-pointer transition-all bg-[#191919] relative overflow-hidden group ${isDarkMode ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-transparent opacity-60 hover:opacity-100'}`}>
-                       <div className="absolute inset-x-4 top-4 bottom-0 bg-[#2d2e30] rounded-t-lg border-t border-x border-white/10"></div>
-                       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-white text-xs font-medium">Escuro</div>
-                   </div>
-                   <div onClick={() => isDarkMode && handleToggleTheme()} className={`aspect-video rounded-xl border-2 cursor-pointer transition-all bg-[#F0F2F5] relative overflow-hidden group ${!isDarkMode ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-transparent opacity-60 hover:opacity-100'}`}>
-                       <div className="absolute inset-x-4 top-4 bottom-0 bg-white rounded-t-lg border-t border-x border-gray-200 shadow-sm"></div>
-                       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-gray-800 text-xs font-medium">Claro</div>
-                   </div>
-                   <div className={`aspect-video rounded-xl border-2 cursor-pointer transition-all bg-gradient-to-br from-[#191919] to-[#F0F2F5] relative overflow-hidden opacity-50`}>
-                        <div className="absolute inset-0 flex items-center justify-center text-xs font-medium bg-black/10 backdrop-blur-sm">Automático</div>
+                {/* Aurora Theme Picker */}
+                <div>
+                   <h4 className={`text-xs font-bold ${isDarkMode ? 'text-white/40' : 'text-gray-400'} uppercase tracking-wider px-2 mb-4 flex items-center gap-2`}><Palette size={14}/> Plano de Fundo (Aurora)</h4>
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                       <div 
+                           onClick={() => changeAurora(["#4285F4", "#34A853", "#EA4335"], "Google Padrão")} 
+                           className="aspect-video rounded-xl border-2 border-transparent hover:border-blue-500 cursor-pointer overflow-hidden relative group"
+                       >
+                           <div className="absolute inset-0 bg-gradient-to-br from-[#4285F4] via-[#34A853] to-[#EA4335] opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                           <span className="absolute bottom-2 left-2 text-xs font-medium text-white shadow-sm">Google Padrão</span>
+                       </div>
+                       <div 
+                           onClick={() => changeAurora(["#8E24AA", "#D81B60", "#F4511E"], "Nebulosa")} 
+                           className="aspect-video rounded-xl border-2 border-transparent hover:border-blue-500 cursor-pointer overflow-hidden relative group"
+                       >
+                           <div className="absolute inset-0 bg-gradient-to-br from-[#8E24AA] via-[#D81B60] to-[#F4511E] opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                           <span className="absolute bottom-2 left-2 text-xs font-medium text-white shadow-sm">Nebulosa</span>
+                       </div>
+                       <div 
+                           onClick={() => changeAurora(["#006064", "#00838F", "#0097A7"], "Oceano")} 
+                           className="aspect-video rounded-xl border-2 border-transparent hover:border-blue-500 cursor-pointer overflow-hidden relative group"
+                       >
+                           <div className="absolute inset-0 bg-gradient-to-br from-[#006064] via-[#00838F] to-[#0097A7] opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                           <span className="absolute bottom-2 left-2 text-xs font-medium text-white shadow-sm">Oceano</span>
+                       </div>
                    </div>
                 </div>
               </div>

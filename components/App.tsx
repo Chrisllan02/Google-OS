@@ -54,7 +54,9 @@ export default function App() {
 
   // Global Settings
   const [darkMode, setDarkMode] = useState(true);
+  const [auroraSettings, setAuroraSettings] = useState({ colorStops: ["#4285F4", "#34A853", "#EA4335"], speed: 0.5 });
   const [toasts, setToasts] = useState<{id: number, message: string}[]>([]);
+  
   // Notifications state
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<{id: number, title: string, text: string, time: string, read: boolean}[]>([
@@ -85,7 +87,7 @@ export default function App() {
             chatSession.current = aiClient.current.chats.create({
                 model: 'gemini-3-flash-preview',
                 config: {
-                    systemInstruction: "Você é um assistente inteligente do Google Workspace OS. Você ajuda o usuário a gerenciar seus e-mails, arquivos do Drive, agenda e tarefas. Seja conciso, útil e amigável. Use formatação Markdown simples quando necessário.",
+                    systemInstruction: "Você é um assistente inteligente do Google Workspace OS. Você tem acesso aos dados do usuário (e-mails, arquivos, agenda) através do contexto fornecido em cada mensagem. Use essas informações para responder perguntas sobre a agenda, documentos e comunicações do usuário. Seja conciso, útil e amigável. Se a pergunta for sobre conhecimentos gerais, use seu conhecimento ou a ferramenta de busca.",
                     tools: [{googleSearch: {}}] // Enable Grounding
                 },
             });
@@ -221,14 +223,40 @@ export default function App() {
         return;
     }
 
-    // 2. Call Gemini API
+    // 2. Perform RAG (Retrieval)
     setIsTyping(true);
+    let ragContext = "";
+    try {
+        const workspaceData = await bridge.searchAll(text); // Basic search for keywords
+        
+        // Construct Context Block if data found
+        if (workspaceData.emails.length > 0 || workspaceData.files.length > 0 || workspaceData.events.length > 0) {
+            ragContext = "CONTEXTO DO WORKSPACE ENCONTRADO:\n";
+            if (workspaceData.emails.length) {
+                ragContext += "E-mails:\n" + workspaceData.emails.map(e => `- De: ${e.sender}, Assunto: ${e.subject}, Data: ${e.time}, Resumo: ${e.preview}`).join('\n') + "\n";
+            }
+            if (workspaceData.files.length) {
+                ragContext += "Arquivos:\n" + workspaceData.files.map(f => `- Nome: ${f.name}, Tipo: ${f.type}, Data: ${f.date}`).join('\n') + "\n";
+            }
+            if (workspaceData.events.length) {
+                ragContext += "Eventos:\n" + workspaceData.events.map(e => `- Título: ${e.title}, Início: ${e.start}`).join('\n') + "\n";
+            }
+            ragContext += "\nFIM DO CONTEXTO. Use estas informações para responder se relevante.\n\n";
+        }
+    } catch(e) {
+        console.warn("RAG search failed, proceeding without context");
+    }
+
+    // 3. Call Gemini API
     try {
         if (!chatSession.current) throw new Error("Chat session not initialized");
 
         setChatHistory(prev => [...prev, { role: 'assistant', text: '' }]);
 
-        const result = await chatSession.current.sendMessage({ message: text });
+        // Combine Context + User Query
+        const fullPrompt = ragContext + text;
+
+        const result = await chatSession.current.sendMessage({ message: fullPrompt });
         
         // Extract grounding
         const sources = result.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
@@ -318,7 +346,7 @@ export default function App() {
       
       {/* Aurora Background Fixed Top */}
       <div className={`fixed top-0 left-0 right-0 h-[600px] z-0 pointer-events-none transition-opacity duration-1000 ${aiMode ? 'opacity-30' : 'opacity-100'}`}>
-          <Aurora colorStops={["#4285F4", "#34A853", "#EA4335"]} speed={0.5} amplitude={1.2} />
+          <Aurora colorStops={auroraSettings.colorStops} speed={auroraSettings.speed} amplitude={1.2} />
           <div className={`absolute inset-0 bg-gradient-to-b from-transparent ${darkMode ? 'via-[#050505]/40 to-[#050505]' : 'via-[#F0F2F5]/40 to-[#F0F2F5]'}`}></div>
       </div>
 
@@ -344,6 +372,7 @@ export default function App() {
               showToast={addToast}
               toggleTheme={() => setDarkMode(!darkMode)}
               isDarkMode={darkMode}
+              onUpdateTheme={(settings: any) => setAuroraSettings(settings)}
           />
       )}
 
@@ -409,14 +438,7 @@ export default function App() {
                                 style={{ backgroundColor: isActive ? (darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)') : undefined }}
                             >
                                 <div 
-                                    className={`
-                                        transition-all duration-400 ease-[cubic-bezier(0.25,1,0.5,1)]
-                                        ${isActive ? 'scale-110 -translate-y-1' : 'scale-100 translate-y-0'} 
-                                        ${isActive 
-                                            ? 'filter-none opacity-100 drop-shadow-[0_0_12px_rgba(255,255,255,0.3)]' 
-                                            : `grayscale brightness-[2.5] contrast-125 opacity-70 drop-shadow-[0_2px_4px_rgba(255,255,255,0.1)] group-hover:filter-none group-hover:grayscale-0 group-hover:brightness-100 group-hover:opacity-100 group-hover:drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] group-hover:scale-110 group-hover:-translate-y-1`
-                                        }
-                                    `}
+                                    className={`transition-all duration-400 ease-[cubic-bezier(0.25,1,0.5,1)] ${isActive ? 'scale-110 -translate-y-1' : 'scale-100 translate-y-0'} ${isActive ? 'filter-none opacity-100 drop-shadow-[0_0_12px_rgba(255,255,255,0.3)]' : `grayscale brightness-[2.5] contrast-125 opacity-70 drop-shadow-[0_2px_4px_rgba(255,255,255,0.1)] group-hover:filter-none group-hover:grayscale-0 group-hover:brightness-100 group-hover:opacity-100 group-hover:drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] group-hover:scale-110 group-hover:-translate-y-1`}`}
                                     style={{ color: iconColor }}
                                 >
                                     {app.id === 'search' ? (
@@ -457,12 +479,9 @@ export default function App() {
                     <span>{data.weather.temp}</span>
                 </div>
                 
-                {/* NOTIFICATIONS TRAY TRIGGER */}
+                {/* NOTIFICATIONS */}
                 <div className="relative" ref={notificationRef}>
-                     <button 
-                         onClick={() => setShowNotifications(!showNotifications)}
-                         className={`p-2 rounded-full border border-transparent relative ${darkMode ? 'hover:bg-white/10 hover:border-white/10' : 'hover:bg-black/5 hover:border-black/5'} ${textColor} backdrop-blur-sm transition-all`}
-                     >
+                     <button onClick={() => setShowNotifications(!showNotifications)} className={`p-2 rounded-full border border-transparent relative ${darkMode ? 'hover:bg-white/10 hover:border-white/10' : 'hover:bg-black/5 hover:border-black/5'} ${textColor} backdrop-blur-sm transition-all`}>
                          <Bell size={20} />
                          {notifications.some(n => !n.read) && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#EA4335] rounded-full"></span>}
                      </button>
@@ -473,26 +492,16 @@ export default function App() {
                                 <button className={`text-xs ${subTextColor} hover:text-blue-400`} onClick={() => setNotifications([])}>Limpar tudo</button>
                             </div>
                             <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-2 space-y-1">
-                                {notifications.length === 0 ? (
-                                    <div className={`p-6 text-center text-xs ${subTextColor}`}>Nenhuma notificação nova</div>
-                                ) : (
-                                    notifications.map(n => (
-                                        <div key={n.id} className={`p-3 rounded-xl flex items-start gap-3 ${darkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors relative group`}>
-                                            <div className="p-2 bg-[#4E79F3]/10 rounded-full text-[#4E79F3]"><Info size={16}/></div>
-                                            <div className="flex-1">
-                                                <div className="flex justify-between items-baseline">
-                                                    <h4 className={`text-sm font-medium ${textColor}`}>{n.title}</h4>
-                                                    <span className={`text-[10px] ${subTextColor}`}>{n.time}</span>
-                                                </div>
-                                                <p className={`text-xs ${subTextColor} mt-0.5 leading-relaxed`}>{n.text}</p>
-                                            </div>
-                                            <button 
-                                                onClick={(e) => { e.stopPropagation(); setNotifications(prev => prev.filter(item => item.id !== n.id)); }}
-                                                className="absolute top-2 right-2 p-1 text-white/20 hover:text-white opacity-0 group-hover:opacity-100 transition-all"
-                                            ><X size={12}/></button>
+                                {notifications.length === 0 ? <div className={`p-6 text-center text-xs ${subTextColor}`}>Nenhuma notificação nova</div> : notifications.map(n => (
+                                    <div key={n.id} className={`p-3 rounded-xl flex items-start gap-3 ${darkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors relative group`}>
+                                        <div className="p-2 bg-[#4E79F3]/10 rounded-full text-[#4E79F3]"><Info size={16}/></div>
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-baseline"><h4 className={`text-sm font-medium ${textColor}`}>{n.title}</h4><span className={`text-[10px] ${subTextColor}`}>{n.time}</span></div>
+                                            <p className={`text-xs ${subTextColor} mt-0.5 leading-relaxed`}>{n.text}</p>
                                         </div>
-                                    ))
-                                )}
+                                        <button onClick={(e) => { e.stopPropagation(); setNotifications(prev => prev.filter(item => item.id !== n.id)); }} className="absolute top-2 right-2 p-1 text-white/20 hover:text-white opacity-0 group-hover:opacity-100 transition-all"><X size={12}/></button>
+                                    </div>
+                                ))}
                             </div>
                          </div>
                      )}
@@ -500,10 +509,7 @@ export default function App() {
 
                 {/* APP LAUNCHER */}
                 <div className="relative" ref={launcherRef}>
-                    <button 
-                        onClick={() => setShowAppLauncher(!showAppLauncher)} 
-                        className={`p-2 rounded-full border border-transparent ${darkMode ? 'hover:bg-white/10 hover:border-white/10' : 'hover:bg-black/5 hover:border-black/5'} ${textColor} backdrop-blur-sm transition-all ${showAppLauncher ? (darkMode ? 'bg-white/10' : 'bg-black/5') : ''}`}
-                    >
+                    <button onClick={() => setShowAppLauncher(!showAppLauncher)} className={`p-2 rounded-full border border-transparent ${darkMode ? 'hover:bg-white/10 hover:border-white/10' : 'hover:bg-black/5 hover:border-black/5'} ${textColor} backdrop-blur-sm transition-all ${showAppLauncher ? (darkMode ? 'bg-white/10' : 'bg-black/5') : ''}`}>
                         <LayoutGrid size={20} />
                     </button>
                     {showAppLauncher && (
@@ -520,12 +526,7 @@ export default function App() {
 
                 {/* USER PROFILE */}
                 <div className="relative" ref={profileRef}>
-                    <img 
-                        src={data.user.avatar} 
-                        alt="Profile" 
-                        onClick={() => setShowProfileMenu(!showProfileMenu)}
-                        className={`w-9 h-9 rounded-full border ${darkMode ? 'border-white/20 hover:ring-white/20' : 'border-black/10 hover:ring-black/10'} hover:ring-2 cursor-pointer transition-all`} 
-                    />
+                    <img src={data.user.avatar} alt="Profile" onClick={() => setShowProfileMenu(!showProfileMenu)} className={`w-9 h-9 rounded-full border ${darkMode ? 'border-white/20 hover:ring-white/20' : 'border-black/10 hover:ring-black/10'} hover:ring-2 cursor-pointer transition-all`} />
                     {showProfileMenu && (
                         <div className={`absolute top-12 right-0 w-80 ${darkMode ? 'bg-[#2d2e30] border-white/10' : 'bg-white border-black/10'} border rounded-3xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden`}>
                             <div className={`${darkMode ? 'bg-[#1f1f1f] border-white/5' : 'bg-gray-50 border-black/5'} rounded-[20px] p-4 flex flex-col items-center mb-1 border relative`}>
@@ -557,10 +558,8 @@ export default function App() {
         </header>
 
         <div className="flex-1 relative w-full overflow-y-auto pr-2 custom-scrollbar">
-            {/* Widgets Grid */}
             <div className={`grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-min transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${aiMode ? 'opacity-30 scale-[0.98] blur-sm pointer-events-none' : 'opacity-100 scale-100 blur-0'}`}>
-                
-                {/* 2. GMAIL */}
+                {/* WIDGETS (Mail, Drive, etc) */}
                 <div className={`${glassCard} md:col-span-8 p-6 h-[320px] flex flex-col`}>
                     <div className="flex justify-between items-center mb-4">
                        <span className={`font-bold ${textColor} text-sm`}>Caixa de Entrada</span>
@@ -577,12 +576,9 @@ export default function App() {
                         </div>
                       ))}
                     </div>
-                    <button onClick={() => openApp('mail')} className="w-full mt-2 py-2 text-xs text-[#EA4335] font-medium hover:bg-[#EA4335]/10 rounded-xl transition bg-[#EA4335]/5 border border-[#EA4335]/20">
-                      Escrever Email
-                    </button>
+                    <button onClick={() => openApp('mail')} className="w-full mt-2 py-2 text-xs text-[#EA4335] font-medium hover:bg-[#EA4335]/10 rounded-xl transition bg-[#EA4335]/5 border border-[#EA4335]/20">Escrever Email</button>
                 </div>
 
-                {/* 3. DRIVE */}
                 <div className={`${glassCard} md:col-span-4 p-6 flex flex-col h-[320px]`}>
                     <div className="flex justify-between items-center mb-4">
                         <span className={`${subTextColor} text-xs font-bold uppercase`}>Meu Drive</span>
@@ -591,9 +587,7 @@ export default function App() {
                     <div className="space-y-2 flex-1 overflow-hidden">
                         {data.files.slice(0, 4).map((f: any) => (
                           <div key={f.id} onClick={() => openApp(f.type, f)} className={`flex items-center gap-2 p-2 rounded-xl ${darkMode ? 'hover:bg-white/5 hover:border-white/5' : 'hover:bg-black/5 hover:border-black/5'} cursor-pointer group transition-colors border border-transparent`}>
-                             <div className={`p-1.5 ${darkMode ? 'bg-white/5 group-hover:bg-white/10' : 'bg-black/5 group-hover:bg-black/10'} rounded-lg`}>
-                               {getFileIcon(f.type)}
-                             </div>
+                             <div className={`p-1.5 ${darkMode ? 'bg-white/5 group-hover:bg-white/10' : 'bg-black/5 group-hover:bg-black/10'} rounded-lg`}>{getFileIcon(f.type)}</div>
                              <div className="overflow-hidden min-w-0">
                                <p className={`text-xs font-medium truncate ${textColor} group-hover:text-blue-400 transition-colors`}>{f.name}</p>
                                <p className={`text-[10px] ${subTextColor} truncate`}>{f.date}</p>
@@ -602,13 +596,10 @@ export default function App() {
                         ))}
                     </div>
                     <div className={`mt-auto pt-2 border-t ${darkMode ? 'border-white/5' : 'border-black/5'}`}>
-                        <div className={`w-full ${darkMode ? 'bg-white/10' : 'bg-black/10'} h-1 rounded-full overflow-hidden`}>
-                           <div className="bg-[#34A853] h-full w-[78%] rounded-full shadow-[0_0_10px_rgba(52,168,83,0.5)]"></div>
-                        </div>
+                        <div className={`w-full ${darkMode ? 'bg-white/10' : 'bg-black/10'} h-1 rounded-full overflow-hidden`}><div className="bg-[#34A853] h-full w-[78%] rounded-full shadow-[0_0_10px_rgba(52,168,83,0.5)]"></div></div>
                     </div>
                 </div>
 
-                {/* 4. KEEP */}
                 <div className={`${glassCard} md:col-span-6 p-6 flex flex-col h-[280px]`}>
                     <div className="flex justify-between items-center mb-4">
                         <span className={`${subTextColor} text-xs font-bold uppercase tracking-wider`}>Notas</span>
@@ -620,11 +611,8 @@ export default function App() {
                             <span className={`text-xs font-medium ${textColor}`}>Nova Nota</span>
                         </div>
                         {data.notes && data.notes.slice(0, 3).map((note: any) => {
-                            // Map Keep color to tailwind class or default style
                             const noteColorClass = keepColors[note.color || 'default']?.split(' ')[0] || (darkMode ? 'bg-white/5' : 'bg-black/5');
-                            // Remove border from class string if needed for dashboard consistency
                             const finalClass = noteColorClass.replace('bg-', 'bg-opacity-20 bg-') + (darkMode ? ' border border-white/5' : ' border border-black/5');
-                            
                             return (
                                 <div key={note.id} onClick={() => openApp('keep')} className={`p-3 rounded-2xl cursor-pointer flex flex-col hover:brightness-110 transition-all ${finalClass}`}>
                                     <h4 className={`text-xs font-bold ${textColor} mb-1 truncate`}>{note.title || "Sem título"}</h4>
@@ -635,7 +623,6 @@ export default function App() {
                     </div>
                 </div>
 
-                {/* 5. TASKS */}
                 <div className={`${glassCard} md:col-span-6 p-6 flex flex-col h-[280px]`}>
                     <div className="flex justify-between items-center mb-4">
                         <span className={`${subTextColor} text-xs font-bold uppercase tracking-wider`}>Tarefas</span>
@@ -648,9 +635,7 @@ export default function App() {
                                     {task.completed && <CheckCircle2 size={14} className="text-white" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <span className={`text-sm block truncate ${task.completed ? `${subTextColor} line-through` : textColor}`}>
-                                        {task.title}
-                                    </span>
+                                    <span className={`text-sm block truncate ${task.completed ? `${subTextColor} line-through` : textColor}`}>{task.title}</span>
                                     {task.date && (
                                         <div className="flex items-center gap-1 mt-1 text-[10px] text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded-full w-fit">
                                             <Calendar size={10} />
@@ -666,13 +651,11 @@ export default function App() {
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
 
         {/* --- CHAT OVERLAY --- */}
         <div className={`absolute inset-0 w-full flex flex-col z-20 pointer-events-none ${aiMode ? 'pointer-events-auto' : ''}`}>
-            {/* ... chat overlay code ... */}
             <div className={`flex justify-end p-2 transition-opacity duration-500 ${aiMode ? 'opacity-100' : 'opacity-0'}`}>
                 <button onClick={() => setAiMode(false)} className={`px-4 py-2 ${darkMode ? 'bg-black/60 border-white/10 text-white/60 hover:text-white hover:bg-white/10' : 'bg-white/60 border-black/10 text-black/60 hover:text-black hover:bg-black/10'} backdrop-blur-xl border rounded-full transition flex items-center gap-2 shadow-2xl`}>
                     <span className="text-xs font-medium">Fechar Chat</span>
@@ -680,7 +663,6 @@ export default function App() {
                 </button>
             </div>
             <div ref={chatContainerRef} className={`flex-1 overflow-y-auto px-4 md:px-20 py-4 scroll-smooth transition-all duration-700 ${aiMode ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-                {/* Chat content... */}
                 {chatHistory.map((msg, i) => (
                     <div key={i} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'} mb-6`}>
                         {msg.role === 'assistant' && (
@@ -690,7 +672,6 @@ export default function App() {
                         )}
                         <div className={`max-w-[80%] p-4 rounded-2xl text-[15px] leading-relaxed shadow-lg backdrop-blur-md border ${msg.role === 'user' ? 'bg-[#4E79F3]/20 text-white rounded-tr-sm border-white/5' : (darkMode ? 'text-[#E3E3E3] bg-white/5 border-white/5' : 'text-black bg-white/60 border-black/5')} rounded-tl-sm flex flex-col gap-2`}>
                             <div>{msg.text}</div>
-                            {/* Grounding Sources */}
                             {msg.sources && msg.sources.length > 0 && (
                                 <div className="mt-2 pt-2 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     {msg.sources.slice(0, 4).map((source, idx) => (
