@@ -29,7 +29,15 @@ const getFileIcon = (type: string, className = "w-6 h-6") => {
   }
 };
 
-const FolderTreeItem = ({ id, name, onSelect, selectedId, level = 0 }: { id: string, name: string, onSelect: (id:string, name:string)=>void, selectedId: string|null, level?: number }) => {
+interface FolderTreeItemProps {
+  id: string;
+  name: string;
+  onSelect: (id: string, name: string) => void;
+  selectedId: string | null;
+  level?: number;
+}
+
+const FolderTreeItem: React.FC<FolderTreeItemProps> = ({ id, name, onSelect, selectedId, level = 0 }) => {
     const [expanded, setExpanded] = useState(false);
     const [subFolders, setSubFolders] = useState<DriveItem[]>([]);
     const [hasLoaded, setHasLoaded] = useState(false);
@@ -422,9 +430,6 @@ export default function DriveApp({ onClose, data, onOpenApp, showToast }: DriveA
           fetchContent(currentFolderId, category);
       }
   };
-
-  // ... (Other handlers like createFolder, rename, star, move, upload, download maintained)
-  // Simplified for this view, assume logic is same as before but utilizing new bridge methods
 
   const handleFileUpload = async (file: File) => {
       setUploadStatus({ state: 'uploading', fileName: file.name, progress: 0 });

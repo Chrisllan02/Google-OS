@@ -4,7 +4,7 @@ export interface DashboardData {
   user: { name: string; email: string; avatar: string; };
   weather: { temp: string; location: string; };
   stats: { storageUsed: number; unreadEmails: number; };
-  emails: any[]; labels?: any[]; events: CalendarEvent[]; calendars?: CalendarListEntry[]; files: DriveItem[]; 
+  emails: any[]; labels?: any[]; events: any[]; calendars?: any[]; files: DriveItem[]; 
   tasks: TaskItem[]; taskLists?: TaskList[]; notes: NoteItem[];
 }
 
@@ -15,8 +15,8 @@ export interface NoteItem {
     color: string;
     pinned: boolean;
     date: string;
-    images?: string[]; // Array of File IDs or URLs
-    labels?: string[]; // Array of strings
+    images?: string[]; 
+    labels?: string[]; 
 }
 
 export interface TaskList {
@@ -30,10 +30,10 @@ export interface TaskItem {
     details?: string;
     completed: boolean;
     date?: string;
-    parent?: string; // ID of parent task
-    position?: string; // Sort key
-    listId?: string; // Which list it belongs to (frontend helper)
-    subtasks?: TaskItem[]; // Helper for frontend tree
+    parent?: string; 
+    position?: string; 
+    listId?: string; 
+    subtasks?: TaskItem[]; 
 }
 
 export interface DriveItem {
@@ -60,6 +60,37 @@ export interface FileVersion {
     size: string;
 }
 
+export interface Slide {
+    id: string;
+    background: string; 
+    elements: SlideElement[];
+    notes?: string;
+}
+
+export interface SlideElement {
+    id: string;
+    type: 'text' | 'image' | 'shape' | 'line';
+    content?: string; 
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    rotation?: number;
+    style: {
+        backgroundColor?: string;
+        color?: string;
+        fontSize?: number;
+        fontFamily?: string;
+        fontWeight?: string; 
+        textAlign?: 'left' | 'center' | 'right' | 'justify';
+        border?: string; 
+        borderRadius?: number;
+        opacity?: number;
+        zIndex?: number;
+        boxShadow?: string;
+    };
+}
+
 export interface DriveResponse {
     category: string; currentFolderId: string | null; currentFolderName: string;
     parentId: string | null; folders: DriveItem[]; files: DriveItem[];
@@ -71,21 +102,26 @@ export interface FileContentResponse {
 
 export interface EmailAttachment { name: string; mimeType: string; data: string; }
 
-export interface SearchResults { emails: any[]; files: any[]; events: any[]; error?: string; }
+export interface SearchResults {
+    emails: any[];
+    files: any[];
+    events: any[];
+    error?: string;
+}
 
 export interface CalendarEvent {
     id: string;
     title: string;
-    start: string; // ISO
-    end: string;   // ISO
+    start: string; 
+    end: string;   
     isAllDay?: boolean;
     calendarId: string;
     description?: string;
     location?: string;
-    recurrence?: string[]; // RRULE array
+    recurrence?: string[]; 
     guests?: EventGuest[];
     meetLink?: string;
-    color?: string; // UI override
+    color?: string; 
     timeZone?: string;
 }
 
@@ -156,17 +192,27 @@ class GASBridge {
     }
   }
 
-  // ... (Other methods remain same until createCalendarEvent)
+  // --- MEET SIGNALING ---
+  async registerMeeting(roomCode: string, peerId: string): Promise<boolean> {
+      if (this.isGasEnvironment()) {
+          return new Promise((r) => (window as any).google.script.run.withSuccessHandler((res: string) => r(JSON.parse(res).success)).registerMeeting(roomCode, peerId));
+      }
+      return Promise.resolve(true);
+  }
+
+  async getMeetingPeer(roomCode: string): Promise<string | null> {
+      if (this.isGasEnvironment()) {
+          return new Promise((r) => (window as any).google.script.run.withSuccessHandler((res: string) => r(JSON.parse(res).peerId)).getMeetingPeer(roomCode));
+      }
+      return Promise.resolve(null);
+  }
 
   async createCalendarEvent(data: Partial<CalendarEvent>): Promise<{success: boolean, id?: string, meetLink?: string}> { 
       if(this.isGasEnvironment()) return new Promise((r)=>(window as any).google.script.run.withSuccessHandler((res:string)=>r(JSON.parse(res))).createCalendarEvent({...data})); 
-      
-      // Mock creation with Meet Link
       const meetCode = Array(3).fill('').map(() => Math.random().toString(36).substring(2, 5)).join('-');
       return Promise.resolve({success:true, id: Date.now().toString(), meetLink: `https://meet.google.com/${meetCode}`}); 
   }
 
-  // ... (Rest of GASBridge methods)
   async searchAll(query: string): Promise<SearchResults> {
       if(this.isGasEnvironment()) return new Promise((r)=>(window as any).google.script.run.withSuccessHandler((res:string)=>r(JSON.parse(res))).searchAll(query));
       return Promise.resolve({ emails: [], files: [], events: [] });

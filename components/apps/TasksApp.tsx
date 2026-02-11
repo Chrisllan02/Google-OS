@@ -14,6 +14,53 @@ interface TasksAppProps {
   showToast?: (msg: string) => void;
 }
 
+interface TaskNodeProps {
+    task: TaskItem;
+    depth?: number;
+    activeTask: TaskItem | null;
+    setActiveTask: (task: TaskItem | null) => void;
+    onToggle: (id: string) => void;
+}
+
+const TaskNode: React.FC<TaskNodeProps> = ({ task, depth = 0, activeTask, setActiveTask, onToggle }) => (
+    <>
+      <div 
+          onClick={() => setActiveTask(task)}
+          className={`group flex items-start gap-3 p-3 rounded-lg hover:bg-white/5 transition-all cursor-pointer ${task.completed ? 'opacity-50' : ''} ${activeTask?.id === task.id ? 'bg-blue-500/10' : ''}`}
+          style={{ paddingLeft: `${(depth * 20) + 12}px` }}
+      >
+          <button 
+              onClick={(e) => { e.stopPropagation(); onToggle(task.id); }}
+              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 transition-all shrink-0 ${task.completed ? 'bg-blue-500 border-blue-500' : 'border-white/40 hover:border-white'}`}
+          >
+              {task.completed && <Check size={12} className="text-white"/>}
+          </button>
+          <div className="flex-1 min-w-0">
+              <span className={`text-sm block ${task.completed ? 'line-through text-white/40' : 'text-white'}`}>{task.title}</span>
+              {task.details && <p className="text-xs text-white/40 mt-1 truncate">{task.details}</p>}
+              {task.date && (
+                  <div className="flex items-center gap-1 mt-1 text-[10px] text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded-full w-fit">
+                      <Calendar size={10}/> {new Date(task.date).toLocaleDateString()}
+                  </div>
+              )}
+          </div>
+          
+          {/* Context Menu Trigger (only on hover) */}
+          <div className="opacity-0 group-hover:opacity-100 flex items-center">
+              <button 
+                  onClick={(e) => { e.stopPropagation(); setActiveTask(task); }} 
+                  className="p-1 hover:bg-white/10 rounded"
+                  title="Detalhes e Subtarefas"
+              >
+                 <ChevronRight size={16} className="text-white/60"/>
+              </button>
+          </div>
+      </div>
+      {/* Render Children */}
+      {task.subtasks?.map(sub => <TaskNode key={sub.id} task={sub} depth={depth + 1} activeTask={activeTask} setActiveTask={setActiveTask} onToggle={onToggle} />)}
+    </>
+);
+
 export default function TasksApp({ onClose, data, onUpdate, showToast }: TasksAppProps) {
   // State for Lists
   const [taskLists, setTaskLists] = useState<TaskList[]>([]);
@@ -207,46 +254,6 @@ export default function TasksApp({ onClose, data, onUpdate, showToast }: TasksAp
       toast("Tarefa excluída");
   };
 
-  // Recursively render tasks
-  const TaskNode = ({ task, depth = 0 }: { task: TaskItem, depth?: number }) => (
-      <>
-        <div 
-            onClick={() => setActiveTask(task)}
-            className={`group flex items-start gap-3 p-3 rounded-lg hover:bg-white/5 transition-all cursor-pointer ${task.completed ? 'opacity-50' : ''} ${activeTask?.id === task.id ? 'bg-blue-500/10' : ''}`}
-            style={{ paddingLeft: `${(depth * 20) + 12}px` }}
-        >
-            <button 
-                onClick={(e) => { e.stopPropagation(); handleToggleTask(task.id); }}
-                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 transition-all shrink-0 ${task.completed ? 'bg-blue-500 border-blue-500' : 'border-white/40 hover:border-white'}`}
-            >
-                {task.completed && <Check size={12} className="text-white"/>}
-            </button>
-            <div className="flex-1 min-w-0">
-                <span className={`text-sm block ${task.completed ? 'line-through text-white/40' : 'text-white'}`}>{task.title}</span>
-                {task.details && <p className="text-xs text-white/40 mt-1 truncate">{task.details}</p>}
-                {task.date && (
-                    <div className="flex items-center gap-1 mt-1 text-[10px] text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded-full w-fit">
-                        <Calendar size={10}/> {new Date(task.date).toLocaleDateString()}
-                    </div>
-                )}
-            </div>
-            
-            {/* Context Menu Trigger (only on hover) */}
-            <div className="opacity-0 group-hover:opacity-100 flex items-center">
-                <button 
-                    onClick={(e) => { e.stopPropagation(); setActiveTask(task); }} 
-                    className="p-1 hover:bg-white/10 rounded"
-                    title="Detalhes e Subtarefas"
-                >
-                   <ChevronRight size={16} className="text-white/60"/>
-                </button>
-            </div>
-        </div>
-        {/* Render Children */}
-        {task.subtasks?.map(sub => <TaskNode key={sub.id} task={sub} depth={depth + 1} />)}
-      </>
-  );
-
   const currentListName = taskLists.find(l => l.id === currentListId)?.title || "Minhas Tarefas";
 
   const appHeaderClass = "h-16 px-6 flex items-center justify-between shrink-0 border-b border-white/5 backdrop-blur-xl z-20 bg-black/20";
@@ -339,7 +346,7 @@ export default function TasksApp({ onClose, data, onUpdate, showToast }: TasksAp
                                 <p>Nenhuma tarefa nesta lista</p>
                             </div>
                         ) : (
-                            treeTasks.map(t => <TaskNode key={t.id} task={t} />)
+                            treeTasks.map(t => <TaskNode key={t.id} task={t} activeTask={activeTask} setActiveTask={setActiveTask} onToggle={handleToggleTask} />)
                         )}
                     </div>
                 </div>
