@@ -546,6 +546,7 @@ export default function App() {
             </div>
         </div>
 
+        {/* --- CHAT OVERLAY --- */}
         <div className={`absolute inset-0 w-full flex flex-col z-20 pointer-events-none ${aiMode ? 'pointer-events-auto' : ''}`}>
             <div className={`flex justify-end p-2 transition-opacity duration-500 ${aiMode ? 'opacity-100' : 'opacity-0'}`}>
                 <button onClick={() => setAiMode(false)} className={`px-4 py-2 ${darkMode ? 'bg-black/60 border-white/10 text-white/60 hover:text-white hover:bg-white/10' : 'bg-white/60 border-black/10 text-black/60 hover:text-black hover:bg-black/10'} backdrop-blur-xl border rounded-full transition flex items-center gap-2 shadow-2xl`}>
@@ -561,28 +562,8 @@ export default function App() {
                                 <GeminiLogo className="w-5 h-5" />
                             </div>
                         )}
-                        <div className={`max-w-[80%] p-4 rounded-2xl text-[15px] leading-relaxed shadow-lg backdrop-blur-md border ${msg.role === 'user' ? 'bg-[#4E79F3]/20 text-white rounded-tr-sm border-white/5' : (darkMode ? 'text-[#E3E3E3] bg-white/5 border-white/5' : 'text-black bg-white/60 border-black/5')} rounded-tl-sm flex flex-col gap-2`}>
-                            <div>{msg.text}</div>
-                            {msg.sources && msg.sources.length > 0 && (
-                                <div className="mt-2 pt-2 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    {msg.sources.slice(0, 4).map((source, idx) => (
-                                        <a 
-                                            key={idx} 
-                                            href={source.web?.uri} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-2 p-2 rounded bg-black/20 hover:bg-black/30 transition-colors border border-white/5 group"
-                                        >
-                                            <div className="p-1 bg-white/5 rounded-full"><Globe size={10} className="text-blue-400"/></div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[10px] font-medium truncate text-blue-300 group-hover:underline">{source.web?.title}</p>
-                                                <p className="text-[9px] text-white/40 truncate">{source.web?.uri}</p>
-                                            </div>
-                                            <ExternalLink size={10} className="text-white/20"/>
-                                        </a>
-                                    ))}
-                                </div>
-                            )}
+                        <div className={`max-w-[80%] p-4 rounded-2xl text-[15px] leading-relaxed shadow-lg backdrop-blur-md border ${msg.role === 'user' ? 'bg-[#4E79F3]/20 text-white rounded-tr-sm border-white/5' : (darkMode ? 'text-[#E3E3E3] bg-white/5 border-white/5' : 'text-black bg-white/60 border-black/5')} rounded-tl-sm`}>
+                            {msg.text}
                         </div>
                     </div>
                 ))}
@@ -591,6 +572,7 @@ export default function App() {
             </div>
         </div>
 
+        {/* BARRA DE ENTRADA CHAT */}
         <div className={`absolute left-0 right-0 mx-auto w-full max-w-3xl z-30 transition-all duration-[800ms] ease-[cubic-bezier(0.23,1,0.32,1)] ${aiMode ? 'bottom-8 opacity-100 translate-y-0 pointer-events-auto' : 'bottom-[-100px] opacity-0 translate-y-10 pointer-events-none'}`}>
             <div className={`relative w-full rounded-full group transition-all duration-500 shadow-[0_0_50px_rgba(78,121,243,0.3)]`}>
                 <div className={`absolute -inset-[2px] rounded-[32px] overflow-hidden pointer-events-none transition-opacity duration-500 ${aiMode && isInputFocused ? 'opacity-100' : 'opacity-0'}`}>

@@ -392,6 +392,7 @@ export default function App() {
 
         {/* --- CHAT OVERLAY --- */}
         <div className={`absolute inset-0 w-full flex flex-col z-20 pointer-events-none ${aiMode ? 'pointer-events-auto' : ''}`}>
+            {/* ... chat overlay code ... */}
             <div className={`flex justify-end p-2 transition-opacity duration-500 ${aiMode ? 'opacity-100' : 'opacity-0'}`}>
                 <button onClick={() => setAiMode(false)} className="px-4 py-2 bg-black/60 backdrop-blur-xl border border-white/10 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition flex items-center gap-2 shadow-2xl">
                     <span className="text-xs font-medium">Fechar Chat</span>
