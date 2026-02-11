@@ -1,8 +1,3 @@
-
-
-
-
-
 import React from 'react';
 import MailApp from './apps/MailApp';
 import DriveApp from './apps/DriveApp';
