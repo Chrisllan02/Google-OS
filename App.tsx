@@ -228,6 +228,7 @@ export default function App() {
   const launcherApps = [
       { id: 'mail', label: 'Gmail', icon: <GoogleIcons.GmailGlass className="w-10 h-10"/> },
       { id: 'drive', label: 'Drive', icon: <GoogleIcons.DriveGlass className="w-10 h-10"/> },
+      { id: 'calendar', label: 'Agenda', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Calendar className="text-[#4285F4]"/></div> },
       { id: 'meet', label: 'Meet', icon: <GoogleIcons.MeetGlass className="w-10 h-10"/> },
       { id: 'doc', label: 'Docs', icon: <GoogleIcons.DocsGlass className="w-10 h-10"/> },
       { id: 'sheet', label: 'Sheets', icon: <GoogleIcons.SheetsGlass className="w-10 h-10"/> },
@@ -235,6 +236,7 @@ export default function App() {
       { id: 'tasks', label: 'Tarefas', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><CheckCircle2 className="text-[#4E79F3]"/></div> },
       { id: 'keep', label: 'Keep', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Lightbulb className="text-[#FBBC05]"/></div> },
       { id: 'search', label: 'Busca', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Search className="text-white"/></div> },
+      { id: 'settings', label: 'Ajustes', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Settings className="text-white/70"/></div> },
   ];
 
   const isLightMode = !!activeApp;
@@ -251,6 +253,9 @@ export default function App() {
         default: return <FileText className="w-5 h-5 text-gray-400" />;
     }
   };
+  
+  const todayEvents = data.events?.filter(e => new Date(e.start).toDateString() === new Date().toDateString())
+      .sort((a,b) => new Date(a.start).getTime() - new Date(b.start).getTime()) || [];
 
   return (
     <div className={`min-h-screen font-sans overflow-hidden relative transition-colors duration-500 ${darkMode ? 'bg-[#050505] text-[#E3E3E3] selection:bg-[#4E79F3]/30' : 'bg-[#F0F2F5] text-[#202124] selection:bg-[#4E79F3]/20'}`}>
@@ -434,6 +439,10 @@ export default function App() {
                                     <div className="w-8 flex justify-center"><User size={20}/></div>
                                     Adicionar outra conta
                                 </button>
+                                <button onClick={() => openApp('settings')} className={`flex items-center gap-4 px-4 py-3 rounded-xl ${darkMode ? 'hover:bg-white/5 text-white/80' : 'hover:bg-black/5 text-black/80'} text-sm transition-colors text-left`}>
+                                    <div className="w-8 flex justify-center"><Settings size={20}/></div>
+                                    Configurações
+                                </button>
                                 <button className={`flex items-center gap-4 px-4 py-3 rounded-xl ${darkMode ? 'hover:bg-white/5 text-white/80 border-t border-white/5' : 'hover:bg-black/5 text-black/80 border-t border-black/5'} text-sm transition-colors text-left`}>
                                     <div className="w-8 flex justify-center"><LogOut size={20}/></div>
                                     Sair de todas as contas
@@ -452,12 +461,13 @@ export default function App() {
 
         <div className="flex-1 relative w-full overflow-y-auto pr-2 custom-scrollbar">
             <div className={`grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-min transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${aiMode ? 'opacity-30 scale-[0.98] blur-sm pointer-events-none' : 'opacity-100 scale-100 blur-0'}`}>
-                <div className={`${glassCard} md:col-span-8 p-6 h-[320px] flex flex-col`}>
+                
+                <div className={`${glassCard} md:col-span-5 p-6 h-[320px] flex flex-col`}>
                     <div className="flex justify-between items-center mb-4">
                        <span className={`font-bold ${textColor} text-sm`}>Caixa de Entrada</span>
                        <Mail size={18} className="text-[#EA4335]" />
                     </div>
-                    <div className="space-y-2 flex-1 overflow-hidden">
+                    <div className="space-y-2 flex-1 overflow-y-auto custom-scrollbar pr-2">
                       {data.emails.slice(0, 4).map((e: any) => (
                         <div key={e.id} onClick={() => openApp('mail')} className={`p-2 ${darkMode ? 'hover:bg-white/5 border-transparent hover:border-white/5' : 'hover:bg-black/5 border-transparent hover:border-black/5'} rounded-2xl cursor-pointer group transition-colors border`}>
                            <div className="flex justify-between items-start mb-1">
@@ -470,26 +480,48 @@ export default function App() {
                     </div>
                     <button onClick={() => openApp('mail')} className="w-full mt-2 py-2 text-xs text-[#EA4335] font-medium hover:bg-[#EA4335]/10 rounded-xl transition bg-[#EA4335]/5 border border-[#EA4335]/20">Escrever Email</button>
                 </div>
+                
+                <div className={`${glassCard} md:col-span-4 p-6 h-[320px] flex flex-col`}>
+                    <div className="flex justify-between items-center mb-4">
+                       <span className={`font-bold ${textColor} text-sm`}>Sua Agenda</span>
+                       <Calendar size={18} className="text-blue-400" />
+                    </div>
+                    <div className="space-y-2 flex-1 overflow-y-auto custom-scrollbar pr-2">
+                      {todayEvents.length > 0 ? todayEvents.map((e: any) => (
+                        <div key={e.id} onClick={() => openApp('calendar', { event: e })} className={`p-3 rounded-2xl cursor-pointer group transition-colors border relative pl-5 ${darkMode ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-black/5 border-black/5 hover:bg-black/10'}`}>
+                           <div className="absolute left-2 top-3 bottom-3 w-1 bg-blue-400 rounded-full"></div>
+                           <p className={`font-medium text-xs ${textColor} truncate`}>{e.title}</p>
+                           <p className={`text-[10px] ${subTextColor}`}>
+                               {new Date(e.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(e.end).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                           </p>
+                        </div>
+                      )) : (
+                        <div className="flex flex-col items-center justify-center h-full text-center">
+                            <Calendar size={32} className={subTextColor}/>
+                            <p className={`text-sm mt-2 ${subTextColor}`}>Nenhum evento para hoje.</p>
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={() => openApp('calendar')} className="w-full mt-2 py-2 text-xs text-blue-400 font-medium hover:bg-blue-400/10 rounded-xl transition bg-blue-400/5 border border-blue-400/20">Ver agenda completa</button>
+                </div>
 
-                <div className={`${glassCard} md:col-span-4 p-6 flex flex-col h-[320px]`}>
+                <div className={`${glassCard} md:col-span-3 p-6 flex flex-col h-[320px]`}>
                     <div className="flex justify-between items-center mb-4">
                         <span className={`${subTextColor} text-xs font-bold uppercase`}>Meu Drive</span>
-                        <HardDrive size={18} className="text-[#34A853]" />
+                        <HardDrive size={18} className="text-green-400" />
                     </div>
                     <div className="space-y-2 flex-1 overflow-hidden">
-                        {data.files.slice(0, 4).map((f: any) => (
+                        {data.files.slice(0, 3).map((f: any) => (
                           <div key={f.id} onClick={() => openApp(f.type, f)} className={`flex items-center gap-2 p-2 rounded-xl ${darkMode ? 'hover:bg-white/5 hover:border-white/5' : 'hover:bg-black/5 hover:border-black/5'} cursor-pointer group transition-colors border border-transparent`}>
                              <div className={`p-1.5 ${darkMode ? 'bg-white/5 group-hover:bg-white/10' : 'bg-black/5 group-hover:bg-black/10'} rounded-lg`}>{getFileIcon(f.type)}</div>
                              <div className="overflow-hidden min-w-0">
-                               <p className={`text-xs font-medium truncate ${textColor} group-hover:text-blue-400 transition-colors`}>{f.name}</p>
+                               <p className={`text-xs font-medium truncate ${textColor} group-hover:text-green-400 transition-colors`}>{f.name}</p>
                                <p className={`text-[10px] ${subTextColor} truncate`}>{f.date}</p>
                              </div>
                           </div>
                         ))}
                     </div>
-                    <div className={`mt-auto pt-2 border-t ${darkMode ? 'border-white/5' : 'border-black/5'}`}>
-                        <div className={`w-full ${darkMode ? 'bg-white/10' : 'bg-black/10'} h-1 rounded-full overflow-hidden`}><div className="bg-[#34A853] h-full w-[78%] rounded-full shadow-[0_0_10px_rgba(52,168,83,0.5)]"></div></div>
-                    </div>
+                     <button onClick={() => openApp('drive')} className="w-full mt-2 py-2 text-xs text-green-400 font-medium hover:bg-green-400/10 rounded-xl transition bg-green-400/5 border border-green-400/20">Abrir Drive</button>
                 </div>
 
                 <div className={`${glassCard} md:col-span-6 p-6 flex flex-col h-[280px]`}>
