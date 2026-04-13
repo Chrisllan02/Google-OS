@@ -242,8 +242,8 @@ export default function App() {
   ];
 
   const isLightMode = !!activeApp;
-  const glassCard = darkMode ? "bg-black/62 backdrop-blur-3xl border border-white/12 rounded-[32px] shadow-2xl hover:border-white/20 transition-all duration-300" : "bg-white/75 backdrop-blur-3xl border border-black/8 rounded-[32px] shadow-xl hover:border-black/12 transition-all duration-300";
-  const glassInner = darkMode ? "bg-white/[0.08] hover:bg-white/[0.13] border border-white/8 transition-colors" : "bg-black/[0.06] hover:bg-black/[0.10] border border-black/6 transition-colors";
+  const glassCard = darkMode ? "bg-black/[0.65] backdrop-blur-3xl border border-white/[0.12] rounded-[32px] shadow-2xl hover:border-white/20 transition-all duration-300" : "bg-white/[0.75] backdrop-blur-3xl border border-black/[0.08] rounded-[32px] shadow-xl hover:border-black/[0.12] transition-all duration-300";
+  const glassInner = darkMode ? "bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.08] transition-colors" : "bg-black/[0.06] hover:bg-black/[0.10] border border-black/[0.06] transition-colors";
   const textColor = darkMode ? "text-[#E3E3E3]" : "text-[#202124]";
   const subTextColor = darkMode ? "text-white/70" : "text-black/60";
 
@@ -372,7 +372,7 @@ export default function App() {
       </div>
 
       <div className="max-w-7xl mx-auto p-4 md:p-8 flex flex-col h-screen relative z-10 pb-28">
-        <header className={`relative mb-8 h-32 flex items-center px-4 justify-between transition-all duration-700 ${aiMode ? 'opacity-0 -translate-y-10 pointer-events-none' : 'opacity-100 translate-y-0'}`}>
+        <header className={`relative z-30 mb-8 h-32 flex items-center px-4 justify-between transition-all duration-700 ${aiMode ? 'opacity-0 -translate-y-10 pointer-events-none' : 'opacity-100 translate-y-0'}`}>
             <div className="flex items-center gap-4 animate-in fade-in duration-300 relative z-10">
                 <div>
                     <h1 className={`text-5xl md:text-7xl font-bold ${textColor} drop-shadow-md tracking-tight`}>
