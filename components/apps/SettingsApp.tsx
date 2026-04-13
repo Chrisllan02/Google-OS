@@ -13,12 +13,14 @@ interface SettingsAppProps {
   isDarkMode?: boolean;
   showToast?: (msg: string) => void;
   onUpdateTheme?: (settings: any) => void;
+  onUpdateNickname?: (nickname: string) => void;
 }
 
-export default function SettingsApp({ onClose, data, toggleTheme, isDarkMode, showToast, onUpdateTheme }: SettingsAppProps) {
+export default function SettingsApp({ onClose, data, toggleTheme, isDarkMode, showToast, onUpdateTheme, onUpdateNickname }: SettingsAppProps) {
   const [activeTab, setActiveTab] = useState('profile');
   const [emailNotif, setEmailNotif] = useState(true);
   const [calNotif, setCalNotif] = useState(true);
+  const [nicknameInput, setNicknameInput] = useState<string>(() => localStorage.getItem('workspace_nickname') || '');
 
   const toast = (msg: string) => showToast && showToast(msg);
 
@@ -33,6 +35,13 @@ export default function SettingsApp({ onClose, data, toggleTheme, isDarkMode, sh
   const handleToggleNotification = (setting: string, setter: (val: boolean) => void, val: boolean) => {
       setter(!val);
       toast(`Notificações de ${setting} ${!val ? 'ativadas' : 'desativadas'}`);
+  };
+
+  const handleSaveNickname = () => {
+      const trimmed = nicknameInput.trim();
+      localStorage.setItem('workspace_nickname', trimmed);
+      if (onUpdateNickname) onUpdateNickname(trimmed);
+      toast(trimmed ? `Apelido "${trimmed}" salvo` : 'Apelido removido');
   };
 
   const changeAurora = (colors: string[], name: string) => {
@@ -99,6 +108,31 @@ export default function SettingsApp({ onClose, data, toggleTheme, isDarkMode, sh
                     <h3 className="text-2xl font-normal mb-1">{data?.user?.name}</h3>
                     <p className={`${isDarkMode ? 'text-white/50' : 'text-gray-500'} text-sm mb-4`}>{data?.user?.email}</p>
                     <button className={`px-5 py-2 ${isDarkMode ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'} rounded-full text-sm font-medium transition-colors shadow-md`}>Gerenciar sua Conta do Google</button>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className={`text-xs font-bold ${isDarkMode ? 'text-white/40' : 'text-gray-400'} uppercase tracking-wider px-2`}>Apelido</h4>
+                  <div className={`${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200'} rounded-2xl border p-4`}>
+                    <p className="text-sm font-medium mb-1">Como quer ser chamado?</p>
+                    <p className={`text-xs ${isDarkMode ? 'text-white/50' : 'text-gray-500'} mb-3`}>Exibido no cumprimento da tela inicial. Deixe em branco para usar seu nome do Google.</p>
+                    <div className="flex gap-3">
+                      <input
+                        type="text"
+                        value={nicknameInput}
+                        onChange={e => setNicknameInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSaveNickname()}
+                        placeholder={data?.user?.name?.split(' ')[0] || 'Seu apelido'}
+                        maxLength={30}
+                        className={`flex-1 px-4 py-2.5 rounded-full border text-sm outline-none transition-colors ${isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-blue-500/60' : 'bg-gray-50 border-gray-200 text-[#202124] placeholder:text-gray-400 focus:border-blue-500'}`}
+                      />
+                      <button
+                        onClick={handleSaveNickname}
+                        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-sm font-medium transition-colors shadow-md shadow-blue-500/20 active:scale-95"
+                      >
+                        Salvar
+                      </button>
+                    </div>
                   </div>
                 </div>
 

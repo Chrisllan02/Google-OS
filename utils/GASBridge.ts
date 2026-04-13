@@ -141,16 +141,68 @@ export interface CalendarListEntry {
     accessRole: 'owner' | 'reader' | 'writer';
 }
 
+// --- Dynamic Mock Data Helpers ---
+const _d0 = new Date();
+const _fmt = (d: Date) => d.toISOString();
+const _days = (n: number) => { const d = new Date(_d0); d.setDate(d.getDate() + n); return d; };
+const _at = (base: Date, h: number, m = 0): Date => { const d = new Date(base); d.setHours(h, m, 0, 0); return d; };
+
+const MOCK_EMAILS = [
+  { id: '1', threadId: 't1', sender: 'Gabriel Silva',  senderInit: 'G', senderEmail: 'gabriel@example.com', subject: 'Dashboard de métricas — revisão urgente',    preview: 'Precisamos revisitar os KPIs antes da reunião de sexta com os stakeholders...', time: '10:32', color: 'bg-purple-600', body: '<p>Oi,</p><p>Precisamos revisitar os KPIs antes da reunião de sexta. Você consegue dar uma olhada no dashboard ainda hoje?</p><p>Att,<br/>Gabriel</p>' },
+  { id: '2', threadId: 't2', sender: 'Ana Lima',       senderInit: 'A', senderEmail: 'ana@example.com',     subject: 'Convite para revisão de design',                preview: 'Compartilhei o novo protótipo do Figma com vocês. Podem dar feedback até quarta?', time: '09:15', color: 'bg-pink-600',   body: '<p>Oi equipe!</p><p>Compartilhei o novo protótipo. Podem dar feedback até quarta-feira?</p><p>Obg,<br/>Ana</p>' },
+  { id: '3', threadId: 't3', sender: 'Pedro Moreira',  senderInit: 'P', senderEmail: 'pedro@example.com',   subject: 'Re: Sprint Planning da semana',                 preview: 'Confirmado para as 10h de amanhã. Vou trazer os itens de backlog priorizados.',   time: 'Ontem',  color: 'bg-blue-600',   body: '<p>Confirmado para as 10h de amanhã! Trarei os itens de backlog priorizados.</p>' },
+  { id: '4', threadId: 't4', sender: 'Workspace OS',   senderInit: 'W', senderEmail: 'noreply@workspace.os',subject: 'Bem-vindo ao Google OS Dashboard',               preview: 'Sua interface unificada do Google Workspace está pronta para uso.',               time: 'Seg',    color: 'bg-[#4285F4]',  body: '<p>Seja bem-vindo! Explore Gmail, Drive, Agenda, Meet e muito mais em um só lugar.</p>' },
+  { id: '5', threadId: 't5', sender: 'Carlos Eduardo', senderInit: 'C', senderEmail: 'carlos@example.com',  subject: 'Relatório Q1 2026 aprovado ✓',                  preview: 'O relatório foi aprovado pela diretoria. Parabéns ao time pelo excelente trabalho!',time: '08 abr', color: 'bg-green-600',  body: '<p>Pessoal,</p><p>O relatório Q1 foi aprovado pela diretoria. Excelente trabalho!</p>' },
+];
+
+const MOCK_EVENTS: CalendarEvent[] = [
+  { id: 'e1', title: 'Daily Stand-up',              start: _fmt(_at(_d0,      9,  0)), end: _fmt(_at(_d0,       9, 30)), calendarId: 'primary', color: '#039BE5', meetLink: 'https://meet.google.com/abc-defg-hij' },
+  { id: 'e2', title: 'Design Review — Sprint 12',   start: _fmt(_at(_d0,     14,  0)), end: _fmt(_at(_d0,      15, 30)), calendarId: 'primary', color: '#8E24AA', description: 'Revisão dos entregáveis do Sprint 12', location: 'Sala Aurora' },
+  { id: 'e3', title: 'Sprint Planning',             start: _fmt(_at(_days(1), 10,  0)), end: _fmt(_at(_days(1), 11, 30)), calendarId: 'primary', color: '#33B679', description: 'Planejamento do Sprint 13 — backlog refinement' },
+  { id: 'e4', title: 'Almoço de equipe 🍕',         start: _fmt(_at(_days(3), 12, 30)), end: _fmt(_at(_days(3), 14,  0)), calendarId: 'primary', color: '#F6BF26', location: 'Restaurante Central' },
+  { id: 'e5', title: 'Demo para Stakeholders',      start: _fmt(_at(_days(4), 15,  0)), end: _fmt(_at(_days(4), 16,  0)), calendarId: 'primary', color: '#E67C73', description: 'Demonstração para investidores', meetLink: 'https://meet.google.com/demo-link' },
+];
+
+const MOCK_FILES: DriveItem[] = [
+  { id: 'f1', name: 'Plano Trimestral Q2 2026',  type: 'doc',   owner: 'eu',           date: 'Editado hoje',            isStarred: true,  webViewLink: '#' },
+  { id: 'f2', name: 'Métricas de Marketing',     type: 'sheet', owner: 'eu',           date: 'Editado ontem',           isStarred: false, webViewLink: '#' },
+  { id: 'f3', name: 'Apresentação Investidores', type: 'slide', owner: 'eu',           date: 'Editado 2 dias atrás',    isStarred: true,  webViewLink: '#' },
+  { id: 'f4', name: 'Budget 2026',               type: 'sheet', owner: 'Ana Lima',     date: 'Editado 5 dias atrás',    isStarred: false, webViewLink: '#' },
+  { id: 'f5', name: 'Roadmap do Produto',        type: 'doc',   owner: 'eu',           date: 'Editado semana passada',  isStarred: false, webViewLink: '#' },
+  { id: 'f6', name: 'Foto da Equipe',            type: 'image', owner: 'Pedro Moreira',date: '01 abr 2026',             isStarred: false, webViewLink: '#' },
+];
+
+const MOCK_TASKS: TaskItem[] = [
+  { id: 'tk1', title: 'Finalizar dashboard de métricas', details: 'Revisar KPIs com Gabriel antes da reunião de sexta', completed: false, date: _fmt(_at(_d0,       18, 0)), listId: 'default' },
+  { id: 'tk2', title: 'Revisar PR do Gabriel',                                                                          completed: true,  listId: 'default' },
+  { id: 'tk3', title: 'Preparar slides para demo de sexta', details: 'Incluir métricas do Q1 e roadmap Q2',             completed: false, date: _fmt(_at(_days(3),  12, 0)), listId: 'default' },
+  { id: 'tk4', title: 'Enviar relatório mensal ao cliente',                                                             completed: false, date: _fmt(_at(_days(1),   9, 0)), listId: 'default' },
+  { id: 'tk5', title: 'Atualizar documentação da API',                                                                  completed: false, listId: 'default' },
+  { id: 'tk6', title: 'Onboarding do novo desenvolvedor',   details: 'Configurar acessos e apresentar o time',         completed: false, date: _fmt(_at(_days(7),  10, 0)), listId: 'default' },
+];
+
+const MOCK_NOTES: NoteItem[] = [
+  { id: 1, title: 'Ideias para o produto',  content: '• Modo offline\n• Atalhos de teclado globais\n• Templates de documentos\n• Integração com Slack',                            color: 'green',  pinned: true,  date: _fmt(_d0)      },
+  { id: 2, title: 'TODO esta semana',       content: '✅ Daily stand-up\n⬜ Design review\n⬜ Sprint planning\n⬜ Enviar relatório',                                               color: 'yellow', pinned: true,  date: _fmt(_d0)      },
+  { id: 3, title: 'Feedback do produto',    content: '"A interface é muito mais limpa que o Gmail original. Adoro a integração com o Gemini!" — Ana Lima',                         color: 'teal',   pinned: false, date: _fmt(_days(-1)) },
+  { id: 4, title: 'Links úteis',            content: 'Figma: figma.com/file/...\nStorybook: storybook.workspace.os\nAPI Docs: docs.workspace.os/api',                              color: 'blue',   pinned: false, date: _fmt(_days(-2)) },
+];
+
+const MOCK_CALENDARS: CalendarListEntry[] = [
+  { id: 'primary', name: 'Meu calendário', color: '#4285F4', checked: true, accessRole: 'owner' },
+  { id: 'work',    name: 'Trabalho',       color: '#33B679', checked: true, accessRole: 'owner' },
+];
+
 const MOCK_DATA: DashboardData = {
   user: { name: "Dev Criativo", email: "dev@workspace.new", avatar: "https://ui-avatars.com/api/?name=Dev+Criativo&background=4285F4&color=fff" },
   weather: { temp: "24°", location: "São Paulo" },
-  stats: { storageUsed: 78, unreadEmails: 3 },
-  emails: [],
-  calendars: [],
-  events: [],
-  files: [],
-  tasks: [],
-  notes: []
+  stats: { storageUsed: 78, unreadEmails: 2 },
+  emails:    MOCK_EMAILS,
+  calendars: MOCK_CALENDARS,
+  events:    MOCK_EVENTS,
+  files:     MOCK_FILES,
+  tasks:     MOCK_TASKS,
+  notes:     MOCK_NOTES,
 };
 
 class GASBridge {
@@ -195,7 +247,15 @@ class GASBridge {
                 .getEvents(calendarId, start, end);
         });
     }
-    return Promise.resolve([]);
+    const startMs = new Date(start).getTime();
+    const endMs   = new Date(end).getTime();
+    const filtered = MOCK_EVENTS.filter(ev => {
+        const evStart = new Date(ev.start).getTime();
+        const matchesCalendar = !calendarId || calendarId === 'primary' || ev.calendarId === calendarId;
+        const inRange = evStart >= startMs && evStart <= endMs;
+        return matchesCalendar && inRange;
+    });
+    return Promise.resolve(filtered.map(ev => ({ ...ev, start: new Date(ev.start) as any, end: new Date(ev.end) as any })));
   }
   async createCalendarEvent(data: Partial<CalendarEvent>): Promise<{success: boolean, id?: string, meetLink?: string}> { return Promise.resolve({success:true}); }
   async checkFreeBusy(start: string, end: string, emails: string[]): Promise<any> { return Promise.resolve({ success: true }); }
@@ -204,7 +264,15 @@ class GASBridge {
   async rsvpEvent(eventId: string, status: 'accepted'|'declined'|'tentative'): Promise<boolean> { return Promise.resolve(true); }
   
   // --- MAIL & CONTACTS ---
-  async searchAll(query: string): Promise<SearchResults> { return Promise.resolve({ emails: [], files: [], events: [] }); }
+  async searchAll(query: string): Promise<SearchResults> {
+    if (!query) return Promise.resolve({ emails: [], files: [], events: [] });
+    const q = query.toLowerCase();
+    return Promise.resolve({
+      emails: MOCK_EMAILS.filter(e => e.subject.toLowerCase().includes(q) || e.preview.toLowerCase().includes(q) || e.sender.toLowerCase().includes(q)),
+      files:  MOCK_FILES.filter(f => f.name.toLowerCase().includes(q)),
+      events: MOCK_EVENTS.filter(e => e.title.toLowerCase().includes(q)),
+    });
+  }
   async getEmailsPaged(start: number, limit: number, folder: string, query: string = ''): Promise<any[]> { return Promise.resolve([]); }
   async createLabel(name: string): Promise<boolean> { return Promise.resolve(true); }
   async batchManageEmails(ids: Array<number | string>, action: string): Promise<boolean> { return Promise.resolve(true); }
@@ -214,12 +282,22 @@ class GASBridge {
   async saveDraft(to: string, subject: string, body: string, attachments: EmailAttachment[] = []): Promise<boolean> { return Promise.resolve(true); }
   async getThreadDetails(threadId: string | number): Promise<any> { return Promise.resolve({ success: true, messages: [] }); }
   async getEmailAttachment(messageId: string, attachmentIndex: number): Promise<FileContentResponse> { return Promise.resolve({ success: false }); }
-  async searchContacts(query: string): Promise<any[]> { return Promise.resolve([]); }
+  async searchContacts(query: string): Promise<any[]> {
+    if (!query) return Promise.resolve([]);
+    const contacts = [
+      { name: 'Gabriel Silva',  email: 'gabriel@example.com', avatar: 'G' },
+      { name: 'Ana Lima',       email: 'ana@example.com',     avatar: 'A' },
+      { name: 'Pedro Moreira',  email: 'pedro@example.com',   avatar: 'P' },
+      { name: 'Carlos Eduardo', email: 'carlos@example.com',  avatar: 'C' },
+    ];
+    const q = query.toLowerCase();
+    return Promise.resolve(contacts.filter(c => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)));
+  }
 
   // --- DRIVE ---
   async getDriveItems(folderId: string | null, category: string, query: string): Promise<DriveResponse> { 
       if(this.isGasEnvironment()) return new Promise((r,rj)=>(window as any).google.script.run.withSuccessHandler((res:string)=>r(JSON.parse(res))).withFailureHandler(rj).getDriveItems({folderId, category, query})); 
-      return Promise.resolve({files: [], folders:[], category:'root', currentFolderName:'Mock', currentFolderId: null, parentId: null}); 
+      return Promise.resolve({ files: MOCK_FILES, folders: [], category: category || 'root', currentFolderName: 'Meu Drive', currentFolderId: null, parentId: null });
   }
   async getFolderTree(parentId?: string | null): Promise<DriveItem[]> { return Promise.resolve([]); }
   async createDriveFolder(name: string, parentId: string | null): Promise<boolean> { if(this.isGasEnvironment()) return new Promise((r)=>(window as any).google.script.run.withSuccessHandler((res:string)=>r(JSON.parse(res).success)).createDriveFolder(name,parentId)); return Promise.resolve(true); }
@@ -240,8 +318,8 @@ class GASBridge {
   async getFileVersions(fileId: string): Promise<FileVersion[]> { return Promise.resolve([]); }
 
   // --- TASKS ---
-  async getTaskLists(): Promise<TaskList[]> { return Promise.resolve([]); }
-  async getTasks(listId: string): Promise<TaskItem[]> { return Promise.resolve([]); }
+  async getTaskLists(): Promise<TaskList[]> { return Promise.resolve([{ id: 'default', title: 'Minhas Tarefas' }]); }
+  async getTasks(listId: string): Promise<TaskItem[]> { return Promise.resolve(MOCK_TASKS); }
   async createTaskList(title: string): Promise<TaskList | null> { return Promise.resolve(null); }
   async deleteTaskList(id: string): Promise<boolean> { return Promise.resolve(true); }
   async createTask(title: string, details?: string, listId?: string, due?: string, parent?: string): Promise<any> { return Promise.resolve({ success: true, task: {id: Date.now().toString(), title, completed: false} }); }
