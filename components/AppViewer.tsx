@@ -21,9 +21,10 @@ interface AppViewerProps {
   toggleTheme?: () => void;
   isDarkMode?: boolean;
   onUpdateTheme?: (settings: any) => void;
+  onUpdateNickname?: (nickname: string) => void;
 }
 
-export default function AppViewer({ type, onClose, data, searchQuery, onOpenApp, onUpdateTasks, onUpdateNotes, showToast, toggleTheme, isDarkMode, onUpdateTheme }: AppViewerProps) {
+export default function AppViewer({ type, onClose, data, searchQuery, onOpenApp, onUpdateTasks, onUpdateNotes, showToast, toggleTheme, isDarkMode, onUpdateTheme, onUpdateNickname }: AppViewerProps) {
   const glassContainer = isDarkMode 
     ? "bg-black/60 backdrop-blur-3xl border border-white/10 shadow-2xl text-white" 
     : "bg-white/80 backdrop-blur-3xl border border-black/10 shadow-2xl text-black";
@@ -40,7 +41,7 @@ export default function AppViewer({ type, onClose, data, searchQuery, onOpenApp,
         case 'keep': return <KeepApp onClose={onClose} data={data} onUpdate={onUpdateNotes} showToast={showToast} />;
         case 'tasks': return <TasksApp onClose={onClose} data={data} onUpdate={onUpdateTasks} showToast={showToast} />;
         case 'search': return <SearchApp onClose={onClose} data={data} searchQuery={searchQuery} onOpenApp={onOpenApp} />;
-        case 'settings': return <SettingsApp onClose={onClose} data={data} toggleTheme={toggleTheme} isDarkMode={isDarkMode} showToast={showToast} onUpdateTheme={onUpdateTheme} />;
+        case 'settings': return <SettingsApp onClose={onClose} data={data} toggleTheme={toggleTheme} isDarkMode={isDarkMode} showToast={showToast} onUpdateTheme={onUpdateTheme} onUpdateNickname={onUpdateNickname} />;
         default: return null;
     }
   };

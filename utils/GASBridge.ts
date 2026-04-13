@@ -247,7 +247,15 @@ class GASBridge {
                 .getEvents(calendarId, start, end);
         });
     }
-    return Promise.resolve(MOCK_EVENTS.map(ev => ({ ...ev, start: new Date(ev.start) as any, end: new Date(ev.end) as any })));
+    const startMs = new Date(start).getTime();
+    const endMs   = new Date(end).getTime();
+    const filtered = MOCK_EVENTS.filter(ev => {
+        const evStart = new Date(ev.start).getTime();
+        const matchesCalendar = !calendarId || calendarId === 'primary' || ev.calendarId === calendarId;
+        const inRange = evStart >= startMs && evStart <= endMs;
+        return matchesCalendar && inRange;
+    });
+    return Promise.resolve(filtered.map(ev => ({ ...ev, start: new Date(ev.start) as any, end: new Date(ev.end) as any })));
   }
   async createCalendarEvent(data: Partial<CalendarEvent>): Promise<{success: boolean, id?: string, meetLink?: string}> { return Promise.resolve({success:true}); }
   async checkFreeBusy(start: string, end: string, emails: string[]): Promise<any> { return Promise.resolve({ success: true }); }

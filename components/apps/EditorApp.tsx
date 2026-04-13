@@ -74,8 +74,13 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showThemePicker, setShowThemePicker] = useState(false);
 
-  const editorRef       = useRef<HTMLDivElement>(null);
-  const saveTimeoutRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const editorRef      = useRef<HTMLDivElement>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Refs always hold the latest state so the debounced save never captures stale values
+  const slidesRef   = useRef(slides);
+  const cellDataRef = useRef(cellData);
+  useEffect(() => { slidesRef.current   = slides;   }, [slides]);
+  useEffect(() => { cellDataRef.current = cellData; }, [cellData]);
 
   const triggerSave = useCallback(() => {
     setSaved(false);
@@ -86,13 +91,13 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
       if (type === 'doc' && editorRef.current)
         content = btoa(unescape(encodeURIComponent(editorRef.current.innerHTML)));
       else if (type === 'sheet')
-        content = btoa(unescape(encodeURIComponent(JSON.stringify(cellData))));
+        content = btoa(unescape(encodeURIComponent(JSON.stringify(cellDataRef.current))));
       else if (type === 'slide')
-        content = btoa(unescape(encodeURIComponent(JSON.stringify(slides))));
+        content = btoa(unescape(encodeURIComponent(JSON.stringify(slidesRef.current))));
       if (content) { await bridge.saveFileContent(data.id, content); }
       setSaved(true);
     }, 2000);
-  }, [data, type, cellData, slides]);
+  }, [data, type]);
 
   useEffect(() => {
     if (!data?.id) return;

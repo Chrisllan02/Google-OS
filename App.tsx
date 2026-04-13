@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Search, LayoutGrid, Loader2, CloudSun, Mail, HardDrive, FileText, 
+import {
+  Search, LayoutGrid, Loader2, Mail, HardDrive, FileText,
   FileSpreadsheet, Presentation, Video, Plus, X, ArrowRight,
   Home, CheckCircle2, Lightbulb, Calendar, LogOut, User, Settings, Info, Bell, Trash2,
   ExternalLink, Globe
 } from 'lucide-react';
+import WeatherWidget from './components/WeatherWidget';
 import AppViewer from './components/AppViewer';
 import Aurora from './components/Aurora';
 import GoogleLoader from './components/GoogleLoader';
@@ -42,6 +43,7 @@ export default function App() {
 
   const [darkMode, setDarkMode] = useState(true);
   const [auroraSettings, setAuroraSettings] = useState({ colorStops: ["#4285F4", "#34A853", "#EA4335"], speed: 0.5 });
+  const [nickname, setNickname] = useState<string>(() => localStorage.getItem('workspace_nickname') || '');
   const [toasts, setToasts] = useState<{id: number, message: string}[]>([]);
   
   const [showNotifications, setShowNotifications] = useState(false);
@@ -240,10 +242,10 @@ export default function App() {
   ];
 
   const isLightMode = !!activeApp;
-  const glassCard = darkMode ? "bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[32px] shadow-2xl hover:border-white/20 transition-all duration-300" : "bg-white/60 backdrop-blur-3xl border border-black/5 rounded-[32px] shadow-xl hover:border-black/10 transition-all duration-300";
-  const glassInner = darkMode ? "bg-white/5 hover:bg-white/10 border border-white/5 transition-colors" : "bg-black/5 hover:bg-black/10 border border-black/5 transition-colors";
+  const glassCard = darkMode ? "bg-black/62 backdrop-blur-3xl border border-white/12 rounded-[32px] shadow-2xl hover:border-white/20 transition-all duration-300" : "bg-white/75 backdrop-blur-3xl border border-black/8 rounded-[32px] shadow-xl hover:border-black/12 transition-all duration-300";
+  const glassInner = darkMode ? "bg-white/[0.08] hover:bg-white/[0.13] border border-white/8 transition-colors" : "bg-black/[0.06] hover:bg-black/[0.10] border border-black/6 transition-colors";
   const textColor = darkMode ? "text-[#E3E3E3]" : "text-[#202124]";
-  const subTextColor = darkMode ? "text-white/60" : "text-black/60";
+  const subTextColor = darkMode ? "text-white/70" : "text-black/60";
 
   const getFileIcon = (type: string) => {
     switch(type) {
@@ -274,11 +276,11 @@ export default function App() {
       </div>
 
       {activeApp && (
-          <AppViewer 
-              type={activeApp.type} 
-              onClose={() => setActiveApp(null)} 
-              data={activeApp.data || data} 
-              searchQuery={searchQuery} 
+          <AppViewer
+              type={activeApp.type}
+              onClose={() => setActiveApp(null)}
+              data={activeApp.data || data}
+              searchQuery={searchQuery}
               onOpenApp={openApp}
               onUpdateTasks={updateTasks}
               onUpdateNotes={updateNotes}
@@ -286,6 +288,10 @@ export default function App() {
               toggleTheme={() => setDarkMode(!darkMode)}
               isDarkMode={darkMode}
               onUpdateTheme={(settings: any) => setAuroraSettings(settings)}
+              onUpdateNickname={(nick: string) => {
+                  setNickname(nick);
+                  localStorage.setItem('workspace_nickname', nick);
+              }}
           />
       )}
 
@@ -370,15 +376,12 @@ export default function App() {
             <div className="flex items-center gap-4 animate-in fade-in duration-300 relative z-10">
                 <div>
                     <h1 className={`text-5xl md:text-7xl font-bold ${textColor} drop-shadow-md tracking-tight`}>
-                       {getGreeting()}, <span className="bg-gradient-to-r from-[#4E79F3] via-[#9c51b6] to-[#E95C67] text-transparent bg-clip-text drop-shadow-sm">{data.user.name.split(' ')[0]}</span>
+                       {getGreeting()}, <span className="bg-gradient-to-r from-[#4E79F3] via-[#9c51b6] to-[#E95C67] text-transparent bg-clip-text drop-shadow-sm">{nickname || data.user.name.split(' ')[0]}</span>
                     </h1>
                 </div>
             </div>
             <div className="flex items-center gap-4 animate-in fade-in duration-300 relative z-10">
-                <div className={`hidden md:flex items-center gap-2 px-4 py-2 ${darkMode ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/5'} backdrop-blur-2xl border rounded-full text-xs font-medium ${textColor}`}>
-                    <CloudSun size={14} className="text-[#FBBC05]" />
-                    <span>{data.weather.temp}</span>
-                </div>
+                <WeatherWidget darkMode={darkMode} textColor={textColor} fallbackTemp={data.weather.temp} />
                 
                 <div className="relative" ref={notificationRef}>
                      <button onClick={() => setShowNotifications(!showNotifications)} className={`p-2 rounded-full border border-transparent relative ${darkMode ? 'hover:bg-white/10 hover:border-white/10' : 'hover:bg-black/5 hover:border-black/5'} ${textColor} backdrop-blur-sm transition-all`}>
