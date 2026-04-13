@@ -22,7 +22,7 @@ Interface unificada para os principais apps do Google Workspace, com Gemini AI i
 
 ## Rodar Localmente
 
-**Pré-requisitos:** Node.js 18+
+**Pré-requisitos:** Node.js 20.19+ (ou 22.12+)
 
 ```bash
 # 1. Instalar dependências
