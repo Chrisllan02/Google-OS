@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Workspace Dashboard</title>
+    <meta name="description" content="Google OS — Interface unificada para Gmail, Drive, Agenda, Meet e mais, com Gemini AI integrado." />
+    <title>Google OS — Workspace</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Poppins:wght@400;500;700&display=swap" rel="stylesheet">
@@ -23,6 +24,8 @@
       @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
       @keyframes slideInRight { from { opacity: 0; transform: translateX(2.5rem); } to { opacity: 1; transform: translateX(0); } }
       @keyframes slideInBottom { from { opacity: 0; transform: translateY(1rem); } to { opacity: 1; transform: translateY(0); } }
+      .zoom-in-95 { animation-name: zoomIn95; }
+      @keyframes zoomIn95 { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
       :root { --g-red: #EA4335; --g-blue: #4285F4; --g-green: #34A853; --g-yellow: #FBBC05; }
       .glass-btn { position: relative; width: 72px; height: 72px; border-radius: 50%; border: none; outline: none; background: transparent; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: transform 0.2s ease; isolation: isolate; -webkit-tap-highlight-color: transparent; }
       .glass-btn:active { transform: scale(0.92); }

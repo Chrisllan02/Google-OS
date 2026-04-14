@@ -41,7 +41,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('');
   const [menuSearchActive, setMenuSearchActive] = useState(false);
 
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('workspace_darkmode') !== 'false');
   const [auroraSettings, setAuroraSettings] = useState({ colorStops: ["#4285F4", "#34A853", "#EA4335"], speed: 0.5 });
   const [nickname, setNickname] = useState<string>(() => localStorage.getItem('workspace_nickname') || '');
   const [toasts, setToasts] = useState<{id: number, message: string}[]>([]);
@@ -70,7 +70,7 @@ export default function App() {
         if (!aiClient.current) {
             aiClient.current = new GoogleGenAI({ apiKey: process.env.API_KEY });
             chatSession.current = aiClient.current.chats.create({
-                model: 'gemini-3-flash-preview',
+                model: 'gemini-2.0-flash',
                 config: {
                     systemInstruction: "Você é um assistente inteligente do Google Workspace OS. Você ajuda o usuário a gerenciar seus e-mails, arquivos do Drive, agenda e tarefas. Seja conciso, útil e amigável. Use formatação Markdown simples quando necessário.",
                     tools: [{googleSearch: {}}]
@@ -146,6 +146,26 @@ export default function App() {
     }
   }, [chatHistory, isTyping]);
 
+  // Keyboard shortcuts: Ctrl/Cmd+K = busca, Escape = fechar
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setActiveApp(null);
+        setAiMode(false);
+        setActiveTab('search');
+        setMenuSearchActive(true);
+      }
+      if (e.key === 'Escape') {
+        if (activeApp) { setActiveApp(null); setActiveTab(''); }
+        else if (aiMode) setAiMode(false);
+        else if (menuSearchActive) { setMenuSearchActive(false); setSearchQuery(''); }
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [activeApp, aiMode, menuSearchActive]);
+
   const handleCommandIntent = (text: string): boolean => {
       const lower = text.toLowerCase();
       if (lower.includes('abrir drive') || lower.includes('ir para o drive')) { openApp('drive'); setChatHistory(prev => [...prev, { role: 'assistant', text: 'Abrindo o Google Drive...' }]); return true; }
@@ -192,6 +212,29 @@ export default function App() {
     } finally {
         setIsTyping(false);
     }
+  };
+
+  const toggleDarkMode = () => {
+    setDarkMode(prev => {
+      const next = !prev;
+      localStorage.setItem('workspace_darkmode', String(next));
+      return next;
+    });
+  };
+
+  // Simple Markdown → safe HTML (Gemini responses only, not user input)
+  const renderMarkdown = (text: string): string => {
+    return text
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code class="bg-white/10 px-1 py-0.5 rounded text-[13px] font-mono">$1</code>')
+      .replace(/^### (.+)$/gm, '<p class="font-semibold text-sm mt-3 mb-1">$1</p>')
+      .replace(/^## (.+)$/gm, '<p class="font-bold text-base mt-3 mb-1">$1</p>')
+      .replace(/^# (.+)$/gm, '<p class="font-bold text-lg mt-3 mb-1">$1</p>')
+      .replace(/^[-•] (.+)$/gm, '<div class="flex gap-2 my-0.5"><span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-current shrink-0 opacity-60"></span><span>$1</span></div>')
+      .replace(/\n\n/g, '<br/><br/>')
+      .replace(/\n/g, '<br/>');
   };
 
   const getGreeting = () => {
@@ -285,7 +328,7 @@ export default function App() {
               onUpdateTasks={updateTasks}
               onUpdateNotes={updateNotes}
               showToast={addToast}
-              toggleTheme={() => setDarkMode(!darkMode)}
+              toggleTheme={toggleDarkMode}
               isDarkMode={darkMode}
               onUpdateTheme={(settings: any) => setAuroraSettings(settings)}
               onUpdateNickname={(nick: string) => {
@@ -467,7 +510,12 @@ export default function App() {
                 
                 <div className={`${glassCard} md:col-span-5 p-6 h-[320px] flex flex-col`}>
                     <div className="flex justify-between items-center mb-4">
-                       <span className={`font-bold ${textColor} text-sm`}>Caixa de Entrada</span>
+                       <div className="flex items-center gap-2">
+                         <span className={`font-bold ${textColor} text-sm`}>Caixa de Entrada</span>
+                         {data.stats.unreadEmails > 0 && (
+                           <span className="bg-[#EA4335] text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 leading-none">{data.stats.unreadEmails}</span>
+                         )}
+                       </div>
                        <Mail size={18} className="text-[#EA4335]" />
                     </div>
                     <div className="space-y-2 flex-1 overflow-y-auto custom-scrollbar pr-2">
@@ -598,7 +646,9 @@ export default function App() {
                             </div>
                         )}
                         <div className={`max-w-[80%] p-4 rounded-2xl text-[15px] leading-relaxed shadow-lg backdrop-blur-md border ${msg.role === 'user' ? 'bg-[#4E79F3]/20 text-white rounded-tr-sm border-white/5' : (darkMode ? 'text-[#E3E3E3] bg-white/5 border-white/5' : 'text-black bg-white/60 border-black/5')} rounded-tl-sm`}>
-                            {msg.text}
+                            {msg.role === 'assistant'
+                              ? <span dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.text) }} />
+                              : msg.text}
                         </div>
                     </div>
                 ))}

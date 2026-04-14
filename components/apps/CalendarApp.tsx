@@ -171,7 +171,7 @@ export default function CalendarApp({ onClose, data, onOpenApp, showToast }: Cal
   const handleNext = () => {
     const d = new Date(currentDate);
     if (view === 'day') d.setDate(d.getDate() + 1);
-    else if (view === 'week') d.setDate(d.getDate() - 7);
+    else if (view === 'week') d.setDate(d.getDate() + 7);
     else d.setMonth(d.getMonth() + 1);
     setCurrentDate(d);
   };
@@ -214,8 +214,8 @@ export default function CalendarApp({ onClose, data, onOpenApp, showToast }: Cal
                 height: `${height}px`,
                 left: `${left}%`,
                 width: `calc(${width}% - 2px)`,
-                backgroundColor: 'rgba(66, 133, 244, 0.8)',
-                borderColor: 'rgb(66, 133, 244)',
+                backgroundColor: event.color ? event.color + 'cc' : 'rgba(66,133,244,0.8)',
+                borderColor: event.color || 'rgb(66,133,244)',
             }}
         >
             <p className="font-bold truncate">{event.title}</p>
@@ -289,8 +289,35 @@ export default function CalendarApp({ onClose, data, onOpenApp, showToast }: Cal
         </div>
 
         <div className="flex-1 flex overflow-hidden relative">
-            <div className="w-64 border-r border-gray-200 p-3 hidden md:flex flex-col gap-4 overflow-y-auto bg-gray-50">
-                <button onClick={() => { setIsCreating(true); setNewEvent({}); }} className="flex items-center gap-3 pl-3 pr-6 py-3 bg-white hover:bg-gray-50 rounded-full shadow-[0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)] hover:shadow-lg transition-all w-fit"><Plus size={24} /><span className="font-medium text-sm">Criar</span></button>
+            <div className="w-64 border-r border-gray-200 p-3 hidden md:flex flex-col gap-4 overflow-y-auto bg-gray-50 shrink-0">
+                <button onClick={() => { setIsCreating(true); setNewEvent({ start: new Date(), end: new Date(Date.now() + 3600000), calendarId: 'primary' } as any); }} className="flex items-center gap-3 pl-3 pr-6 py-3 bg-white hover:bg-gray-50 rounded-full shadow-[0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)] hover:shadow-lg transition-all w-fit"><Plus size={24} /><span className="font-medium text-sm">Criar</span></button>
+                {calendars.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider px-2 mb-2">Meus Calendários</p>
+                    <div className="space-y-1">
+                      {calendars.map(cal => (
+                        <label key={cal.id} className="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={visibleCalendars.has(cal.id)}
+                            onChange={() => {
+                              setVisibleCalendars(prev => {
+                                const next = new Set(prev);
+                                if (next.has(cal.id)) next.delete(cal.id); else next.add(cal.id);
+                                return next;
+                              });
+                            }}
+                            className="sr-only"
+                          />
+                          <div className="w-3 h-3 rounded-sm shrink-0 flex items-center justify-center border-2" style={{ borderColor: cal.color, backgroundColor: visibleCalendars.has(cal.id) ? cal.color : 'transparent' }}>
+                            {visibleCalendars.has(cal.id) && <Check size={8} className="text-white" strokeWidth={3}/>}
+                          </div>
+                          <span className="text-sm text-gray-700 truncate">{cal.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
             </div>
             {view === 'month' ? (
                 <div className="flex-1 grid grid-cols-7 grid-rows-6">
@@ -323,16 +350,61 @@ export default function CalendarApp({ onClose, data, onOpenApp, showToast }: Cal
         
         {(isCreating || editingEvent) && (
              <div className="absolute inset-0 bg-black/30 z-50 flex items-center justify-center backdrop-blur-sm" onClick={() => {setIsCreating(false); setEditingEvent(null)}}>
-                <div className="bg-white rounded-lg shadow-2xl w-[500px] overflow-hidden animate-in zoom-in" onClick={e => e.stopPropagation()}>
-                    <div className="p-4 flex justify-end gap-2 bg-gray-50 border-b">
-                        {!isCreating && editingEvent && <button className="p-2 hover:bg-gray-200 rounded-full text-gray-500" onClick={() => handleDeleteEvent(editingEvent.id, editingEvent.calendarId)}><Trash2 size={18}/></button>}
-                        <button className="p-2 hover:bg-gray-200 rounded-full text-gray-500" onClick={() => {setIsCreating(false); setEditingEvent(null)}}><X size={18}/></button>
-                    </div>
+                <div className="bg-white rounded-2xl shadow-2xl w-[520px] overflow-hidden animate-in zoom-in" onClick={e => e.stopPropagation()}>
+                    <div className="h-2 bg-blue-600"></div>
                     <div className="p-6 space-y-4">
-                        <input type="text" placeholder="Adicionar título" className="text-2xl w-full outline-none" value={(isCreating ? newEvent.title : editingEvent?.title) || ''} onChange={e => isCreating ? setNewEvent({...newEvent, title: e.target.value}) : editingEvent && setEditingEvent({...editingEvent, title: e.target.value})}/>
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-base font-medium text-gray-700">{isCreating ? 'Novo evento' : 'Editar evento'}</h3>
+                          <div className="flex gap-1">
+                            {!isCreating && editingEvent && <button className="p-2 hover:bg-gray-100 rounded-full text-gray-500" onClick={() => handleDeleteEvent(editingEvent.id, editingEvent.calendarId)}><Trash2 size={16}/></button>}
+                            <button className="p-2 hover:bg-gray-100 rounded-full text-gray-500" onClick={() => {setIsCreating(false); setEditingEvent(null)}}><X size={16}/></button>
+                          </div>
+                        </div>
+                        <input
+                          type="text" placeholder="Adicionar título"
+                          className="text-2xl w-full outline-none border-b border-gray-200 pb-2 focus:border-blue-500 transition-colors"
+                          value={(isCreating ? newEvent.title : editingEvent?.title) || ''}
+                          onChange={e => isCreating ? setNewEvent({...newEvent, title: e.target.value}) : editingEvent && setEditingEvent({...editingEvent, title: e.target.value})}
+                          autoFocus
+                        />
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-gray-500 mb-1 block flex items-center gap-1"><Clock size={12}/> Início</label>
+                            <input type="datetime-local"
+                              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
+                              value={(() => { const d = isCreating ? newEvent.start : editingEvent?.start; if (!d) return ''; const dt = new Date(d as any); return new Date(dt.getTime() - dt.getTimezoneOffset()*60000).toISOString().slice(0,16); })()}
+                              onChange={e => { const d = new Date(e.target.value); isCreating ? setNewEvent({...newEvent, start: d as any}) : editingEvent && setEditingEvent({...editingEvent, start: d}); }}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 mb-1 block flex items-center gap-1"><Clock size={12}/> Fim</label>
+                            <input type="datetime-local"
+                              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
+                              value={(() => { const d = isCreating ? newEvent.end : editingEvent?.end; if (!d) return ''; const dt = new Date(d as any); return new Date(dt.getTime() - dt.getTimezoneOffset()*60000).toISOString().slice(0,16); })()}
+                              onChange={e => { const d = new Date(e.target.value); isCreating ? setNewEvent({...newEvent, end: d as any}) : editingEvent && setEditingEvent({...editingEvent, end: d}); }}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block flex items-center gap-1"><MapPin size={12}/> Local</label>
+                          <input type="text" placeholder="Adicionar local"
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors"
+                            value={(isCreating ? newEvent.location : editingEvent?.location) || ''}
+                            onChange={e => isCreating ? setNewEvent({...newEvent, location: e.target.value}) : editingEvent && setEditingEvent({...editingEvent, location: e.target.value})}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block flex items-center gap-1"><AlignLeft size={12}/> Descrição</label>
+                          <textarea placeholder="Adicionar descrição" rows={2}
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 transition-colors resize-none"
+                            value={(isCreating ? newEvent.description : editingEvent?.description) || ''}
+                            onChange={e => isCreating ? setNewEvent({...newEvent, description: e.target.value}) : editingEvent && setEditingEvent({...editingEvent, description: e.target.value})}
+                          />
+                        </div>
                     </div>
-                    <div className="p-4 bg-gray-50 border-t flex justify-end">
-                        <button onClick={handleCreateOrUpdateEvent} className="bg-blue-600 text-white px-6 py-2 rounded text-sm font-medium hover:bg-blue-700">Salvar</button>
+                    <div className="px-6 py-4 bg-gray-50 border-t flex justify-end gap-2">
+                        <button onClick={() => {setIsCreating(false); setEditingEvent(null)}} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancelar</button>
+                        <button onClick={handleCreateOrUpdateEvent} className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm shadow-blue-500/30">Salvar</button>
                     </div>
                 </div>
              </div>
