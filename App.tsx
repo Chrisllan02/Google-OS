@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Search, LayoutGrid, Loader2, Mail, HardDrive, FileText,
   FileSpreadsheet, Presentation, Video, Plus, X, ArrowRight,
-  Home, CheckCircle2, Lightbulb, Calendar, LogOut, User, Settings, Info, Bell, Trash2,
-  ExternalLink, Globe, ShieldCheck, Users
+  Home, CheckCircle2, Lightbulb, Calendar, LogOut, Settings, Info, Bell, Trash2,
+  ExternalLink, Globe, ShieldCheck, Users, MessageSquare
 } from 'lucide-react';
 import WeatherWidget from './components/WeatherWidget';
 import AppViewer from './components/AppViewer';
@@ -11,6 +11,8 @@ import Aurora from './components/Aurora';
 import GoogleLoader from './components/GoogleLoader';
 import { GoogleIcons, GeminiLogo } from './components/GoogleIcons';
 import { bridge, DashboardData } from './utils/GASBridge';
+import { googleAuth, GoogleAuthUser } from './utils/GoogleAuth';
+import { openExternalApp, GOOGLE_CHAT_URL } from './utils/ExternalApp';
 import { GoogleGenAI, Chat } from "@google/genai";
 
 const keepColors: {[key:string]: string} = {
@@ -51,6 +53,9 @@ export default function App() {
       { id: 1, title: 'Bem-vindo', text: 'Bem-vindo ao Workspace OS.', time: 'Agora', read: false },
       { id: 2, title: 'Dica do Gemini', text: 'Tente digitar "Criar documento" na barra de busca.', time: '1 min', read: false }
   ]);
+
+  const [googleUser, setGoogleUser] = useState<GoogleAuthUser | null>(() => googleAuth.getUser());
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
 
   const [showAppLauncher, setShowAppLauncher] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -95,6 +100,10 @@ export default function App() {
       });
   }, []);
 
+  useEffect(() => {
+    return googleAuth.onChange(setGoogleUser);
+  }, []);
+
   // Alerta de eventos que começam em até 15 minutos (herdado do Workspace Hub)
   useEffect(() => {
     if (!data?.events?.length) return;
@@ -122,6 +131,40 @@ export default function App() {
           setToasts(prev => prev.filter(t => t.id !== id));
       }, 4000);
       setNotifications(prev => [{ id, title: 'Sistema', text: message, time: 'Agora', read: false }, ...prev]);
+  };
+
+  const reloadData = async () => {
+      setLoading(true);
+      try {
+          const res = await bridge.getInitialData();
+          setData(res);
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  const handleConnectGoogle = async () => {
+      if (!googleAuth.isConfigured()) {
+          addToast('Configure GOOGLE_CLIENT_ID no .env.local para conectar sua conta (veja o README).');
+          return;
+      }
+      setConnectingGoogle(true);
+      try {
+          await googleAuth.signIn();
+          addToast('Conta Google conectada. Carregando seus dados reais...');
+          await reloadData();
+      } catch (e: any) {
+          addToast(e?.message || 'Não foi possível conectar sua conta Google.');
+      } finally {
+          setConnectingGoogle(false);
+      }
+  };
+
+  const handleDisconnectGoogle = async () => {
+      googleAuth.signOut();
+      setShowProfileMenu(false);
+      addToast('Conta Google desconectada. Voltando ao modo demonstração.');
+      await reloadData();
   };
 
   const updateTasks = (newTasks: any[]) => {
@@ -222,7 +265,44 @@ export default function App() {
     return 'Boa noite';
   };
 
-  const openApp = (type: string, fileData?: any) => {
+  // Docs/Sheets/Slides não têm como ser recriados: quando a conta Google está
+  // conectada, abrimos o arquivo real no app oficial (nova aba na web, janela
+  // própria no shell desktop) em vez do editor de demonstração.
+  const openInRealGoogleApp = async (type: 'doc' | 'sheet' | 'slide', fileData?: any): Promise<boolean> => {
+      try {
+          if (fileData?.webViewLink && fileData.webViewLink !== '#') {
+              openExternalApp(fileData.webViewLink, fileData.name);
+              return true;
+          }
+          if (fileData?.id) {
+              const link = await bridge.getWebViewLink(fileData.id);
+              if (link) { openExternalApp(link, fileData.name); return true; }
+          }
+          const created = await bridge.createGoogleAppFile(type);
+          if (created) {
+              openExternalApp(created.webViewLink);
+              addToast('Arquivo criado no seu Google Drive real.');
+              return true;
+          }
+      } catch (e: any) {
+          addToast(e?.message || 'Não foi possível abrir no Google. Abrindo versão de demonstração.');
+      }
+      return false;
+  };
+
+  const openApp = async (type: string, fileData?: any) => {
+    setShowAppLauncher(false);
+
+    if (type === 'chat') {
+        openExternalApp(GOOGLE_CHAT_URL, 'Google Chat');
+        return;
+    }
+
+    if (googleUser && (type === 'doc' || type === 'sheet' || type === 'slide')) {
+        const opened = await openInRealGoogleApp(type, fileData);
+        if (opened) return;
+    }
+
     setAiMode(false);
     setActiveApp({ type, data: fileData });
     setActiveTab(type);
@@ -253,6 +333,7 @@ export default function App() {
       { id: 'drive', label: 'Drive', icon: <GoogleIcons.DriveGlass className="w-10 h-10"/> },
       { id: 'calendar', label: 'Agenda', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Calendar className="text-[#4285F4]"/></div> },
       { id: 'meet', label: 'Meet', icon: <GoogleIcons.MeetGlass className="w-10 h-10"/> },
+      { id: 'chat', label: 'Chat', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><MessageSquare className="text-[#34A853]"/></div> },
       { id: 'doc', label: 'Docs', icon: <GoogleIcons.DocsGlass className="w-10 h-10"/> },
       { id: 'sheet', label: 'Sheets', icon: <GoogleIcons.SheetsGlass className="w-10 h-10"/> },
       { id: 'slide', label: 'Slides', icon: <GoogleIcons.SlidesGlass className="w-10 h-10"/> },
@@ -401,6 +482,16 @@ export default function App() {
                     <h1 className={`text-5xl md:text-7xl font-bold ${textColor} drop-shadow-md tracking-tight`}>
                        {getGreeting()}, <span className="bg-gradient-to-r from-[#4E79F3] via-[#9c51b6] to-[#E95C67] text-transparent bg-clip-text drop-shadow-sm">{nickname || data.user.name.split(' ')[0]}</span>
                     </h1>
+                    {!googleUser && (
+                        <button
+                            onClick={handleConnectGoogle}
+                            disabled={connectingGoogle}
+                            className={`mt-2 flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${darkMode ? 'border-white/15 text-white/60 hover:text-white hover:bg-white/5' : 'border-black/10 text-black/50 hover:text-black hover:bg-black/5'}`}
+                        >
+                            <span className={`w-1.5 h-1.5 rounded-full ${darkMode ? 'bg-white/40' : 'bg-black/30'}`}></span>
+                            {connectingGoogle ? 'Conectando com o Google...' : 'Modo demonstração — conectar conta Google real'}
+                        </button>
+                    )}
                 </div>
             </div>
             <div className="flex items-center gap-4 animate-in fade-in duration-300 relative z-10">
@@ -457,22 +548,29 @@ export default function App() {
                                 <div className={`absolute top-3 right-3 p-1 ${darkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'} rounded-full cursor-pointer`}><X size={16} className={subTextColor} onClick={() => setShowProfileMenu(false)}/></div>
                                 <img src={data.user.avatar} alt="Profile" className={`w-20 h-20 rounded-full border-4 ${darkMode ? 'border-[#2d2e30]' : 'border-white'} mb-2`} />
                                 <h3 className={`font-medium text-lg ${textColor}`}>{data.user.name}</h3>
-                                <p className={`${subTextColor} text-sm mb-4`}>{data.user.email}</p>
-                                <button className={`px-4 py-2 rounded-full border ${darkMode ? 'border-white/20 text-white/90 hover:bg-white/5' : 'border-black/20 text-black/80 hover:bg-black/5'} text-sm transition-colors`}>Gerenciar sua Conta do Google</button>
+                                <p className={`${subTextColor} text-sm mb-1`}>{data.user.email}</p>
+                                <span className={`text-[10px] font-medium px-2.5 py-0.5 rounded-full mb-4 ${googleUser ? 'bg-[#34A853]/15 text-[#34A853]' : 'bg-white/10 text-white/50'}`}>
+                                    {googleUser ? 'Conta Google conectada' : 'Modo demonstração (dados fictícios)'}
+                                </span>
+                                {googleUser ? (
+                                    <button onClick={handleDisconnectGoogle} className={`px-4 py-2 rounded-full border ${darkMode ? 'border-white/20 text-white/90 hover:bg-white/5' : 'border-black/20 text-black/80 hover:bg-black/5'} text-sm transition-colors`}>Desconectar conta Google</button>
+                                ) : (
+                                    <button onClick={handleConnectGoogle} disabled={connectingGoogle} className="px-4 py-2 rounded-full bg-[#4285F4] hover:bg-[#3367d6] disabled:opacity-50 text-white text-sm font-medium transition-colors shadow-md shadow-blue-500/20">
+                                        {connectingGoogle ? 'Conectando...' : 'Conectar conta do Google'}
+                                    </button>
+                                )}
                             </div>
                             <div className="flex flex-col gap-1 p-1">
-                                <button className={`flex items-center gap-4 px-4 py-3 rounded-xl ${darkMode ? 'hover:bg-white/5 text-white/80' : 'hover:bg-black/5 text-black/80'} text-sm transition-colors text-left`}>
-                                    <div className="w-8 flex justify-center"><User size={20}/></div>
-                                    Adicionar outra conta
-                                </button>
                                 <button onClick={() => openApp('settings')} className={`flex items-center gap-4 px-4 py-3 rounded-xl ${darkMode ? 'hover:bg-white/5 text-white/80' : 'hover:bg-black/5 text-black/80'} text-sm transition-colors text-left`}>
                                     <div className="w-8 flex justify-center"><Settings size={20}/></div>
                                     Configurações
                                 </button>
-                                <button className={`flex items-center gap-4 px-4 py-3 rounded-xl ${darkMode ? 'hover:bg-white/5 text-white/80 border-t border-white/5' : 'hover:bg-black/5 text-black/80 border-t border-black/5'} text-sm transition-colors text-left`}>
+                                {googleUser && (
+                                    <button onClick={handleDisconnectGoogle} className={`flex items-center gap-4 px-4 py-3 rounded-xl ${darkMode ? 'hover:bg-white/5 text-white/80 border-t border-white/5' : 'hover:bg-black/5 text-black/80 border-t border-black/5'} text-sm transition-colors text-left`}>
                                     <div className="w-8 flex justify-center"><LogOut size={20}/></div>
-                                    Sair de todas as contas
+                                    Desconectar conta Google
                                 </button>
+                                )}
                                 <div className={`flex justify-center gap-4 py-2 text-[10px] ${darkMode ? 'text-white/30' : 'text-black/30'}`}>
                                     <span className="hover:opacity-80 cursor-pointer">Privacidade</span>
                                     <span className={`w-1 h-1 ${darkMode ? 'bg-white/20' : 'bg-black/20'} rounded-full self-center`}></span>

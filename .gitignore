@@ -25,3 +25,6 @@ dist-ssr
 
 # Banco local do backend opcional (server/)
 database.json
+
+# Build do shell desktop (Electron)
+release
