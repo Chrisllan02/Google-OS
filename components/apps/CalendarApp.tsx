@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { GoogleIcons } from '../GoogleIcons';
 import { bridge, CalendarEvent, CalendarListEntry, EventGuest } from '../../utils/GASBridge';
+import { openExternalApp } from '../../utils/ExternalApp';
 
 interface CalendarAppProps {
   onClose: () => void;
@@ -315,7 +316,15 @@ export default function CalendarApp({ onClose, data, onOpenApp, showToast }: Cal
                         </div>
                     </div>
                     <div className="text-sm text-gray-600 flex items-center gap-2"><Clock size={16}/> {viewingEvent.event.start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - {viewingEvent.event.end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
-                    {viewingEvent.event.meetLink && <div className="text-sm text-blue-600 flex items-center gap-2"><VideoIcon size={16}/> Participar com Google Meet</div>}
+                    {viewingEvent.event.meetLink && (
+                        viewingEvent.event.meetLink.startsWith('http') ? (
+                            <button onClick={() => openExternalApp(viewingEvent.event.meetLink!, 'Google Meet')} className="text-sm text-blue-600 hover:underline flex items-center gap-2 text-left">
+                                <VideoIcon size={16}/> Participar com Google Meet
+                            </button>
+                        ) : (
+                            <div className="text-sm text-blue-600 flex items-center gap-2"><VideoIcon size={16}/> Participar com Google Meet</div>
+                        )
+                    )}
                     {viewingEvent.event.location && <div className="text-sm text-gray-600 flex items-center gap-2"><MapPin size={16}/> {viewingEvent.event.location}</div>}
                 </div>
             )}
