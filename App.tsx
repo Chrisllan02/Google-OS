@@ -3,7 +3,7 @@ import {
   Search, LayoutGrid, Loader2, Mail, HardDrive, FileText,
   FileSpreadsheet, Presentation, Video, Plus, X, ArrowRight,
   Home, CheckCircle2, Lightbulb, Calendar, LogOut, User, Settings, Info, Bell, Trash2,
-  ExternalLink, Globe
+  ExternalLink, Globe, ShieldCheck, Users
 } from 'lucide-react';
 import WeatherWidget from './components/WeatherWidget';
 import AppViewer from './components/AppViewer';
@@ -60,6 +60,7 @@ export default function App() {
 
   const chatSession = useRef<Chat | null>(null);
   const aiClient = useRef<GoogleGenAI | null>(null);
+  const notifiedEventsRef = useRef<Set<string>>(new Set());
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -93,6 +94,26 @@ export default function App() {
         setLoading(false);
       });
   }, []);
+
+  // Alerta de eventos que começam em até 15 minutos (herdado do Workspace Hub)
+  useEffect(() => {
+    if (!data?.events?.length) return;
+    const checkUpcomingEvents = () => {
+        const now = Date.now();
+        data.events.forEach((ev: any) => {
+            if (notifiedEventsRef.current.has(ev.id)) return;
+            const start = new Date(ev.start).getTime();
+            const diffMins = Math.floor((start - now) / 60000);
+            if (diffMins >= 0 && diffMins <= 15) {
+                notifiedEventsRef.current.add(ev.id);
+                addToast(`O evento "${ev.title}" começa em ${diffMins <= 0 ? 'instantes' : `${diffMins} min`}.`);
+            }
+        });
+    };
+    checkUpcomingEvents();
+    const intervalId = setInterval(checkUpcomingEvents, 60000);
+    return () => clearInterval(intervalId);
+  }, [data?.events]);
 
   const addToast = (message: string) => {
       const id = Date.now();
@@ -238,6 +259,8 @@ export default function App() {
       { id: 'tasks', label: 'Tarefas', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><CheckCircle2 className="text-[#4E79F3]"/></div> },
       { id: 'keep', label: 'Keep', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Lightbulb className="text-[#FBBC05]"/></div> },
       { id: 'search', label: 'Busca', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Search className="text-white"/></div> },
+      { id: 'security', label: 'Segurança', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><ShieldCheck className="text-[#34A853]"/></div> },
+      { id: 'permissions', label: 'Permissões', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Users className="text-[#4285F4]"/></div> },
       { id: 'settings', label: 'Ajustes', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Settings className="text-white/70"/></div> },
   ];
 

@@ -8,6 +8,8 @@ import TasksApp from './apps/TasksApp';
 import SearchApp from './apps/SearchApp';
 import SettingsApp from './apps/SettingsApp';
 import CalendarApp from './apps/CalendarApp';
+import SecurityApp from './apps/SecurityApp';
+import PermissionsApp from './apps/PermissionsApp';
 
 interface AppViewerProps {
   type: string;
@@ -42,6 +44,8 @@ export default function AppViewer({ type, onClose, data, searchQuery, onOpenApp,
         case 'tasks': return <TasksApp onClose={onClose} data={data} onUpdate={onUpdateTasks} showToast={showToast} />;
         case 'search': return <SearchApp onClose={onClose} data={data} searchQuery={searchQuery} onOpenApp={onOpenApp} />;
         case 'settings': return <SettingsApp onClose={onClose} data={data} toggleTheme={toggleTheme} isDarkMode={isDarkMode} showToast={showToast} onUpdateTheme={onUpdateTheme} onUpdateNickname={onUpdateNickname} />;
+        case 'security': return <SecurityApp onClose={onClose} data={data} isDarkMode={isDarkMode} showToast={showToast} />;
+        case 'permissions': return <PermissionsApp onClose={onClose} data={data} isDarkMode={isDarkMode} showToast={showToast} />;
         default: return null;
     }
   };

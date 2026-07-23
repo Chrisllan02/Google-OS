@@ -109,6 +109,38 @@ export interface SearchResults {
     error?: string;
 }
 
+// --- Segurança & Governança (herdado do Google Workspace Hub) ---
+export type LogStatus = 'SUCCESS' | 'FAILURE' | 'BLOCKED';
+
+export interface AuditLog {
+    id: string;
+    action: string;
+    details: string;
+    timestamp: string;
+    status: LogStatus;
+    ipAddress: string;
+    device: string;
+}
+
+export type ResourceType = 'calendar' | 'tasks' | 'all';
+export type AccessLevel = 'read' | 'write';
+export type PermissionStatus = 'ACTIVE' | 'REVOKED' | 'PENDING';
+
+export interface SharedPermission {
+    id: string;
+    ownerEmail: string;
+    collaboratorEmail: string;
+    resourceType: ResourceType;
+    accessLevel: AccessLevel;
+    status: PermissionStatus;
+    createdAt: string;
+}
+
+export interface SecurityState {
+    mfaEnabled: boolean;
+    mfaSecret: string;
+}
+
 export interface CalendarEvent {
     id: string;
     title: string;
@@ -331,6 +363,116 @@ class GASBridge {
   async addNote(note: NoteItem): Promise<boolean> { return Promise.resolve(true); }
   async deleteNote(id: number | string): Promise<boolean> { return Promise.resolve(true); }
   async uploadKeepImage(base64: string, mime: string): Promise<{success: boolean, id?: string, url?: string}> { return Promise.resolve({success:true, id: 'mock_img_id', url: 'https://source.unsplash.com/random/200x200'}); }
+
+  // --- SEGURANÇA & AUDITORIA (herdado do Google Workspace Hub) ---
+  private readStore<T>(key: string, fallback: T): T {
+    try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) as T : fallback;
+    } catch { return fallback; }
+  }
+  private writeStore<T>(key: string, value: T) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage indisponível */ }
+  }
+  private seedAuditLogs(): AuditLog[] {
+    const now = Date.now();
+    const mk = (minAgo: number, action: string, details: string, status: LogStatus): AuditLog => ({
+        id: `log_${now - minAgo * 60000}_${Math.random().toString(36).slice(2, 7)}`,
+        action, details, status,
+        timestamp: new Date(now - minAgo * 60000).toISOString(),
+        ipAddress: '187.45.101.20',
+        device: typeof navigator !== 'undefined' ? navigator.userAgent : 'Desconhecido'
+    });
+    return [
+        mk(2,   'LOGIN_SUCCESS',    'Sessão iniciada no Workspace OS com credenciais válidas.', 'SUCCESS'),
+        mk(45,  'CALENDAR_READ',    'Leitura autorizada dos eventos da agenda pessoal.',        'SUCCESS'),
+        mk(120, 'TASKS_SYNC',       'Sincronização das listas de tarefas concluída.',           'SUCCESS'),
+        mk(300, 'LOGIN_FAILURE',    'Tentativa de login com senha incorreta (1/3).',            'FAILURE'),
+    ];
+  }
+  async getAuditLogs(): Promise<AuditLog[]> {
+    let logs = this.readStore<AuditLog[]>('workspace_audit_logs', []);
+    if (logs.length === 0) {
+        logs = this.seedAuditLogs();
+        this.writeStore('workspace_audit_logs', logs);
+    }
+    return Promise.resolve([...logs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+  }
+  async logAudit(action: string, details: string, status: LogStatus = 'SUCCESS'): Promise<AuditLog> {
+    const logs = await this.getAuditLogs();
+    const entry: AuditLog = {
+        id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        action, details, status,
+        timestamp: new Date().toISOString(),
+        ipAddress: '187.45.101.20',
+        device: typeof navigator !== 'undefined' ? navigator.userAgent : 'Desconhecido'
+    };
+    this.writeStore('workspace_audit_logs', [entry, ...logs].slice(0, 200));
+    return Promise.resolve(entry);
+  }
+  async simulateAttack(type: string): Promise<AuditLog> {
+    const attacks: { [key: string]: { action: string, details: string } } = {
+        unauthorized_calendar: { action: 'INTRUSION_CALENDAR', details: 'Script externo tentou ler a agenda sem token de autorização. Requisição bloqueada pelo firewall de aplicação.' },
+        csrf_session:          { action: 'CSRF_HIJACK',        details: 'Tentativa de sequestro de sessão via requisição forjada de IP suspeito. Token invalidado e sessão preservada.' },
+        sqli_malicious:        { action: 'SQL_INJECTION',      details: "Payload malicioso (' OR 1=1 --) detectado no campo de notas. Entrada sanitizada e transação descartada." },
+    };
+    const attack = attacks[type] || { action: 'UNKNOWN_ATTACK', details: 'Atividade anômala detectada e bloqueada.' };
+    return this.logAudit(attack.action, attack.details, 'BLOCKED');
+  }
+  async getSecurityState(): Promise<SecurityState> {
+    return Promise.resolve(this.readStore<SecurityState>('workspace_security', { mfaEnabled: false, mfaSecret: '' }));
+  }
+  generateMfaSecret(): string {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let secret = '';
+    for (let i = 0; i < 16; i++) secret += alphabet[Math.floor(Math.random() * alphabet.length)];
+    return secret;
+  }
+  async setMfaEnabled(enabled: boolean, secret?: string): Promise<SecurityState> {
+    const state: SecurityState = { mfaEnabled: enabled, mfaSecret: enabled ? (secret || this.generateMfaSecret()) : '' };
+    this.writeStore('workspace_security', state);
+    await this.logAudit(enabled ? 'MFA_ENABLED' : 'MFA_DISABLED', enabled ? 'Autenticação de dois fatores (TOTP) ativada para a conta.' : 'Autenticação de dois fatores desativada a pedido do usuário.');
+    return Promise.resolve(state);
+  }
+
+  // --- PERMISSÕES DE COMPARTILHAMENTO (herdado do Google Workspace Hub) ---
+  async getPermissions(currentUserEmail: string): Promise<{ sharedByMe: SharedPermission[], sharedWithMe: SharedPermission[] }> {
+    const all = this.readStore<SharedPermission[]>('workspace_permissions', []);
+    return Promise.resolve({
+        sharedByMe:   all.filter(p => p.ownerEmail === currentUserEmail && p.status === 'ACTIVE'),
+        sharedWithMe: all.filter(p => p.collaboratorEmail === currentUserEmail && p.status === 'ACTIVE'),
+    });
+  }
+  async createPermission(ownerEmail: string, collaboratorEmail: string, resourceType: ResourceType, accessLevel: AccessLevel): Promise<SharedPermission> {
+    const all = this.readStore<SharedPermission[]>('workspace_permissions', []);
+    const perm: SharedPermission = {
+        id: `perm_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        ownerEmail, collaboratorEmail, resourceType, accessLevel,
+        status: 'ACTIVE',
+        createdAt: new Date().toISOString(),
+    };
+    this.writeStore('workspace_permissions', [perm, ...all]);
+    await this.logAudit('PERMISSION_GRANTED', `Compartilhamento (${resourceType}/${accessLevel}) concedido para ${collaboratorEmail}.`);
+    return Promise.resolve(perm);
+  }
+  async updatePermission(id: string, accessLevel: AccessLevel): Promise<boolean> {
+    const all = this.readStore<SharedPermission[]>('workspace_permissions', []);
+    const perm = all.find(p => p.id === id);
+    if (!perm) return Promise.resolve(false);
+    perm.accessLevel = accessLevel;
+    this.writeStore('workspace_permissions', all);
+    await this.logAudit('PERMISSION_UPDATED', `Nível de acesso de ${perm.collaboratorEmail} alterado para ${accessLevel.toUpperCase()}.`);
+    return Promise.resolve(true);
+  }
+  async revokePermission(id: string): Promise<boolean> {
+    const all = this.readStore<SharedPermission[]>('workspace_permissions', []);
+    const perm = all.find(p => p.id === id);
+    if (!perm) return Promise.resolve(false);
+    perm.status = 'REVOKED';
+    this.writeStore('workspace_permissions', all);
+    await this.logAudit('PERMISSION_REVOKED', `Todos os acessos de ${perm.collaboratorEmail} foram revogados.`, 'BLOCKED');
+    return Promise.resolve(true);
+  }
 }
 
 export const bridge = new GASBridge();
