@@ -43,7 +43,7 @@ export default function App() {
 
   const [darkMode, setDarkMode] = useState(true);
   const [auroraSettings, setAuroraSettings] = useState({ colorStops: ["#4285F4", "#34A853", "#EA4335"], speed: 0.5 });
-  const [showAurora, setShowAurora] = useState<boolean>(() => localStorage.getItem('workspace_show_aurora') === 'true');
+  const [showAurora, setShowAurora] = useState<boolean>(true);
   const [nickname, setNickname] = useState<string>(() => {
     const saved = localStorage.getItem('workspace_nickname');
     return saved && saved !== 'Dev' ? saved : '';
