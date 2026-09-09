@@ -25,3 +25,7 @@ dist-ssr
 
 # Banco local do backend opcional (server/)
 database.json
+
+# Environment variables
+.env
+.env*.local

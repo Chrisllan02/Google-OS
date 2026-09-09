@@ -24,9 +24,11 @@ interface AppViewerProps {
   isDarkMode?: boolean;
   onUpdateTheme?: (settings: any) => void;
   onUpdateNickname?: (nickname: string) => void;
+  showAurora?: boolean;
+  onToggleAurora?: () => void;
 }
 
-export default function AppViewer({ type, onClose, data, searchQuery, onOpenApp, onUpdateTasks, onUpdateNotes, showToast, toggleTheme, isDarkMode, onUpdateTheme, onUpdateNickname }: AppViewerProps) {
+export default function AppViewer({ type, onClose, data, searchQuery, onOpenApp, onUpdateTasks, onUpdateNotes, showToast, toggleTheme, isDarkMode, onUpdateTheme, onUpdateNickname, showAurora, onToggleAurora }: AppViewerProps) {
   const glassContainer = isDarkMode 
     ? "bg-black/60 backdrop-blur-3xl border border-white/10 shadow-2xl text-white" 
     : "bg-white/80 backdrop-blur-3xl border border-black/10 shadow-2xl text-black";
@@ -43,7 +45,7 @@ export default function AppViewer({ type, onClose, data, searchQuery, onOpenApp,
         case 'keep': return <KeepApp onClose={onClose} data={data} onUpdate={onUpdateNotes} showToast={showToast} />;
         case 'tasks': return <TasksApp onClose={onClose} data={data} onUpdate={onUpdateTasks} showToast={showToast} />;
         case 'search': return <SearchApp onClose={onClose} data={data} searchQuery={searchQuery} onOpenApp={onOpenApp} />;
-        case 'settings': return <SettingsApp onClose={onClose} data={data} toggleTheme={toggleTheme} isDarkMode={isDarkMode} showToast={showToast} onUpdateTheme={onUpdateTheme} onUpdateNickname={onUpdateNickname} />;
+        case 'settings': return <SettingsApp onClose={onClose} data={data} toggleTheme={toggleTheme} isDarkMode={isDarkMode} showToast={showToast} onUpdateTheme={onUpdateTheme} onUpdateNickname={onUpdateNickname} showAurora={showAurora} onToggleAurora={onToggleAurora} />;
         case 'security': return <SecurityApp onClose={onClose} data={data} isDarkMode={isDarkMode} showToast={showToast} />;
         case 'permissions': return <PermissionsApp onClose={onClose} data={data} isDarkMode={isDarkMode} showToast={showToast} />;
         default: return null;

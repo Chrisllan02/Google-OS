@@ -226,7 +226,7 @@ const MOCK_CALENDARS: CalendarListEntry[] = [
 ];
 
 const MOCK_DATA: DashboardData = {
-  user: { name: "Dev Criativo", email: "dev@workspace.new", avatar: "https://ui-avatars.com/api/?name=Dev+Criativo&background=4285F4&color=fff" },
+  user: { name: "Chrisllan Franco", email: "chrisllan@workspace.os", avatar: "https://ui-avatars.com/api/?name=Chrisllan+Franco&background=4285F4&color=fff" },
   weather: { temp: "24°", location: "São Paulo" },
   stats: { storageUsed: 78, unreadEmails: 2 },
   emails:    MOCK_EMAILS,

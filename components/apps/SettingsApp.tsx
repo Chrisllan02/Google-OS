@@ -14,9 +14,11 @@ interface SettingsAppProps {
   showToast?: (msg: string) => void;
   onUpdateTheme?: (settings: any) => void;
   onUpdateNickname?: (nickname: string) => void;
+  showAurora?: boolean;
+  onToggleAurora?: () => void;
 }
 
-export default function SettingsApp({ onClose, data, toggleTheme, isDarkMode, showToast, onUpdateTheme, onUpdateNickname }: SettingsAppProps) {
+export default function SettingsApp({ onClose, data, toggleTheme, isDarkMode, showToast, onUpdateTheme, onUpdateNickname, showAurora, onToggleAurora }: SettingsAppProps) {
   const [activeTab, setActiveTab] = useState('profile');
   const [emailNotif, setEmailNotif] = useState(true);
   const [calNotif, setCalNotif] = useState(true);
@@ -197,10 +199,28 @@ export default function SettingsApp({ onClose, data, toggleTheme, isDarkMode, sh
                     {isDarkMode ? <ToggleRight size={40} className="fill-blue-500/20"/> : <ToggleLeft size={40} className="text-gray-300"/>}
                   </button>
                 </div>
+
+                <div className={`${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-gray-200'} rounded-2xl border p-5 flex items-center justify-between shadow-sm`}>
+                  <div className="flex items-center gap-4">
+                    <div className={`p-3 ${isDarkMode ? 'bg-white/10' : 'bg-blue-50'} rounded-full`}>
+                        <Palette size={24} className={isDarkMode ? "text-white" : "text-blue-600"}/>
+                    </div>
+                    <div>
+                      <p className="text-base font-medium">Gradiente Animado de Fundo (Aurora)</p>
+                      <p className={`text-sm ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
+                        {showAurora ? 'Ativado (ondas de cores animadas)' : 'Desativado (fundo minimalista limpo)'}
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={() => { if (onToggleAurora) { onToggleAurora(); toast(!showAurora ? "Gradiente ativado" : "Fundo limpo sem gradiente ativado"); } }} className="text-blue-500 transition-colors transform active:scale-90">
+                    {showAurora ? <ToggleRight size={40} className="fill-blue-500/20"/> : <ToggleLeft size={40} className="text-gray-300"/>}
+                  </button>
+                </div>
                 
                 {/* Aurora Theme Picker */}
+                {showAurora && (
                 <div>
-                   <h4 className={`text-xs font-bold ${isDarkMode ? 'text-white/40' : 'text-gray-400'} uppercase tracking-wider px-2 mb-4 flex items-center gap-2`}><Palette size={14}/> Plano de Fundo (Aurora)</h4>
+                   <h4 className={`text-xs font-bold ${isDarkMode ? 'text-white/40' : 'text-gray-400'} uppercase tracking-wider px-2 mb-4 flex items-center gap-2`}><Palette size={14}/> Cores do Gradiente</h4>
                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                        <div 
                            onClick={() => changeAurora(["#4285F4", "#34A853", "#EA4335"], "Google Padrão")} 
@@ -225,6 +245,7 @@ export default function SettingsApp({ onClose, data, toggleTheme, isDarkMode, sh
                        </div>
                    </div>
                 </div>
+                )}
               </div>
             )}
 

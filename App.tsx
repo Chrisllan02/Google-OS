@@ -43,7 +43,11 @@ export default function App() {
 
   const [darkMode, setDarkMode] = useState(true);
   const [auroraSettings, setAuroraSettings] = useState({ colorStops: ["#4285F4", "#34A853", "#EA4335"], speed: 0.5 });
-  const [nickname, setNickname] = useState<string>(() => localStorage.getItem('workspace_nickname') || '');
+  const [showAurora, setShowAurora] = useState<boolean>(() => localStorage.getItem('workspace_show_aurora') === 'true');
+  const [nickname, setNickname] = useState<string>(() => {
+    const saved = localStorage.getItem('workspace_nickname');
+    return saved && saved !== 'Dev' ? saved : '';
+  });
   const [toasts, setToasts] = useState<{id: number, message: string}[]>([]);
   
   const [showNotifications, setShowNotifications] = useState(false);
@@ -284,10 +288,12 @@ export default function App() {
 
   return (
     <div className={`min-h-screen font-sans overflow-hidden relative transition-colors duration-500 ${darkMode ? 'bg-[#050505] text-[#E3E3E3] selection:bg-[#4E79F3]/30' : 'bg-[#F0F2F5] text-[#202124] selection:bg-[#4E79F3]/20'}`}>
-      <div className={`fixed top-0 left-0 right-0 h-[600px] z-0 pointer-events-none transition-opacity duration-1000 ${aiMode ? 'opacity-30' : 'opacity-100'}`}>
-          <Aurora colorStops={auroraSettings.colorStops} speed={auroraSettings.speed} amplitude={1.2} />
-          <div className={`absolute inset-0 bg-gradient-to-b from-transparent ${darkMode ? 'via-[#050505]/40 to-[#050505]' : 'via-[#F0F2F5]/40 to-[#F0F2F5]'}`}></div>
-      </div>
+      {showAurora && (
+        <div className={`fixed top-0 left-0 right-0 h-[600px] z-0 pointer-events-none transition-opacity duration-1000 ${aiMode ? 'opacity-30' : 'opacity-100'}`}>
+            <Aurora colorStops={auroraSettings.colorStops} speed={auroraSettings.speed} amplitude={1.2} />
+            <div className={`absolute inset-0 bg-gradient-to-b from-transparent ${darkMode ? 'via-[#050505]/40 to-[#050505]' : 'via-[#F0F2F5]/40 to-[#F0F2F5]'}`}></div>
+        </div>
+      )}
 
       <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 pointer-events-none">
           {toasts.map(toast => (
@@ -310,6 +316,12 @@ export default function App() {
               showToast={addToast}
               toggleTheme={() => setDarkMode(!darkMode)}
               isDarkMode={darkMode}
+              showAurora={showAurora}
+              onToggleAurora={() => {
+                  const next = !showAurora;
+                  setShowAurora(next);
+                  localStorage.setItem('workspace_show_aurora', String(next));
+              }}
               onUpdateTheme={(settings: any) => setAuroraSettings(settings)}
               onUpdateNickname={(nick: string) => {
                   setNickname(nick);
@@ -399,7 +411,7 @@ export default function App() {
             <div className="flex items-center gap-4 animate-in fade-in duration-300 relative z-10">
                 <div>
                     <h1 className={`text-5xl md:text-7xl font-bold ${textColor} drop-shadow-md tracking-tight`}>
-                       {getGreeting()}, <span className="bg-gradient-to-r from-[#4E79F3] via-[#9c51b6] to-[#E95C67] text-transparent bg-clip-text drop-shadow-sm">{nickname || data.user.name.split(' ')[0]}</span>
+                       {getGreeting()}, <span>{nickname || data.user.name.split(' ')[0]}</span>
                     </h1>
                 </div>
             </div>
