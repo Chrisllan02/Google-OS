@@ -141,7 +141,7 @@ export default function WeatherWidget({ darkMode, textColor, fallbackTemp }: Wea
     const displayTemp = currentTemp || fallbackTemp || '--°';
     const wmo = getWmo(currentCode);
 
-    const pillClass = `flex items-center gap-2 px-4 py-2 backdrop-blur-2xl border rounded-full text-xs font-medium transition-all cursor-pointer select-none ${
+    const pillClass = `flex items-center gap-2 px-3.5 h-10 backdrop-blur-2xl border rounded-full text-xs font-medium transition-all cursor-pointer select-none ${
         darkMode
             ? 'bg-white/5 border-white/10 hover:bg-white/10'
             : 'bg-black/5 border-black/5 hover:bg-black/10'

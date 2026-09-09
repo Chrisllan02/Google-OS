@@ -243,36 +243,36 @@ export default function App() {
   }
 
   const quickCreateApps = [
-    { id: 'search', label: "Pesquisar", icon: <GoogleIcons.Search className="w-7 h-7" />, color: '#4285F4' },
-    { id: 'mail', label: "Gmail", icon: <GoogleIcons.Gmail className="w-7 h-7" />, color: '#EA4335' },
-    { id: 'drive', label: "Drive", icon: <GoogleIcons.Drive className="w-7 h-7" />, color: '#0F9D58' },
-    { id: 'calendar', label: "Agenda", icon: <GoogleIcons.Calendar className="w-7 h-7" />, color: '#1A73E8' },
-    { id: 'doc', label: "Docs", icon: <GoogleIcons.Docs className="w-7 h-7" />, color: '#4285F4' },
-    { id: 'sheet', label: "Sheets", icon: <GoogleIcons.Sheets className="w-7 h-7" />, color: '#0F9D58' },
-    { id: 'slide', label: "Slides", icon: <GoogleIcons.Slides className="w-7 h-7" />, color: '#FBBC04' },
-    { id: 'tasks', label: "Tarefas", icon: <GoogleIcons.Tasks className="w-7 h-7" />, color: '#1A73E8' },
-    { id: 'keep', label: "Keep", icon: <GoogleIcons.Keep className="w-7 h-7" />, color: '#FBBC04' },
-    { id: 'meet', label: "Meet", icon: <GoogleIcons.Meet className="w-7 h-7" />, color: '#00832D' },
+    { id: 'search', label: "Pesquisar", icon: <GoogleIcons.Search className="w-6 h-6 glass-icon-svg" />, color: '#4285F4' },
+    { id: 'mail', label: "Gmail", icon: <GoogleIcons.Gmail className="w-6 h-6 glass-icon-svg" />, color: '#EA4335' },
+    { id: 'drive', label: "Drive", icon: <GoogleIcons.Drive className="w-6 h-6 glass-icon-svg" />, color: '#0F9D58' },
+    { id: 'calendar', label: "Agenda", icon: <GoogleIcons.Calendar className="w-6 h-6 glass-icon-svg" />, color: '#1A73E8' },
+    { id: 'doc', label: "Docs", icon: <GoogleIcons.Docs className="w-6 h-6 glass-icon-svg" />, color: '#4285F4' },
+    { id: 'sheet', label: "Sheets", icon: <GoogleIcons.Sheets className="w-6 h-6 glass-icon-svg" />, color: '#0F9D58' },
+    { id: 'slide', label: "Slides", icon: <GoogleIcons.Slides className="w-6 h-6 glass-icon-svg" />, color: '#FBBC04' },
+    { id: 'tasks', label: "Tarefas", icon: <GoogleIcons.Tasks className="w-6 h-6 glass-icon-svg" />, color: '#1A73E8' },
+    { id: 'keep', label: "Keep", icon: <GoogleIcons.Keep className="w-6 h-6 glass-icon-svg" />, color: '#FBBC04' },
+    { id: 'meet', label: "Meet", icon: <GoogleIcons.Meet className="w-6 h-6 glass-icon-svg" />, color: '#00832D' },
   ];
 
   const launcherApps = [
-      { id: 'mail', label: 'Gmail', icon: <GoogleIcons.Gmail className="w-10 h-10"/> },
-      { id: 'drive', label: 'Drive', icon: <GoogleIcons.Drive className="w-10 h-10"/> },
-      { id: 'calendar', label: 'Agenda', icon: <GoogleIcons.Calendar className="w-10 h-10"/> },
-      { id: 'meet', label: 'Meet', icon: <GoogleIcons.Meet className="w-10 h-10"/> },
-      { id: 'doc', label: 'Docs', icon: <GoogleIcons.Docs className="w-10 h-10"/> },
-      { id: 'sheet', label: 'Sheets', icon: <GoogleIcons.Sheets className="w-10 h-10"/> },
-      { id: 'slide', label: 'Slides', icon: <GoogleIcons.Slides className="w-10 h-10"/> },
-      { id: 'tasks', label: 'Tarefas', icon: <GoogleIcons.Tasks className="w-10 h-10"/> },
-      { id: 'keep', label: 'Keep', icon: <GoogleIcons.Keep className="w-10 h-10"/> },
-      { id: 'search', label: 'Busca', icon: <GoogleIcons.Search className="w-10 h-10"/> },
-      { id: 'security', label: 'Segurança', icon: <GoogleIcons.Security className="w-10 h-10"/> },
-      { id: 'permissions', label: 'Permissões', icon: <GoogleIcons.Contacts className="w-10 h-10"/> },
-      { id: 'settings', label: 'Ajustes', icon: <GoogleIcons.Settings className="w-10 h-10"/> },
+      { id: 'mail', label: 'Gmail', icon: <GoogleIcons.Gmail className="w-8 h-8 glass-icon-svg"/> },
+      { id: 'drive', label: 'Drive', icon: <GoogleIcons.Drive className="w-8 h-8 glass-icon-svg"/> },
+      { id: 'calendar', label: 'Agenda', icon: <GoogleIcons.Calendar className="w-8 h-8 glass-icon-svg"/> },
+      { id: 'meet', label: 'Meet', icon: <GoogleIcons.Meet className="w-8 h-8 glass-icon-svg"/> },
+      { id: 'doc', label: 'Docs', icon: <GoogleIcons.Docs className="w-8 h-8 glass-icon-svg"/> },
+      { id: 'sheet', label: 'Sheets', icon: <GoogleIcons.Sheets className="w-8 h-8 glass-icon-svg"/> },
+      { id: 'slide', label: 'Slides', icon: <GoogleIcons.Slides className="w-8 h-8 glass-icon-svg"/> },
+      { id: 'tasks', label: 'Tarefas', icon: <GoogleIcons.Tasks className="w-8 h-8 glass-icon-svg"/> },
+      { id: 'keep', label: 'Keep', icon: <GoogleIcons.Keep className="w-8 h-8 glass-icon-svg"/> },
+      { id: 'search', label: 'Busca', icon: <GoogleIcons.Search className="w-8 h-8 glass-icon-svg"/> },
+      { id: 'security', label: 'Segurança', icon: <GoogleIcons.Security className="w-8 h-8 glass-icon-svg"/> },
+      { id: 'permissions', label: 'Permissões', icon: <GoogleIcons.Contacts className="w-8 h-8 glass-icon-svg"/> },
+      { id: 'settings', label: 'Ajustes', icon: <GoogleIcons.Settings className="w-8 h-8 glass-icon-svg"/> },
   ];
 
   const isLightMode = !!activeApp;
-  const glassCard = darkMode ? "bg-black/62 backdrop-blur-3xl border border-white/12 rounded-[32px] shadow-2xl hover:border-white/20 transition-all duration-300" : "bg-white/75 backdrop-blur-3xl border border-black/8 rounded-[32px] shadow-xl hover:border-black/12 transition-all duration-300";
+  const glassCard = darkMode ? "bg-black/55 backdrop-blur-2xl border border-white/[0.10] rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.36)] hover:border-white/20 transition-all duration-300 flex flex-col justify-between" : "bg-white/70 backdrop-blur-2xl border border-black/[0.08] rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] hover:border-black/15 transition-all duration-300 flex flex-col justify-between";
   const glassInner = darkMode ? "bg-white/[0.08] hover:bg-white/[0.13] border border-white/8 transition-colors" : "bg-black/[0.06] hover:bg-black/[0.10] border border-black/6 transition-colors";
   const textColor = darkMode ? "text-[#E3E3E3]" : "text-[#202124]";
   const subTextColor = darkMode ? "text-white/70" : "text-black/60";
@@ -353,52 +353,58 @@ export default function App() {
               title="Home"
           >
               <div className="glass-body"></div>
-              <Home size={28} className="home-icon" />
+              <Home size={22} className="home-icon" />
           </button>
 
           <div 
-              className={`relative flex items-center backdrop-blur-3xl border p-2 rounded-full shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] gap-2 pointer-events-auto transition-all duration-300 ${darkMode ? (isLightMode ? 'bg-black/20 border-white/10' : 'bg-white/10 border-white/20') : (isLightMode ? 'bg-white/40 border-black/5' : 'bg-white/60 border-white/40')}`}
-              style={{ height: '72px' }}
+              className={`relative flex items-center backdrop-blur-3xl border px-2.5 rounded-full shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] gap-1.5 pointer-events-auto transition-all duration-300 ${darkMode ? (isLightMode ? 'bg-black/40 border-white/10' : 'bg-white/[0.08] border-white/[0.15]') : (isLightMode ? 'bg-white/40 border-black/5' : 'bg-white/60 border-white/40')}`}
+              style={{ height: '60px' }}
           >
               {menuSearchActive ? (
                   <div className="flex items-center px-4 py-2 w-[500px] animate-in fade-in zoom-in duration-300">
-                      <GoogleIcons.Search className={`${darkMode ? 'text-white/70' : 'text-black/70'} ml-2 mr-3 w-6 h-6`} stroke={darkMode ? "white" : "black"} />
+                      <GoogleIcons.Search className={`${darkMode ? 'text-white/70' : 'text-black/70'} ml-2 mr-3 w-5 h-5`} stroke={darkMode ? "white" : "black"} />
                       <input 
                           ref={menuInputRef}
                           type="text" 
                           placeholder="Pesquise ou fale com o Gemini" 
-                          className={`flex-1 bg-transparent outline-none ${darkMode ? 'text-white placeholder:text-white/40' : 'text-black placeholder:text-black/40'} h-full text-lg font-light`}
+                          className={`flex-1 bg-transparent outline-none ${darkMode ? 'text-white placeholder:text-white/40' : 'text-black placeholder:text-black/40'} h-full text-base font-light`}
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                           autoFocus
                       />
                       <button onClick={() => { setMenuSearchActive(false); setSearchQuery(''); }} className={`p-2 rounded-full ml-2 transition-all ${darkMode ? 'hover:bg-white/10 text-white/70' : 'hover:bg-black/10 text-black/70'} active:scale-90`}>
-                          <X size={20} />
+                          <X size={18} />
                       </button>
                   </div>
               ) : (
                   <>
                       {quickCreateApps.map((app) => {
                           const isActive = activeTab === app.id;
-                          const iconColor = app.color; 
-                          const appTextColor = isActive ? app.color : (darkMode ? '#ffffff' : '#202124');
-                          const hoverBg = isLightMode ? (darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5') : (darkMode ? 'hover:bg-white/10' : 'hover:bg-white/40');
 
                           return (
                             <button 
                                 key={app.id} 
                                 onClick={() => app.id === 'search' ? toggleSearch() : openApp(app.id)}
-                                className={`group relative flex items-center justify-center p-2.5 rounded-full transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] active:scale-95 ${isActive ? '' : hoverBg}`}
-                                style={{ backgroundColor: isActive ? (darkMode ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.08)') : undefined }}
+                                className={`group relative flex flex-col items-center justify-center w-11 h-11 rounded-full transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] active:scale-90 ${
+                                    isActive 
+                                        ? 'bg-white/[0.18] shadow-[0_0_16px_rgba(255,255,255,0.22)]' 
+                                        : 'hover:bg-white/[0.10]'
+                                }`}
                                 title={app.label}
                             >
-                                <div 
-                                    className={`w-7 h-7 flex items-center justify-center transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${isActive ? 'scale-110 -translate-y-1 drop-shadow-[0_4px_12px_rgba(0,0,0,0.35)]' : 'scale-100 opacity-90 group-hover:opacity-100 group-hover:scale-110 group-hover:-translate-y-1 group-hover:drop-shadow-[0_4px_12px_rgba(0,0,0,0.25)]'}`}
-                                >
-                                    {app.icon}
+                                <div className={`w-6 h-6 flex items-center justify-center transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                                    isActive ? 'scale-110 -translate-y-0.5' : 'scale-100 group-hover:scale-115 group-hover:-translate-y-1'
+                                }`}>
+                                    {React.cloneElement(app.icon as React.ReactElement<any>, {
+                                        className: `w-6 h-6 glass-icon-svg ${isActive ? 'active' : ''}`,
+                                        glass: true
+                                    })}
                                 </div>
-                                <span className={`max-w-0 overflow-hidden whitespace-nowrap opacity-0 group-hover:max-w-[140px] group-hover:opacity-100 group-hover:ml-3 text-sm font-medium transition-all duration-300`} style={{ color: appTextColor }}>
+                                {isActive && (
+                                    <div className="w-1 h-1 rounded-full bg-white shadow-[0_0_6px_#fff] mt-0.5 absolute bottom-1.5"></div>
+                                )}
+                                <span className="absolute -top-9 opacity-0 group-hover:opacity-100 pointer-events-none px-2.5 py-1 rounded-lg text-[11px] font-medium tracking-wide transition-all duration-200 bg-black/85 backdrop-blur-md text-white border border-white/10 shadow-lg whitespace-nowrap z-50">
                                     {app.label}
                                 </span>
                             </button>
@@ -409,22 +415,31 @@ export default function App() {
           </div>
       </div>
 
-      <div className="max-w-7xl mx-auto p-4 md:p-8 flex flex-col h-screen relative z-10 pb-28">
-        <header className={`relative z-40 mb-8 h-32 flex items-center px-4 justify-between transition-all duration-700 ${aiMode ? 'opacity-0 -translate-y-10 pointer-events-none' : 'opacity-100 translate-y-0'}`}>
-            <div className="flex items-center gap-4 animate-in fade-in duration-300 relative z-10">
-                <div>
-                    <h1 className={`text-5xl md:text-7xl font-bold ${textColor} drop-shadow-md tracking-tight`}>
-                       {getGreeting()}, <span>{nickname || data.user.name.split(' ')[0]}</span>
-                    </h1>
-                </div>
+      <div className="max-w-7xl mx-auto p-4 md:px-8 md:pt-6 md:pb-8 flex flex-col h-screen relative z-10 pb-28">
+        <header className={`relative z-40 mb-5 h-20 flex items-center px-2 justify-between transition-all duration-700 ${aiMode ? 'opacity-0 -translate-y-10 pointer-events-none' : 'opacity-100 translate-y-0'}`}>
+            <div className="flex flex-col justify-center animate-in fade-in duration-300 relative z-10">
+                <h1 className={`text-3xl md:text-4xl font-semibold ${textColor} drop-shadow-md tracking-tight`}>
+                   {getGreeting()}, <span>{nickname || data.user.name.split(' ')[0]}</span>
+                </h1>
+                <p className="text-xs font-medium text-white/50 capitalize mt-1">
+                    {new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}
+                </p>
             </div>
-            <div className="flex items-center gap-4 animate-in fade-in duration-300 relative z-10">
+            <div className="flex items-center gap-3 animate-in fade-in duration-300 relative z-10">
                 <WeatherWidget darkMode={darkMode} textColor={textColor} fallbackTemp={data.weather.temp} />
                 
                 <div className="relative" ref={notificationRef}>
-                     <button onClick={() => setShowNotifications(!showNotifications)} className={`p-2 rounded-full border border-transparent relative ${darkMode ? 'hover:bg-white/10 hover:border-white/10' : 'hover:bg-black/5 hover:border-black/5'} ${textColor} backdrop-blur-sm transition-all`}>
-                         <Bell size={20} />
-                         {notifications.some(n => !n.read) && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#EA4335] rounded-full"></span>}
+                     <button 
+                         onClick={() => setShowNotifications(!showNotifications)} 
+                         className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all ${
+                             darkMode 
+                                 ? 'bg-white/[0.06] hover:bg-white/[0.12] border-white/10 text-white/80 hover:text-white' 
+                                 : 'bg-black/[0.04] hover:bg-black/[0.08] border-black/8 text-gray-700'
+                         } backdrop-blur-md shadow-sm relative`}
+                         title="Notificações"
+                     >
+                         <Bell size={18} />
+                         {notifications.some(n => !n.read) && <span className="absolute top-2 right-2 w-2 h-2 bg-[#EA4335] rounded-full ring-2 ring-[#050505]"></span>}
                      </button>
                      {showNotifications && (
                          <div className={`absolute top-14 right-0 w-[360px] ${darkMode ? 'bg-[#282a2d] border-white/10' : 'bg-white border-black/10'} border rounded-3xl shadow-[0_16px_48px_rgba(0,0,0,0.45)] p-0 z-50 animate-in fade-in zoom-in duration-200 overflow-hidden flex flex-col`}>
@@ -451,17 +466,23 @@ export default function App() {
                 <div className="relative" ref={launcherRef}>
                     <button 
                         onClick={() => setShowAppLauncher(!showAppLauncher)} 
-                        className={`p-2.5 rounded-full border border-transparent ${darkMode ? 'hover:bg-white/10 hover:border-white/10 text-white/90' : 'hover:bg-black/5 hover:border-black/5 text-gray-700'} backdrop-blur-sm transition-all ${showAppLauncher ? (darkMode ? 'bg-white/10' : 'bg-black/5') : ''}`}
+                        className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all ${
+                            darkMode 
+                                ? 'bg-white/[0.06] hover:bg-white/[0.12] border-white/10 text-white/80 hover:text-white' 
+                                : 'bg-black/[0.04] hover:bg-black/[0.08] border-black/8 text-gray-700'
+                        } backdrop-blur-md shadow-sm ${showAppLauncher ? (darkMode ? 'bg-white/15 border-white/20' : 'bg-black/10') : ''}`}
                         title="Google Apps"
                     >
-                        <GoogleIcons.AppsGrid className="w-5 h-5" />
+                        <GoogleIcons.AppsGrid className="w-5 h-5" glass={true} />
                     </button>
                     {showAppLauncher && (
-                        <div className={`absolute top-14 right-0 w-[340px] ${darkMode ? 'bg-[#282a2d] border-white/10' : 'bg-white border-black/10'} border rounded-3xl shadow-[0_16px_48px_rgba(0,0,0,0.5)] p-3.5 z-50 animate-in fade-in zoom-in duration-200 grid grid-cols-3 gap-2.5 max-h-[440px] overflow-y-auto custom-scrollbar`}>
+                        <div className={`absolute top-14 right-0 w-[340px] ${darkMode ? 'bg-black/65 border-white/12' : 'bg-white/95 border-black/10'} backdrop-blur-2xl border rounded-3xl shadow-[0_16px_48px_rgba(0,0,0,0.5)] p-4 z-50 animate-in fade-in zoom-in duration-200 grid grid-cols-3 gap-2.5 max-h-[440px] overflow-y-auto custom-scrollbar`}>
                             {launcherApps.map((app) => (
-                                <button key={app.id} onClick={() => openApp(app.id)} className={`flex flex-col items-center justify-center p-3 rounded-2xl ${darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'} transition-all gap-2 group`}>
-                                    <div className="w-10 h-10 flex items-center justify-center transform group-hover:scale-110 transition-transform duration-200">{app.icon}</div>
-                                    <span className={`text-xs font-medium ${darkMode ? 'text-white/90' : 'text-black/80'}`}>{app.label}</span>
+                                <button key={app.id} onClick={() => openApp(app.id)} className={`flex flex-col items-center justify-center p-3 rounded-2xl ${darkMode ? 'hover:bg-white/[0.08]' : 'hover:bg-black/[0.05]'} transition-all gap-2 group`}>
+                                    <div className="w-8 h-8 flex items-center justify-center group-hover:scale-115 group-hover:-translate-y-1 transition-all duration-200">
+                                        {React.cloneElement(app.icon as React.ReactElement<any>, { glass: true, className: 'w-8 h-8 glass-icon-svg' })}
+                                    </div>
+                                    <span className={`text-xs font-medium ${darkMode ? 'text-white/70 group-hover:text-white' : 'text-black/70 group-hover:text-black'} transition-colors`}>{app.label}</span>
                                 </button>
                             ))}
                         </div>
@@ -469,7 +490,7 @@ export default function App() {
                 </div>
 
                 <div className="relative" ref={profileRef}>
-                    <img src={data.user.avatar} alt="Profile" onClick={() => setShowProfileMenu(!showProfileMenu)} className={`w-9 h-9 rounded-full border ${darkMode ? 'border-white/20 hover:ring-white/20' : 'border-black/10 hover:ring-black/10'} hover:ring-2 cursor-pointer transition-all`} />
+                    <img src={data.user.avatar} alt="Profile" onClick={() => setShowProfileMenu(!showProfileMenu)} className={`w-10 h-10 rounded-full border ${darkMode ? 'border-white/20 hover:ring-white/20' : 'border-black/10 hover:ring-black/10'} hover:ring-2 cursor-pointer transition-all shadow-sm object-cover`} />
                     {showProfileMenu && (
                         <div className={`absolute top-12 right-0 w-80 ${darkMode ? 'bg-[#2d2e30] border-white/10' : 'bg-white border-black/10'} border rounded-3xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden`}>
                             <div className={`p-4 border-b ${darkMode ? 'border-white/10' : 'border-black/5'} flex flex-col items-center text-center`}>
@@ -506,118 +527,167 @@ export default function App() {
         <div className="flex-1 relative w-full overflow-y-auto pr-2 custom-scrollbar">
             <div className={`grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-min transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${aiMode ? 'opacity-30 scale-[0.98] blur-sm pointer-events-none' : 'opacity-100 scale-100 blur-0'}`}>
                 
-                <div className={`${glassCard} md:col-span-5 p-6 h-[320px] flex flex-col`}>
-                    <div className="flex justify-between items-center mb-4">
-                       <span className={`font-bold ${textColor} text-sm`}>Caixa de Entrada</span>
-                       <GoogleIcons.Gmail className="w-5 h-5" />
+                {/* CARD 1: GMAIL */}
+                <div className={`${glassCard} md:col-span-5 p-5 h-[290px]`}>
+                    <div className="flex justify-between items-center pb-3 mb-3 border-b border-white/[0.08] shrink-0">
+                       <div className="flex items-center gap-2.5">
+                           <div className="w-7 h-7 rounded-lg bg-white/[0.06] backdrop-blur-sm border border-white/[0.12] flex items-center justify-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]">
+                               <GoogleIcons.Gmail className="w-4 h-4 opacity-90" />
+                           </div>
+                           <span className={`font-semibold ${textColor} text-sm`}>Caixa de Entrada</span>
+                       </div>
+                       <span className="text-[11px] font-medium text-white/40 bg-white/[0.05] px-2 py-0.5 rounded-full border border-white/[0.06]">
+                           {data.emails?.length || 0} novas
+                       </span>
                     </div>
-                    <div className="space-y-2 flex-1 overflow-y-auto custom-scrollbar pr-2">
-                      {data.emails.slice(0, 4).map((e: any) => (
-                        <div key={e.id} onClick={() => openApp('mail')} className={`p-2 ${darkMode ? 'hover:bg-white/5 border-transparent hover:border-white/5' : 'hover:bg-black/5 border-transparent hover:border-black/5'} rounded-2xl cursor-pointer group transition-colors border`}>
-                           <div className="flex justify-between items-start mb-1">
-                              <span className={`font-medium text-xs ${textColor}`}>{e.sender}</span>
-                              <span className={`text-[10px] ${subTextColor}`}>{e.time}</span>
+                    <div className="space-y-1.5 flex-1 overflow-y-auto custom-scrollbar pr-1">
+                      {data.emails.slice(0, 3).map((e: any) => (
+                        <div key={e.id} onClick={() => openApp('mail')} className={`p-2.5 ${darkMode ? 'hover:bg-white/[0.06] border-white/[0.04]' : 'hover:bg-black/[0.04] border-black/[0.04]'} rounded-xl cursor-pointer group transition-colors border`}>
+                           <div className="flex justify-between items-start mb-0.5">
+                              <span className={`font-medium text-xs ${textColor} truncate max-w-[180px]`}>{e.sender}</span>
+                              <span className={`text-[10px] ${subTextColor} shrink-0`}>{e.time}</span>
                            </div>
                            <p className={`text-xs ${subTextColor} truncate group-hover:${textColor} transition-colors`}>{e.subject}</p>
                         </div>
                       ))}
                     </div>
-                    <button onClick={() => openApp('mail')} className="w-full mt-2 py-2 text-xs text-[#EA4335] font-medium hover:bg-[#EA4335]/10 rounded-xl transition bg-[#EA4335]/5 border border-[#EA4335]/20">Escrever Email</button>
+                    <button onClick={() => openApp('mail')} className="w-full mt-3 h-8 rounded-xl text-xs text-[#EA4335] font-medium hover:bg-[#EA4335]/15 transition bg-[#EA4335]/10 border border-[#EA4335]/25 flex items-center justify-center shrink-0">
+                        Escrever e-mail
+                    </button>
                 </div>
                 
-                <div className={`${glassCard} md:col-span-4 p-6 h-[320px] flex flex-col`}>
-                    <div className="flex justify-between items-center mb-4">
-                       <span className={`font-bold ${textColor} text-sm`}>Sua Agenda</span>
-                       <GoogleIcons.Calendar className="w-5 h-5" />
+                {/* CARD 2: CALENDAR */}
+                <div className={`${glassCard} md:col-span-4 p-5 h-[290px]`}>
+                    <div className="flex justify-between items-center pb-3 mb-3 border-b border-white/[0.08] shrink-0">
+                       <div className="flex items-center gap-2.5">
+                           <div className="w-7 h-7 rounded-lg bg-white/[0.06] backdrop-blur-sm border border-white/[0.12] flex items-center justify-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]">
+                               <GoogleIcons.Calendar className="w-4 h-4 opacity-90" />
+                           </div>
+                           <span className={`font-semibold ${textColor} text-sm`}>Agenda</span>
+                       </div>
+                       <span className="text-[11px] font-medium text-white/40 bg-white/[0.05] px-2 py-0.5 rounded-full border border-white/[0.06]">
+                           Hoje
+                       </span>
                     </div>
-                    <div className="space-y-2 flex-1 overflow-y-auto custom-scrollbar pr-2">
-                      {todayEvents.length > 0 ? todayEvents.map((e: any) => (
-                        <div key={e.id} onClick={() => openApp('calendar', { event: e })} className={`p-3 rounded-2xl cursor-pointer group transition-colors border relative pl-5 ${darkMode ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-black/5 border-black/5 hover:bg-black/10'}`}>
-                           <div className="absolute left-2 top-3 bottom-3 w-1 bg-blue-400 rounded-full"></div>
+                    <div className="space-y-1.5 flex-1 overflow-y-auto custom-scrollbar pr-1">
+                      {todayEvents.length > 0 ? todayEvents.slice(0, 3).map((e: any) => (
+                        <div key={e.id} onClick={() => openApp('calendar', { event: e })} className={`p-2.5 rounded-xl cursor-pointer group transition-colors border relative pl-4 ${darkMode ? 'bg-white/[0.04] border-white/[0.06] hover:bg-white/[0.08]' : 'bg-black/[0.04] border-black/[0.06] hover:bg-black/[0.08]'}`}>
+                           <div className="absolute left-2 top-2.5 bottom-2.5 w-1 bg-blue-400 rounded-full"></div>
                            <p className={`font-medium text-xs ${textColor} truncate`}>{e.title}</p>
-                           <p className={`text-[10px] ${subTextColor}`}>
+                           <p className={`text-[10px] ${subTextColor} mt-0.5`}>
                                {new Date(e.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(e.end).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                            </p>
                         </div>
                       )) : (
-                        <div className="flex flex-col items-center justify-center h-full text-center">
+                        <div className="flex flex-col items-center justify-center h-full text-center py-4">
                             <GoogleIcons.Calendar className="w-8 h-8 opacity-40"/>
-                            <p className={`text-sm mt-2 ${subTextColor}`}>Nenhum evento para hoje.</p>
+                            <p className={`text-xs mt-2 ${subTextColor}`}>Nenhum evento para hoje.</p>
                         </div>
                       )}
                     </div>
-                    <button onClick={() => openApp('calendar')} className="w-full mt-2 py-2 text-xs text-blue-400 font-medium hover:bg-blue-400/10 rounded-xl transition bg-blue-400/5 border border-blue-400/20">Ver agenda completa</button>
+                    <button onClick={() => openApp('calendar')} className="w-full mt-3 h-8 rounded-xl text-xs text-blue-400 font-medium hover:bg-blue-400/15 transition bg-blue-400/10 border border-blue-400/25 flex items-center justify-center shrink-0">
+                        Ver agenda completa
+                    </button>
                 </div>
 
-                <div className={`${glassCard} md:col-span-3 p-6 flex flex-col h-[320px]`}>
-                    <div className="flex justify-between items-center mb-4">
-                        <span className={`${subTextColor} text-xs font-bold uppercase`}>Meu Drive</span>
-                        <GoogleIcons.Drive className="w-5 h-5" />
+                {/* CARD 3: DRIVE */}
+                <div className={`${glassCard} md:col-span-3 p-5 h-[290px]`}>
+                    <div className="flex justify-between items-center pb-3 mb-3 border-b border-white/[0.08] shrink-0">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-white/[0.06] backdrop-blur-sm border border-white/[0.12] flex items-center justify-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]">
+                                <GoogleIcons.Drive className="w-4 h-4 opacity-90" />
+                            </div>
+                            <span className={`font-semibold ${textColor} text-sm`}>Google Drive</span>
+                        </div>
+                        <span className="text-[11px] font-medium text-white/40 bg-white/[0.05] px-2 py-0.5 rounded-full border border-white/[0.06]">
+                            Recentes
+                        </span>
                     </div>
-                    <div className="space-y-2 flex-1 overflow-hidden">
+                    <div className="space-y-1.5 flex-1 overflow-hidden">
                         {data.files.slice(0, 3).map((f: any) => (
-                          <div key={f.id} onClick={() => openApp(f.type, f)} className={`flex items-center gap-2 p-2 rounded-xl ${darkMode ? 'hover:bg-white/5 hover:border-white/5' : 'hover:bg-black/5 hover:border-black/5'} cursor-pointer group transition-colors border border-transparent`}>
-                             <div className={`p-1.5 ${darkMode ? 'bg-white/5 group-hover:bg-white/10' : 'bg-black/5 group-hover:bg-black/10'} rounded-lg`}>{getFileIcon(f.type)}</div>
-                             <div className="overflow-hidden min-w-0">
+                          <div key={f.id} onClick={() => openApp(f.type, f)} className={`flex items-center gap-2.5 p-2 rounded-xl ${darkMode ? 'hover:bg-white/[0.06] border-white/[0.04]' : 'hover:bg-black/[0.04] border-black/[0.04]'} cursor-pointer group transition-colors border`}>
+                             <div className={`p-1.5 ${darkMode ? 'bg-white/[0.06] group-hover:bg-white/[0.10]' : 'bg-black/[0.04] group-hover:bg-black/[0.08]'} rounded-lg shrink-0`}>{getFileIcon(f.type)}</div>
+                             <div className="overflow-hidden min-w-0 flex-1">
                                <p className={`text-xs font-medium truncate ${textColor} group-hover:text-green-400 transition-colors`}>{f.name}</p>
                                <p className={`text-[10px] ${subTextColor} truncate`}>{f.date}</p>
                              </div>
                           </div>
                         ))}
                     </div>
-                     <button onClick={() => openApp('drive')} className="w-full mt-2 py-2 text-xs text-green-400 font-medium hover:bg-green-400/10 rounded-xl transition bg-green-400/5 border border-green-400/20">Abrir Drive</button>
+                    <button onClick={() => openApp('drive')} className="w-full mt-3 h-8 rounded-xl text-xs text-green-400 font-medium hover:bg-green-400/15 transition bg-green-400/10 border border-green-400/25 flex items-center justify-center shrink-0">
+                        Abrir Drive
+                    </button>
                 </div>
 
-                <div className={`${glassCard} md:col-span-6 p-6 flex flex-col h-[280px]`}>
-                    <div className="flex justify-between items-center mb-4">
-                        <span className={`${subTextColor} text-xs font-bold uppercase tracking-wider`}>Notas</span>
-                        <GoogleIcons.Keep className="w-5 h-5" />
+                {/* CARD 4: KEEP */}
+                <div className={`${glassCard} md:col-span-6 p-5 h-[250px]`}>
+                    <div className="flex justify-between items-center pb-3 mb-3 border-b border-white/[0.08] shrink-0">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-white/[0.06] backdrop-blur-sm border border-white/[0.12] flex items-center justify-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]">
+                                <GoogleIcons.Keep className="w-4 h-4 opacity-90" />
+                            </div>
+                            <span className={`font-semibold ${textColor} text-sm`}>Google Keep</span>
+                        </div>
+                        <span className="text-[11px] font-medium text-white/40 bg-white/[0.05] px-2 py-0.5 rounded-full border border-white/[0.06]">
+                            Fixadas
+                        </span>
                     </div>
                     <div className="flex-1 grid grid-cols-2 gap-3 overflow-hidden">
-                        <div onClick={() => openApp('keep')} className={`p-3 rounded-2xl cursor-pointer flex flex-col items-center justify-center text-center transition-colors group ${glassInner}`}>
-                            <Plus size={24} className="text-[#FBBC05] mb-2 group-hover:scale-110 transition-transform" />
+                        <div onClick={() => openApp('keep')} className={`p-3 rounded-2xl cursor-pointer flex flex-col items-center justify-center text-center transition-all group ${glassInner} border border-dashed border-white/20 hover:border-white/40`}>
+                            <div className="w-8 h-8 rounded-full bg-[#FBBC05]/10 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
+                                <Plus size={18} className="text-[#FBBC05]" />
+                            </div>
                             <span className={`text-xs font-medium ${textColor}`}>Nova Nota</span>
                         </div>
-                        {data.notes && data.notes.slice(0, 3).map((note: any) => {
+                        {data.notes && data.notes.slice(0, 1).map((note: any) => {
                             const noteColorClass = keepColors[note.color || 'default']?.split(' ')[0] || (darkMode ? 'bg-white/5' : 'bg-black/5');
-                            const finalClass = noteColorClass.replace('bg-', 'bg-opacity-20 bg-') + (darkMode ? ' border border-white/5' : ' border border-black/5');
+                            const finalClass = noteColorClass.replace('bg-', 'bg-opacity-20 bg-') + (darkMode ? ' border border-white/10' : ' border border-black/10');
                             return (
                                 <div key={note.id} onClick={() => openApp('keep')} className={`p-3 rounded-2xl cursor-pointer flex flex-col hover:brightness-110 transition-all ${finalClass}`}>
-                                    <h4 className={`text-xs font-bold ${textColor} mb-1 truncate`}>{note.title || "Sem título"}</h4>
-                                    <p className={`text-[10px] ${subTextColor} line-clamp-3 leading-relaxed`}>{note.content}</p>
+                                    <h4 className={`text-xs font-semibold ${textColor} mb-1 truncate`}>{note.title || "Sem título"}</h4>
+                                    <p className={`text-[11px] ${subTextColor} line-clamp-3 leading-relaxed`}>{note.content}</p>
                                 </div>
                             );
                         })}
                     </div>
+                    <button onClick={() => openApp('keep')} className="w-full mt-3 h-8 rounded-xl text-xs text-amber-400 font-medium hover:bg-amber-400/15 transition bg-amber-400/10 border border-amber-400/25 flex items-center justify-center shrink-0">
+                        Ver todas as notas
+                    </button>
                 </div>
 
-                <div className={`${glassCard} md:col-span-6 p-6 flex flex-col h-[280px]`}>
-                    <div className="flex justify-between items-center mb-4">
-                        <span className={`${subTextColor} text-xs font-bold uppercase tracking-wider`}>Tarefas</span>
-                        <GoogleIcons.Tasks className="w-5 h-5" />
+                {/* CARD 5: TASKS */}
+                <div className={`${glassCard} md:col-span-6 p-5 h-[250px]`}>
+                    <div className="flex justify-between items-center pb-3 mb-3 border-b border-white/[0.08] shrink-0">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-white/[0.06] backdrop-blur-sm border border-white/[0.12] flex items-center justify-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]">
+                                <GoogleIcons.Tasks className="w-4 h-4 opacity-90" />
+                            </div>
+                            <span className={`font-semibold ${textColor} text-sm`}>Tarefas</span>
+                        </div>
+                        <span className="text-[11px] font-medium text-white/40 bg-white/[0.05] px-2 py-0.5 rounded-full border border-white/[0.06]">
+                            Pendentes
+                        </span>
                     </div>
-                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2">
-                        {data.tasks && data.tasks.slice(0, 5).map((task: any) => (
-                            <div key={task.id} onClick={() => openApp('tasks')} className={`group flex items-start gap-3 p-3 rounded-2xl ${darkMode ? 'hover:bg-white/5 hover:border-white/5' : 'hover:bg-black/5 hover:border-black/5'} cursor-pointer transition-colors border border-transparent`}>
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 mt-0.5 ${task.completed ? 'bg-[#4E79F3] border-[#4E79F3]' : `border-${darkMode ? 'white/40 group-hover:border-white' : 'black/20 group-hover:border-black/60'}`}`}>
-                                    {task.completed && <CheckCircle2 size={14} className="text-white" />}
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-1.5">
+                        {data.tasks && data.tasks.slice(0, 3).map((task: any) => (
+                            <div key={task.id} onClick={() => openApp('tasks')} className={`group flex items-center gap-2.5 p-2 rounded-xl ${darkMode ? 'hover:bg-white/[0.06] border-white/[0.04]' : 'hover:bg-black/[0.04] border-black/[0.04]'} cursor-pointer transition-colors border`}>
+                                <div className={`w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${task.completed ? 'bg-[#4E79F3] border-[#4E79F3]' : (darkMode ? 'border-white/40 group-hover:border-white' : 'border-black/30 group-hover:border-black/70')}`}>
+                                    {task.completed && <CheckCircle2 size={12} className="text-white" />}
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <span className={`text-sm block truncate ${task.completed ? `${subTextColor} line-through` : textColor}`}>{task.title}</span>
+                                <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                                    <span className={`text-xs block truncate ${task.completed ? `${subTextColor} line-through` : textColor}`}>{task.title}</span>
                                     {task.date && (
-                                        <div className="flex items-center gap-1 mt-1 text-[10px] text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded-full w-fit">
-                                            <Calendar size={10} />
+                                        <span className="text-[10px] text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded-full shrink-0">
                                             {new Date(task.date).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
-                                        </div>
+                                        </span>
                                     )}
                                 </div>
                             </div>
                         ))}
-                        <div onClick={() => openApp('tasks')} className={`flex items-center gap-3 p-3 rounded-2xl ${darkMode ? 'hover:bg-white/5 hover:text-white hover:border-white/5 text-white/60' : 'hover:bg-black/5 hover:text-black hover:border-black/5 text-black/60'} cursor-pointer transition-colors border border-transparent`}>
-                            <Plus size={20} />
-                            <span className="text-sm font-medium">Adicionar tarefa</span>
-                        </div>
                     </div>
+                    <button onClick={() => openApp('tasks')} className="w-full mt-3 h-8 rounded-xl text-xs text-blue-400 font-medium hover:bg-blue-400/15 transition bg-blue-400/10 border border-blue-400/25 flex items-center justify-center shrink-0">
+                        Adicionar nova tarefa
+                    </button>
                 </div>
             </div>
         </div>
