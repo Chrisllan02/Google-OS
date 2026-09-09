@@ -1,6 +1,7 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { Users, KeyRound, Trash2, Eye, Edit3, ShieldAlert, X } from 'lucide-react';
 import { bridge, SharedPermission, ResourceType, AccessLevel } from '../../utils/GASBridge';
+import { GoogleIcons } from '../GoogleIcons';
 
 interface PermissionsAppProps {
   onClose: () => void;
@@ -72,7 +73,7 @@ export default function PermissionsApp({ onClose, data, isDarkMode = true, showT
       {/* Header */}
       <div className={`h-16 flex items-center justify-between px-8 border-b ${isDarkMode ? 'border-white/5 bg-[#191919]/50' : 'border-gray-200 bg-white'} shrink-0 backdrop-blur-xl`}>
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-[#4285F4]/10 rounded-full"><Users size={20} className="text-[#4285F4]" /></div>
+          <GoogleIcons.Contacts className="w-7 h-7" />
           <h2 className="text-xl font-normal">Permissões de Compartilhamento</h2>
         </div>
         <button onClick={onClose} className={`p-2 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-white/60' : 'hover:bg-gray-100 text-gray-500'}`}>

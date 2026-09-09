@@ -898,7 +898,7 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
         <div className={appHeaderClass}>
             <div className="flex items-center gap-4 w-72">
                 <div className="flex items-center gap-3">
-                    <GoogleIcons.GmailGlass className="w-10 h-10 hover:-translate-y-1 drop-shadow-md" />
+                    <GoogleIcons.Gmail className="w-9 h-9 hover:-translate-y-0.5 transition-transform drop-shadow-md" />
                     <span className="text-white text-xl font-light">Email & Calendário</span>
                 </div>
             </div>
@@ -1038,7 +1038,7 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
                         <div className="flex bg-white/5 backdrop-blur-xl border border-white/10 p-1 rounded-[99px] h-[40px] items-center gap-1 w-full overflow-x-auto custom-scrollbar">
                             {['email', 'agenda', 'tasks', 'keep'].map((tab: any) => (
                                 <button key={tab} onClick={() => setActivePane(tab)} className={`flex-1 min-w-[70px] h-full rounded-full text-xs font-medium transition-all flex items-center justify-center gap-2 ${activePane.includes(tab) ? 'bg-white/10 text-white shadow-sm border border-white/5' : 'text-white/50 hover:bg-white/5 hover:text-white'}`}>
-                                    {tab === 'email' && <Mail size={14} />} {tab === 'agenda' && <LayoutTemplate size={14} />} {tab === 'tasks' && <CheckCircle size={14} />} {tab === 'keep' && <StickyNote size={14} />}
+                                    {tab === 'email' && <GoogleIcons.Gmail className="w-3.5 h-3.5" />} {tab === 'agenda' && <GoogleIcons.Calendar className="w-3.5 h-3.5" />} {tab === 'tasks' && <GoogleIcons.Tasks className="w-3.5 h-3.5" />} {tab === 'keep' && <GoogleIcons.Keep className="w-3.5 h-3.5" />}
                                     <span className="capitalize hidden md:inline">{tab === 'email' ? 'Leitura' : tab}</span>
                                 </button>
                             ))}

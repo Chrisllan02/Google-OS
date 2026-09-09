@@ -243,29 +243,32 @@ export default function App() {
   }
 
   const quickCreateApps = [
-    { id: 'search', label: "Pesquisar", icon: <Search size={18} />, color: '#4E79F3', activeColor: '#202124', lightColor: '#F0F4F9', iconColor: 'url(#gemini-gradient-search)' },
-    { id: 'mail', label: "Gmail", icon: <GoogleIcons.GmailGlass className="w-6 h-6" />, color: '#EA4335', lightColor: '#FCE8E6' },
-    { id: 'drive', label: "Drive", icon: <GoogleIcons.DriveGlass className="w-6 h-6" />, color: '#34A853', lightColor: '#E6F4EA', isGlass: true },
-    { id: 'doc', label: "Docs", icon: <GoogleIcons.DocsGlass className="w-6 h-6" />, color: '#4285F4', lightColor: '#E8F0FE', isGlass: true },
-    { id: 'sheet', label: "Sheets", icon: <GoogleIcons.SheetsGlass className="w-6 h-6" />, color: '#34A853', lightColor: '#E6F4EA', isGlass: true },
-    { id: 'slide', label: "Slides", icon: <GoogleIcons.SlidesGlass className="w-6 h-6" />, color: '#FBBC05', lightColor: '#FEF7E0', isGlass: true },
-    { id: 'meet', label: "Meet", icon: <GoogleIcons.MeetGlass className="w-6 h-6" />, color: '#EA4335', lightColor: '#FCE8E6', isGlass: true },
+    { id: 'search', label: "Pesquisar", icon: <GoogleIcons.Search className="w-7 h-7" />, color: '#4285F4' },
+    { id: 'mail', label: "Gmail", icon: <GoogleIcons.Gmail className="w-7 h-7" />, color: '#EA4335' },
+    { id: 'drive', label: "Drive", icon: <GoogleIcons.Drive className="w-7 h-7" />, color: '#0F9D58' },
+    { id: 'calendar', label: "Agenda", icon: <GoogleIcons.Calendar className="w-7 h-7" />, color: '#1A73E8' },
+    { id: 'doc', label: "Docs", icon: <GoogleIcons.Docs className="w-7 h-7" />, color: '#4285F4' },
+    { id: 'sheet', label: "Sheets", icon: <GoogleIcons.Sheets className="w-7 h-7" />, color: '#0F9D58' },
+    { id: 'slide', label: "Slides", icon: <GoogleIcons.Slides className="w-7 h-7" />, color: '#FBBC04' },
+    { id: 'tasks', label: "Tarefas", icon: <GoogleIcons.Tasks className="w-7 h-7" />, color: '#1A73E8' },
+    { id: 'keep', label: "Keep", icon: <GoogleIcons.Keep className="w-7 h-7" />, color: '#FBBC04' },
+    { id: 'meet', label: "Meet", icon: <GoogleIcons.Meet className="w-7 h-7" />, color: '#00832D' },
   ];
 
   const launcherApps = [
-      { id: 'mail', label: 'Gmail', icon: <GoogleIcons.GmailGlass className="w-10 h-10"/> },
-      { id: 'drive', label: 'Drive', icon: <GoogleIcons.DriveGlass className="w-10 h-10"/> },
-      { id: 'calendar', label: 'Agenda', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Calendar className="text-[#4285F4]"/></div> },
-      { id: 'meet', label: 'Meet', icon: <GoogleIcons.MeetGlass className="w-10 h-10"/> },
-      { id: 'doc', label: 'Docs', icon: <GoogleIcons.DocsGlass className="w-10 h-10"/> },
-      { id: 'sheet', label: 'Sheets', icon: <GoogleIcons.SheetsGlass className="w-10 h-10"/> },
-      { id: 'slide', label: 'Slides', icon: <GoogleIcons.SlidesGlass className="w-10 h-10"/> },
-      { id: 'tasks', label: 'Tarefas', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><CheckCircle2 className="text-[#4E79F3]"/></div> },
-      { id: 'keep', label: 'Keep', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Lightbulb className="text-[#FBBC05]"/></div> },
-      { id: 'search', label: 'Busca', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Search className="text-white"/></div> },
-      { id: 'security', label: 'Segurança', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><ShieldCheck className="text-[#34A853]"/></div> },
-      { id: 'permissions', label: 'Permissões', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Users className="text-[#4285F4]"/></div> },
-      { id: 'settings', label: 'Ajustes', icon: <div className="w-10 h-10 bg-[#202124] rounded-full flex items-center justify-center border border-white/20"><Settings className="text-white/70"/></div> },
+      { id: 'mail', label: 'Gmail', icon: <GoogleIcons.Gmail className="w-10 h-10"/> },
+      { id: 'drive', label: 'Drive', icon: <GoogleIcons.Drive className="w-10 h-10"/> },
+      { id: 'calendar', label: 'Agenda', icon: <GoogleIcons.Calendar className="w-10 h-10"/> },
+      { id: 'meet', label: 'Meet', icon: <GoogleIcons.Meet className="w-10 h-10"/> },
+      { id: 'doc', label: 'Docs', icon: <GoogleIcons.Docs className="w-10 h-10"/> },
+      { id: 'sheet', label: 'Sheets', icon: <GoogleIcons.Sheets className="w-10 h-10"/> },
+      { id: 'slide', label: 'Slides', icon: <GoogleIcons.Slides className="w-10 h-10"/> },
+      { id: 'tasks', label: 'Tarefas', icon: <GoogleIcons.Tasks className="w-10 h-10"/> },
+      { id: 'keep', label: 'Keep', icon: <GoogleIcons.Keep className="w-10 h-10"/> },
+      { id: 'search', label: 'Busca', icon: <GoogleIcons.Search className="w-10 h-10"/> },
+      { id: 'security', label: 'Segurança', icon: <GoogleIcons.Security className="w-10 h-10"/> },
+      { id: 'permissions', label: 'Permissões', icon: <GoogleIcons.Contacts className="w-10 h-10"/> },
+      { id: 'settings', label: 'Ajustes', icon: <GoogleIcons.Settings className="w-10 h-10"/> },
   ];
 
   const isLightMode = !!activeApp;
@@ -386,14 +389,14 @@ export default function App() {
                             <button 
                                 key={app.id} 
                                 onClick={() => app.id === 'search' ? toggleSearch() : openApp(app.id)}
-                                className={`group relative flex items-center justify-center p-3 rounded-full transition-all duration-400 ease-[cubic-bezier(0.25,1,0.5,1)] active:scale-95 ${isActive ? '' : hoverBg}`}
-                                style={{ backgroundColor: isActive ? (darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)') : undefined }}
+                                className={`group relative flex items-center justify-center p-2.5 rounded-full transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] active:scale-95 ${isActive ? '' : hoverBg}`}
+                                style={{ backgroundColor: isActive ? (darkMode ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.08)') : undefined }}
+                                title={app.label}
                             >
                                 <div 
-                                    className={`transition-all duration-400 ease-[cubic-bezier(0.25,1,0.5,1)] ${isActive ? 'scale-110 -translate-y-1' : 'scale-100 translate-y-0'} ${isActive ? 'filter-none opacity-100 drop-shadow-[0_0_12px_rgba(255,255,255,0.3)]' : `grayscale brightness-[2.5] contrast-125 opacity-70 drop-shadow-[0_2px_4px_rgba(255,255,255,0.1)] group-hover:filter-none group-hover:grayscale-0 group-hover:brightness-100 group-hover:opacity-100 group-hover:drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] group-hover:scale-110 group-hover:-translate-y-1`}`}
-                                    style={{ color: iconColor }}
+                                    className={`w-7 h-7 flex items-center justify-center transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${isActive ? 'scale-110 -translate-y-1 drop-shadow-[0_4px_12px_rgba(0,0,0,0.35)]' : 'scale-100 opacity-90 group-hover:opacity-100 group-hover:scale-110 group-hover:-translate-y-1 group-hover:drop-shadow-[0_4px_12px_rgba(0,0,0,0.25)]'}`}
                                 >
-                                    {app.id === 'search' ? <GoogleIcons.Search className="w-6 h-6" stroke={isActive || 'group-hover' ? app.color : "currentColor"} /> : React.cloneElement(app.icon as React.ReactElement<any>, { size: 24, color: iconColor, className: `transition-colors duration-200` })}
+                                    {app.icon}
                                 </div>
                                 <span className={`max-w-0 overflow-hidden whitespace-nowrap opacity-0 group-hover:max-w-[140px] group-hover:opacity-100 group-hover:ml-3 text-sm font-medium transition-all duration-300`} style={{ color: appTextColor }}>
                                     {app.label}
@@ -407,7 +410,7 @@ export default function App() {
       </div>
 
       <div className="max-w-7xl mx-auto p-4 md:p-8 flex flex-col h-screen relative z-10 pb-28">
-        <header className={`relative mb-8 h-32 flex items-center px-4 justify-between transition-all duration-700 ${aiMode ? 'opacity-0 -translate-y-10 pointer-events-none' : 'opacity-100 translate-y-0'}`}>
+        <header className={`relative z-40 mb-8 h-32 flex items-center px-4 justify-between transition-all duration-700 ${aiMode ? 'opacity-0 -translate-y-10 pointer-events-none' : 'opacity-100 translate-y-0'}`}>
             <div className="flex items-center gap-4 animate-in fade-in duration-300 relative z-10">
                 <div>
                     <h1 className={`text-5xl md:text-7xl font-bold ${textColor} drop-shadow-md tracking-tight`}>
@@ -424,7 +427,7 @@ export default function App() {
                          {notifications.some(n => !n.read) && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#EA4335] rounded-full"></span>}
                      </button>
                      {showNotifications && (
-                         <div className={`absolute top-12 right-0 w-[360px] ${darkMode ? 'bg-[#2d2e30]/95 border-white/10' : 'bg-white/95 border-black/10'} backdrop-blur-xl border rounded-2xl shadow-2xl p-0 z-50 animate-in fade-in zoom-in duration-200 overflow-hidden flex flex-col`}>
+                         <div className={`absolute top-14 right-0 w-[360px] ${darkMode ? 'bg-[#282a2d] border-white/10' : 'bg-white border-black/10'} border rounded-3xl shadow-[0_16px_48px_rgba(0,0,0,0.45)] p-0 z-50 animate-in fade-in zoom-in duration-200 overflow-hidden flex flex-col`}>
                             <div className={`p-4 border-b ${darkMode ? 'border-white/10' : 'border-black/5'} flex justify-between items-center`}>
                                 <span className={`text-sm font-medium ${textColor}`}>Notificações</span>
                                 <button className={`text-xs ${subTextColor} hover:text-blue-400`} onClick={() => setNotifications([])}>Limpar tudo</button>
@@ -446,15 +449,19 @@ export default function App() {
                 </div>
 
                 <div className="relative" ref={launcherRef}>
-                    <button onClick={() => setShowAppLauncher(!showAppLauncher)} className={`p-2 rounded-full border border-transparent ${darkMode ? 'hover:bg-white/10 hover:border-white/10' : 'hover:bg-black/5 hover:border-black/5'} ${textColor} backdrop-blur-sm transition-all ${showAppLauncher ? (darkMode ? 'bg-white/10' : 'bg-black/5') : ''}`}>
-                        <LayoutGrid size={20} />
+                    <button 
+                        onClick={() => setShowAppLauncher(!showAppLauncher)} 
+                        className={`p-2.5 rounded-full border border-transparent ${darkMode ? 'hover:bg-white/10 hover:border-white/10 text-white/90' : 'hover:bg-black/5 hover:border-black/5 text-gray-700'} backdrop-blur-sm transition-all ${showAppLauncher ? (darkMode ? 'bg-white/10' : 'bg-black/5') : ''}`}
+                        title="Google Apps"
+                    >
+                        <GoogleIcons.AppsGrid className="w-5 h-5" />
                     </button>
                     {showAppLauncher && (
-                        <div className={`absolute top-12 right-0 w-[320px] ${darkMode ? 'bg-[#2d2e30]/95 border-white/10' : 'bg-white/95 border-black/10'} backdrop-blur-xl border rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in zoom-in duration-200 grid grid-cols-3 gap-2 max-h-[400px] overflow-y-auto custom-scrollbar`}>
+                        <div className={`absolute top-14 right-0 w-[340px] ${darkMode ? 'bg-[#282a2d] border-white/10' : 'bg-white border-black/10'} border rounded-3xl shadow-[0_16px_48px_rgba(0,0,0,0.5)] p-3.5 z-50 animate-in fade-in zoom-in duration-200 grid grid-cols-3 gap-2.5 max-h-[440px] overflow-y-auto custom-scrollbar`}>
                             {launcherApps.map((app) => (
-                                <button key={app.id} onClick={() => openApp(app.id)} className={`flex flex-col items-center justify-center p-3 rounded-xl ${darkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'} transition-colors gap-2 group`}>
-                                    <div className="transform group-hover:scale-110 transition-transform duration-200">{app.icon}</div>
-                                    <span className={`text-xs ${darkMode ? 'text-white/80' : 'text-black/80'}`}>{app.label}</span>
+                                <button key={app.id} onClick={() => openApp(app.id)} className={`flex flex-col items-center justify-center p-3 rounded-2xl ${darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'} transition-all gap-2 group`}>
+                                    <div className="w-10 h-10 flex items-center justify-center transform group-hover:scale-110 transition-transform duration-200">{app.icon}</div>
+                                    <span className={`text-xs font-medium ${darkMode ? 'text-white/90' : 'text-black/80'}`}>{app.label}</span>
                                 </button>
                             ))}
                         </div>
@@ -465,20 +472,19 @@ export default function App() {
                     <img src={data.user.avatar} alt="Profile" onClick={() => setShowProfileMenu(!showProfileMenu)} className={`w-9 h-9 rounded-full border ${darkMode ? 'border-white/20 hover:ring-white/20' : 'border-black/10 hover:ring-black/10'} hover:ring-2 cursor-pointer transition-all`} />
                     {showProfileMenu && (
                         <div className={`absolute top-12 right-0 w-80 ${darkMode ? 'bg-[#2d2e30] border-white/10' : 'bg-white border-black/10'} border rounded-3xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden`}>
-                            <div className={`${darkMode ? 'bg-[#1f1f1f] border-white/5' : 'bg-gray-50 border-black/5'} rounded-[20px] p-4 flex flex-col items-center mb-1 border relative`}>
-                                <div className={`absolute top-3 right-3 p-1 ${darkMode ? 'hover:bg-white/5' : 'hover:bg-black/5'} rounded-full cursor-pointer`}><X size={16} className={subTextColor} onClick={() => setShowProfileMenu(false)}/></div>
-                                <img src={data.user.avatar} alt="Profile" className={`w-20 h-20 rounded-full border-4 ${darkMode ? 'border-[#2d2e30]' : 'border-white'} mb-2`} />
-                                <h3 className={`font-medium text-lg ${textColor}`}>{data.user.name}</h3>
+                            <div className={`p-4 border-b ${darkMode ? 'border-white/10' : 'border-black/5'} flex flex-col items-center text-center`}>
+                                <img src={data.user.avatar} alt="Profile" className="w-16 h-16 rounded-full mb-3 border-2 border-white/10 shadow-lg" />
+                                <h3 className={`font-medium text-base ${textColor}`}>{data.user.name}</h3>
                                 <p className={`${subTextColor} text-sm mb-4`}>{data.user.email}</p>
                                 <button className={`px-4 py-2 rounded-full border ${darkMode ? 'border-white/20 text-white/90 hover:bg-white/5' : 'border-black/20 text-black/80 hover:bg-black/5'} text-sm transition-colors`}>Gerenciar sua Conta do Google</button>
                             </div>
                             <div className="flex flex-col gap-1 p-1">
                                 <button className={`flex items-center gap-4 px-4 py-3 rounded-xl ${darkMode ? 'hover:bg-white/5 text-white/80' : 'hover:bg-black/5 text-black/80'} text-sm transition-colors text-left`}>
-                                    <div className="w-8 flex justify-center"><User size={20}/></div>
+                                    <div className="w-8 flex justify-center"><GoogleIcons.Contacts className="w-5 h-5"/></div>
                                     Adicionar outra conta
                                 </button>
                                 <button onClick={() => openApp('settings')} className={`flex items-center gap-4 px-4 py-3 rounded-xl ${darkMode ? 'hover:bg-white/5 text-white/80' : 'hover:bg-black/5 text-black/80'} text-sm transition-colors text-left`}>
-                                    <div className="w-8 flex justify-center"><Settings size={20}/></div>
+                                    <div className="w-8 flex justify-center"><GoogleIcons.Settings className="w-5 h-5"/></div>
                                     Configurações
                                 </button>
                                 <button className={`flex items-center gap-4 px-4 py-3 rounded-xl ${darkMode ? 'hover:bg-white/5 text-white/80 border-t border-white/5' : 'hover:bg-black/5 text-black/80 border-t border-black/5'} text-sm transition-colors text-left`}>
@@ -503,7 +509,7 @@ export default function App() {
                 <div className={`${glassCard} md:col-span-5 p-6 h-[320px] flex flex-col`}>
                     <div className="flex justify-between items-center mb-4">
                        <span className={`font-bold ${textColor} text-sm`}>Caixa de Entrada</span>
-                       <Mail size={18} className="text-[#EA4335]" />
+                       <GoogleIcons.Gmail className="w-5 h-5" />
                     </div>
                     <div className="space-y-2 flex-1 overflow-y-auto custom-scrollbar pr-2">
                       {data.emails.slice(0, 4).map((e: any) => (
@@ -522,7 +528,7 @@ export default function App() {
                 <div className={`${glassCard} md:col-span-4 p-6 h-[320px] flex flex-col`}>
                     <div className="flex justify-between items-center mb-4">
                        <span className={`font-bold ${textColor} text-sm`}>Sua Agenda</span>
-                       <Calendar size={18} className="text-blue-400" />
+                       <GoogleIcons.Calendar className="w-5 h-5" />
                     </div>
                     <div className="space-y-2 flex-1 overflow-y-auto custom-scrollbar pr-2">
                       {todayEvents.length > 0 ? todayEvents.map((e: any) => (
@@ -535,7 +541,7 @@ export default function App() {
                         </div>
                       )) : (
                         <div className="flex flex-col items-center justify-center h-full text-center">
-                            <Calendar size={32} className={subTextColor}/>
+                            <GoogleIcons.Calendar className="w-8 h-8 opacity-40"/>
                             <p className={`text-sm mt-2 ${subTextColor}`}>Nenhum evento para hoje.</p>
                         </div>
                       )}
@@ -546,7 +552,7 @@ export default function App() {
                 <div className={`${glassCard} md:col-span-3 p-6 flex flex-col h-[320px]`}>
                     <div className="flex justify-between items-center mb-4">
                         <span className={`${subTextColor} text-xs font-bold uppercase`}>Meu Drive</span>
-                        <HardDrive size={18} className="text-green-400" />
+                        <GoogleIcons.Drive className="w-5 h-5" />
                     </div>
                     <div className="space-y-2 flex-1 overflow-hidden">
                         {data.files.slice(0, 3).map((f: any) => (
@@ -565,7 +571,7 @@ export default function App() {
                 <div className={`${glassCard} md:col-span-6 p-6 flex flex-col h-[280px]`}>
                     <div className="flex justify-between items-center mb-4">
                         <span className={`${subTextColor} text-xs font-bold uppercase tracking-wider`}>Notas</span>
-                        <Lightbulb size={18} className="text-[#FBBC05]" />
+                        <GoogleIcons.Keep className="w-5 h-5" />
                     </div>
                     <div className="flex-1 grid grid-cols-2 gap-3 overflow-hidden">
                         <div onClick={() => openApp('keep')} className={`p-3 rounded-2xl cursor-pointer flex flex-col items-center justify-center text-center transition-colors group ${glassInner}`}>
@@ -588,7 +594,7 @@ export default function App() {
                 <div className={`${glassCard} md:col-span-6 p-6 flex flex-col h-[280px]`}>
                     <div className="flex justify-between items-center mb-4">
                         <span className={`${subTextColor} text-xs font-bold uppercase tracking-wider`}>Tarefas</span>
-                        <CheckCircle2 size={18} className="text-[#4E79F3]" />
+                        <GoogleIcons.Tasks className="w-5 h-5" />
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2">
                         {data.tasks && data.tasks.slice(0, 5).map((task: any) => (

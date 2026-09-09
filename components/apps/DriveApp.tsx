@@ -178,7 +178,7 @@ export default function DriveApp({ onClose, data, onOpenApp, showToast }: DriveA
   return (
     <div ref={appContainerRef} className="flex flex-col h-full bg-[#191919] select-none text-white relative" onClick={() => { setContextMenu(null); setFocusedItemId(null); }}>
         <div className="h-16 px-6 flex items-center justify-between shrink-0 border-b border-white/5 bg-black/20 z-20">
-            <div className="flex items-center gap-2"><div className="p-2 bg-white/10 rounded-full"><HardDrive className="w-5 h-5 text-white"/></div><span className="text-white text-lg font-light tracking-tight">Google Drive</span></div>
+            <div className="flex items-center gap-2.5"><GoogleIcons.Drive className="w-7 h-7"/><span className="text-white text-lg font-light tracking-tight">Google Drive</span></div>
             <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full cursor-pointer text-white/80"><X size={24} /></button>
         </div>
 

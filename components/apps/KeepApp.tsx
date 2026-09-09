@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Lightbulb, Square, Settings, X, Search, Plus, Image as ImageIcon, Paintbrush, MoreVertical, Archive, Trash2, Pin, Check, Tag } from 'lucide-react';
 import { bridge, NoteItem } from '../../utils/GASBridge';
+import { GoogleIcons } from '../GoogleIcons';
 
 interface KeepAppProps {
   onClose: () => void;
@@ -238,8 +239,8 @@ export default function KeepApp({ onClose, data, onUpdate, showToast }: KeepAppP
         {/* HEADER */}
         <div className={appHeaderClass}>
             <div className="flex items-center gap-4 w-64">
-                <div className="flex items-center gap-2">
-                    <div className="p-2 bg-white/10 rounded-full"><Lightbulb className="w-5 h-5 text-yellow-400"/></div>
+                <div className="flex items-center gap-2.5">
+                    <GoogleIcons.Keep className="w-7 h-7"/>
                     <span className="text-white text-lg font-light tracking-tight">Google Keep</span>
                 </div>
             </div>

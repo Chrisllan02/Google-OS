@@ -273,7 +273,7 @@ export default function CalendarApp({ onClose, data, onOpenApp, showToast }: Cal
     <div className="flex flex-col h-full bg-white text-[#3c4043] font-sans relative overflow-hidden">
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 shrink-0">
             <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2"><CalendarIcon size={24} className="text-blue-600"/><span className="text-xl text-gray-600 tracking-tight hidden md:inline">Agenda</span></div>
+                <div className="flex items-center gap-2"><GoogleIcons.Calendar className="w-6 h-6"/><span className="text-xl text-gray-600 tracking-tight hidden md:inline">Agenda</span></div>
                 <button onClick={handleToday} className="px-3 py-1.5 border border-gray-300 rounded-[4px] text-sm font-medium hover:bg-gray-50 transition-colors ml-4">Hoje</button>
                 <div className="flex items-center gap-1"><button onClick={handlePrev} className="p-1 rounded-full hover:bg-gray-100"><ChevronLeft size={20}/></button><button onClick={handleNext} className="p-1 rounded-full hover:bg-gray-100"><ChevronRight size={20}/></button></div>
                 <h2 className="text-xl text-gray-800 font-normal capitalize ml-2">{getMonthName()}</h2>

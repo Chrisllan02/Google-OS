@@ -6,6 +6,7 @@ import {
     MoreVertical, ChevronDown, Check, FolderPlus, ArrowLeft
 } from 'lucide-react';
 import { bridge, TaskItem, TaskList } from '../../utils/GASBridge';
+import { GoogleIcons } from '../GoogleIcons';
 
 interface TasksAppProps {
   onClose: () => void;
@@ -215,7 +216,7 @@ export default function TasksApp({ onClose, data, onUpdate, showToast }: TasksAp
     <div className="flex flex-col h-full bg-[#202124] text-white overflow-hidden font-sans">
         <div className={appHeaderClass}>
             <div className="flex items-center gap-4 relative" ref={listMenuRef}>
-                <div className="p-2 bg-white/10 rounded-full"><CheckCircle2 className="w-5 h-5 text-blue-400"/></div>
+                <div className="flex items-center"><GoogleIcons.Tasks className="w-7 h-7"/></div>
                 <button onClick={() => setShowListMenu(!showListMenu)} className="flex items-center gap-2 text-white text-lg font-medium hover:bg-white/5 px-2 py-1 rounded-lg transition-colors">
                     {loadingLists ? <Loader2 size={16} className="animate-spin"/> : currentListName} <ChevronDown size={16} className="text-white/50"/>
                 </button>

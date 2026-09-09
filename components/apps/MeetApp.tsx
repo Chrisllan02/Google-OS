@@ -417,7 +417,7 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
         <div className="flex flex-col h-full bg-[#202124] text-white font-sans relative overflow-hidden">
             <div className="h-16 px-6 flex items-center justify-between z-20">
                 <div className="flex items-center gap-2">
-                    <div className="p-1"><GoogleIcons.MeetGlass className="w-8 h-8"/></div>
+                    <div className="p-1"><GoogleIcons.Meet className="w-8 h-8"/></div>
                     <span className="text-[22px] text-white/90 font-medium tracking-tight">Google Meet</span>
                 </div>
                 <div className="flex items-center gap-6">
@@ -470,7 +470,7 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
   if (view === 'lobby') {
       return (
         <div className="flex flex-col h-full bg-[#202124] text-white font-sans items-center justify-center relative overflow-hidden">
-            <div className="absolute top-6 left-6 flex items-center gap-2"><GoogleIcons.MeetGlass className="w-6 h-6"/><span className="text-lg text-white/90 font-medium">Google Meet</span></div>
+            <div className="absolute top-6 left-6 flex items-center gap-2"><GoogleIcons.Meet className="w-6 h-6"/><span className="text-lg text-white/90 font-medium">Google Meet</span></div>
             <div className="flex flex-col md:flex-row gap-8 items-center max-w-6xl w-full px-8 animate-in fade-in zoom-in duration-300">
                 <div className="flex-1 w-full max-w-2xl relative">
                     <div className="aspect-video bg-[#3C4043] rounded-lg overflow-hidden relative shadow-2xl border border-white/5 ring-1 ring-white/10 flex items-center justify-center">
