@@ -42,7 +42,10 @@ export default function SearchApp({ onClose, data, searchQuery = '', onOpenApp }
 
   useEffect(() => {
       try {
-          aiClient.current = new GoogleGenAI({ apiKey: process.env.API_KEY });
+          const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+          if (apiKey) {
+              aiClient.current = new GoogleGenAI({ apiKey });
+          }
       } catch (e) { console.error(e); }
   }, []);
 
@@ -67,7 +70,7 @@ export default function SearchApp({ onClose, data, searchQuery = '', onOpenApp }
 
       try {
           const response = await aiClient.current.models.generateContent({
-              model: 'gemini-3-flash-preview',
+              model: 'gemini-2.5-flash',
               contents: `Act as a personal assistant. Based on this search data, give a 1-sentence summary of what was found for the user. Data: ${context}`
           });
           setWorkspaceSummary(response.text || null);
@@ -107,14 +110,24 @@ export default function SearchApp({ onClose, data, searchQuery = '', onOpenApp }
   };
 
   const handleWebSearch = async () => {
-      if (!localQuery.trim() || !aiClient.current) return;
+      if (!localQuery.trim()) return;
+      if (!aiClient.current) {
+          const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+          if (apiKey) {
+              aiClient.current = new GoogleGenAI({ apiKey });
+          }
+      }
+      if (!aiClient.current) {
+          setAiResponse("Configure a variável GEMINI_API_KEY para habilitar a busca inteligente com IA.");
+          return;
+      }
       setIsGenerating(true);
       setAiResponse(null);
       setGroundingSources([]);
 
       try {
           const isLocationQuery = /onde|fica|perto|restaurante|mapa|local|endereço/i.test(localQuery);
-          const model = isLocationQuery ? 'gemini-2.5-flash' : 'gemini-3-flash-preview';
+          const model = 'gemini-2.5-flash';
           const tools = isLocationQuery ? [{googleMaps: {}}] : [{googleSearch: {}}];
 
           const response = await aiClient.current.models.generateContent({

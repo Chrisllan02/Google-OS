@@ -407,8 +407,9 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
 
   useEffect(() => {
     try {
-        if (process.env.API_KEY) {
-            aiClient.current = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+        if (apiKey) {
+            aiClient.current = new GoogleGenAI({ apiKey });
         }
     } catch (e) { console.error("Gemini init error", e); }
   }, []);
@@ -429,11 +430,21 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
   }, [data]);
 
   const handleAiWrite = async () => {
-      if (!aiWritePrompt.trim() || !aiClient.current) return;
+      if (!aiWritePrompt.trim()) return;
+      if (!aiClient.current) {
+          const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+          if (apiKey) {
+              aiClient.current = new GoogleGenAI({ apiKey });
+          }
+      }
+      if (!aiClient.current) {
+          toast("Configure a variável GEMINI_API_KEY para gerar textos com IA.");
+          return;
+      }
       setIsAiWriting(true);
       try {
           const response = await aiClient.current.models.generateContent({
-              model: 'gemini-3-flash-preview',
+              model: 'gemini-2.5-flash',
               contents: `Write an email body based on this request: "${aiWritePrompt}". Keep it professional and concise. Do not include subject line.`,
           });
           const text = response.text || "";

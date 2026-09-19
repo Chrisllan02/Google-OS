@@ -72,10 +72,11 @@ export default function App() {
 
   useEffect(() => {
     try {
-        if (!aiClient.current) {
-            aiClient.current = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+        if (!aiClient.current && apiKey) {
+            aiClient.current = new GoogleGenAI({ apiKey });
             chatSession.current = aiClient.current.chats.create({
-                model: 'gemini-3-flash-preview',
+                model: 'gemini-2.5-flash',
                 config: {
                     systemInstruction: "Você é um assistente inteligente do Google Workspace OS. Você ajuda o usuário a gerenciar seus e-mails, arquivos do Drive, agenda e tarefas. Seja conciso, útil e amigável. Use formatação Markdown simples quando necessário.",
                     tools: [{googleSearch: {}}]
@@ -198,7 +199,24 @@ export default function App() {
 
     setIsTyping(true);
     try {
-        if (!chatSession.current) throw new Error("Chat session not initialized");
+        if (!chatSession.current) {
+            const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+            if (apiKey) {
+                aiClient.current = new GoogleGenAI({ apiKey });
+                chatSession.current = aiClient.current.chats.create({
+                    model: 'gemini-2.5-flash',
+                    config: {
+                        systemInstruction: "Você é um assistente inteligente do Google Workspace OS. Você ajuda o usuário a gerenciar seus e-mails, arquivos do Drive, agenda e tarefas. Seja conciso, útil e amigável. Use formatação Markdown simples quando necessário.",
+                        tools: [{googleSearch: {}}]
+                    },
+                });
+            }
+        }
+        if (!chatSession.current) {
+            setChatHistory(prev => [...prev, { role: 'assistant', text: "Para interagir com a inteligência artificial Gemini, configure a variável GEMINI_API_KEY nas configurações do ambiente." }]);
+            setIsTyping(false);
+            return;
+        }
         setChatHistory(prev => [...prev, { role: 'assistant', text: '' }]);
         const result = await chatSession.current.sendMessage({ message: text });
         const sources = result.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
