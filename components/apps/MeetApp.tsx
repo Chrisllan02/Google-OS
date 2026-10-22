@@ -124,7 +124,6 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
       peerRef.current = peer;
 
       peer.on('open', (id) => {
-          console.log('My Peer ID:', id);
           setMyPeerId(id);
       });
 
