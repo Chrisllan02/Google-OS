@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, Settings, X, Mail, FileText, User, Calendar, ExternalLink, HardDrive, ArrowRight, Globe, MapPin, Loader2, Sparkles, Star } from 'lucide-react';
 import { GoogleIcons, GeminiLogo } from '../GoogleIcons';
 import { bridge, SearchResults } from '../../utils/GASBridge';
-import { GoogleGenAI } from "@google/genai";
+import { askGemini, GeminiUnavailableError } from "../../utils/gemini";
 
 interface SearchAppProps {
   onClose: () => void;
@@ -37,17 +37,7 @@ export default function SearchApp({ onClose, data, searchQuery = '', onOpenApp }
   const [groundingSources, setGroundingSources] = useState<any[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   
-  const aiClient = useRef<GoogleGenAI | null>(null);
   const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-      try {
-          const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-          if (apiKey) {
-              aiClient.current = new GoogleGenAI({ apiKey });
-          }
-      } catch (e) { console.error(e); }
-  }, []);
 
   // Sync prop searchQuery to localQuery and trigger search
   useEffect(() => {
@@ -59,8 +49,6 @@ export default function SearchApp({ onClose, data, searchQuery = '', onOpenApp }
   }, [searchQuery]);
 
   const generateWorkspaceSummary = async (results: SearchResults, query: string) => {
-      if (!aiClient.current) return;
-      
       const context = `
       Query: ${query}
       Emails found: ${results.emails.length} (Subjects: ${results.emails.map(e => e.subject).join(', ')})
@@ -69,13 +57,13 @@ export default function SearchApp({ onClose, data, searchQuery = '', onOpenApp }
       `;
 
       try {
-          const response = await aiClient.current.models.generateContent({
-              model: 'gemini-2.5-flash',
-              contents: `Act as a personal assistant. Based on this search data, give a 1-sentence summary of what was found for the user. Data: ${context}`
+          const response = await askGemini({
+              task: 'generate',
+              prompt: `Act as a personal assistant. Based on this search data, give a 1-sentence summary of what was found for the user. Data: ${context}`
           });
           setWorkspaceSummary(response.text || null);
       } catch(e) {
-          console.warn("Summary failed", e);
+          if (!(e instanceof GeminiUnavailableError)) console.warn("Summary failed", e);
       }
   };
 
@@ -111,38 +99,22 @@ export default function SearchApp({ onClose, data, searchQuery = '', onOpenApp }
 
   const handleWebSearch = async () => {
       if (!localQuery.trim()) return;
-      if (!aiClient.current) {
-          const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-          if (apiKey) {
-              aiClient.current = new GoogleGenAI({ apiKey });
-          }
-      }
-      if (!aiClient.current) {
-          setAiResponse("Configure a variável GEMINI_API_KEY para habilitar a busca inteligente com IA.");
-          return;
-      }
       setIsGenerating(true);
       setAiResponse(null);
       setGroundingSources([]);
 
       try {
           const isLocationQuery = /onde|fica|perto|restaurante|mapa|local|endereço/i.test(localQuery);
-          const model = 'gemini-2.5-flash';
-          const tools = isLocationQuery ? [{googleMaps: {}}] : [{googleSearch: {}}];
-
-          const response = await aiClient.current.models.generateContent({
-              model: model,
-              contents: localQuery,
-              config: { tools: tools }
-          });
+          const response = await askGemini({ task: 'search', prompt: localQuery, tool: isLocationQuery ? 'maps' : 'search' });
 
           setAiResponse(response.text || "Não encontrei informações sobre isso.");
-          const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-          setGroundingSources(chunks);
+          setGroundingSources(response.sources);
 
       } catch (error) {
           console.error("Search Error", error);
-          setAiResponse("Erro ao conectar com a Busca Google. Verifique sua API Key.");
+          setAiResponse(error instanceof GeminiUnavailableError
+              ? "Configure a variável GEMINI_API_KEY para habilitar a busca inteligente com IA."
+              : "Erro ao conectar com a Busca Google. Verifique sua API Key.");
       } finally {
           setIsGenerating(false);
       }

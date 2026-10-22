@@ -11,7 +11,7 @@ import Aurora from './components/Aurora';
 import GoogleLoader from './components/GoogleLoader';
 import { GoogleIcons, GeminiLogo } from './components/GoogleIcons';
 import { bridge, DashboardData } from './utils/GASBridge';
-import { GoogleGenAI, Chat } from "@google/genai";
+import { askGemini, GeminiUnavailableError } from "./utils/gemini";
 
 const keepColors: {[key:string]: string} = {
     default: 'bg-[#202124] border-white/20',
@@ -35,7 +35,7 @@ export default function App() {
   const [isTyping, setIsTyping] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false); 
-  const [chatHistory, setChatHistory] = useState<Array<{role: string, text: string, sources?: any[]}>>([]);
+  const [chatHistory, setChatHistory] = useState<Array<{role: 'user' | 'assistant', text: string, sources?: any[]}>>([]);
   const [activeApp, setActiveApp] = useState<{type: string, data?: any} | null>(null); 
   
   const [activeTab, setActiveTab] = useState('');
@@ -62,31 +62,11 @@ export default function App() {
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
 
-  const chatSession = useRef<Chat | null>(null);
-  const aiClient = useRef<GoogleGenAI | null>(null);
   const notifiedEventsRef = useRef<Set<string>>(new Set());
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    try {
-        const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-        if (!aiClient.current && apiKey) {
-            aiClient.current = new GoogleGenAI({ apiKey });
-            chatSession.current = aiClient.current.chats.create({
-                model: 'gemini-2.5-flash',
-                config: {
-                    systemInstruction: "Você é um assistente inteligente do Google Workspace OS. Você ajuda o usuário a gerenciar seus e-mails, arquivos do Drive, agenda e tarefas. Seja conciso, útil e amigável. Use formatação Markdown simples quando necessário.",
-                    tools: [{googleSearch: {}}]
-                },
-            });
-        }
-    } catch (e) {
-        console.error("Erro ao inicializar Gemini:", e);
-    }
-  }, []);
 
   useEffect(() => {
     bridge.getInitialData()
@@ -199,28 +179,9 @@ export default function App() {
 
     setIsTyping(true);
     try {
-        if (!chatSession.current) {
-            const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-            if (apiKey) {
-                aiClient.current = new GoogleGenAI({ apiKey });
-                chatSession.current = aiClient.current.chats.create({
-                    model: 'gemini-2.5-flash',
-                    config: {
-                        systemInstruction: "Você é um assistente inteligente do Google Workspace OS. Você ajuda o usuário a gerenciar seus e-mails, arquivos do Drive, agenda e tarefas. Seja conciso, útil e amigável. Use formatação Markdown simples quando necessário.",
-                        tools: [{googleSearch: {}}]
-                    },
-                });
-            }
-        }
-        if (!chatSession.current) {
-            setChatHistory(prev => [...prev, { role: 'assistant', text: "Para interagir com a inteligência artificial Gemini, configure a variável GEMINI_API_KEY nas configurações do ambiente." }]);
-            setIsTyping(false);
-            return;
-        }
+        const history = chatHistory.filter(m => m.text).slice(-20).map(({ role, text }) => ({ role, text }));
         setChatHistory(prev => [...prev, { role: 'assistant', text: '' }]);
-        const result = await chatSession.current.sendMessage({ message: text });
-        const sources = result.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-        const responseText = result.text || "";
+        const { text: responseText, sources } = await askGemini({ task: 'chat', prompt: text, history });
         setChatHistory(prev => {
             const newHistory = [...prev];
             const lastMsgIndex = newHistory.length - 1;
@@ -230,8 +191,10 @@ export default function App() {
             return newHistory;
         });
     } catch (error) {
-        console.error("Gemini Error:", error);
-        setChatHistory(prev => [...prev, { role: 'assistant', text: "Desculpe, não consegui processar sua solicitação no momento." }]);
+        const text = error instanceof GeminiUnavailableError
+            ? "Para interagir com a inteligência artificial Gemini, configure a variável GEMINI_API_KEY nas configurações do ambiente."
+            : "Desculpe, não consegui processar sua solicitação no momento.";
+        setChatHistory(prev => [...prev.filter(m => m.text), { role: 'assistant', text }]);
     } finally {
         setIsTyping(false);
     }

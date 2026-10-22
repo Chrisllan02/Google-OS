@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { GoogleIcons, GeminiLogo } from '../GoogleIcons';
 import { bridge, EmailAttachment } from '../../utils/GASBridge';
-import { GoogleGenAI } from "@google/genai";
+import { askGemini, GeminiUnavailableError } from "../../utils/gemini";
 import TasksApp from './TasksApp';
 import KeepApp from './KeepApp';
 
@@ -400,19 +400,9 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
   const calendarRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const aiClient = useRef<GoogleGenAI | null>(null);
 
   // Use global toast if available, else console log
   const toast = (msg: string) => showToast ? showToast(msg) : console.log(msg);
-
-  useEffect(() => {
-    try {
-        const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-        if (apiKey) {
-            aiClient.current = new GoogleGenAI({ apiKey });
-        }
-    } catch (e) { console.error("Gemini init error", e); }
-  }, []);
 
   useEffect(() => {
     if (data) {
@@ -431,30 +421,22 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
 
   const handleAiWrite = async () => {
       if (!aiWritePrompt.trim()) return;
-      if (!aiClient.current) {
-          const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-          if (apiKey) {
-              aiClient.current = new GoogleGenAI({ apiKey });
-          }
-      }
-      if (!aiClient.current) {
-          toast("Configure a variável GEMINI_API_KEY para gerar textos com IA.");
-          return;
-      }
       setIsAiWriting(true);
       try {
-          const response = await aiClient.current.models.generateContent({
-              model: 'gemini-2.5-flash',
-              contents: `Write an email body based on this request: "${aiWritePrompt}". Keep it professional and concise. Do not include subject line.`,
+          const response = await askGemini({
+              task: 'generate',
+              prompt: `Write an email body based on this request: "${aiWritePrompt}". Keep it professional and concise. Do not include subject line.`,
           });
-          const text = response.text || "";
+          const text = response.text;
           if (editorRef.current) {
               editorRef.current.innerHTML = text.replace(/\n/g, '<br/>');
           }
           setShowAiWriter(false);
           setAiWritePrompt('');
       } catch (e) {
-          toast("Erro ao gerar texto.");
+          toast(e instanceof GeminiUnavailableError
+              ? "Configure a variável GEMINI_API_KEY para gerar textos com IA."
+              : "Erro ao gerar texto.");
           console.error(e);
       } finally {
           setIsAiWriting(false);

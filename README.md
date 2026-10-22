@@ -46,7 +46,7 @@ Acesse `http://localhost:3000`
 |--------|-----------|-----------|
 | Frontend | React 19 + TypeScript + Vite | UI principal |
 | Estilo | Tailwind CSS (CDN) | Glassmorfismo + dark mode |
-| AI | Gemini (`@google/genai`) | Chat + comandos |
+| AI | Gemini via `/api/gemini` (função serverless) | Chat, busca e redação; a chave fica só no servidor |
 | Background | OGL (WebGL) | Aurora animada |
 | Video | PeerJS | Google Meet P2P |
 | Backend (prod) | Google Apps Script | Acesso real ao Workspace |
