@@ -13,9 +13,10 @@ interface ContextMenuProps {
   y: number;
   items: ContextMenuItem[];
   onClose: () => void;
+  isDarkMode?: boolean;
 }
 
-const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
+const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose, isDarkMode = false }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ top: y, left: x });
 
@@ -54,11 +55,11 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
     <div
       ref={menuRef}
       style={{ top: position.top, left: position.left }}
-      className="fixed z-[100] bg-[#2d2e30]/95 backdrop-blur-xl border border-white/10 rounded-lg shadow-2xl p-1 min-w-[180px] animate-in fade-in zoom-in-95 duration-150"
+      className="fixed z-[100] glass-popover rounded-2xl p-1.5 min-w-[180px] animate-in fade-in zoom-in-95 duration-150"
     >
       {items.map((item, index) => {
         if (item.isSeparator) {
-          return <div key={index} className="h-[1px] bg-white/10 my-1 mx-1" />;
+          return <div key={index} className={`h-[1px] my-1 mx-1 ${isDarkMode ? 'bg-white/10' : 'bg-gray-200'}`} />;
         }
         return (
           <button
@@ -67,10 +68,12 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
               item.action();
               onClose();
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2 text-left text-sm rounded transition-colors ${
+            className={`w-full flex items-center gap-3 px-3 py-2 text-left text-sm rounded-lg transition-colors ${
               item.isDestructive
-                ? 'text-red-400 hover:bg-red-500/10'
-                : 'text-white/80 hover:bg-white/10 hover:text-white'
+                ? 'text-red-500 hover:bg-red-500/10'
+                : isDarkMode
+                  ? 'text-white/80 hover:bg-white/10 hover:text-white'
+                  : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
             }`}
           >
             {item.icon && <div className="w-4">{item.icon}</div>}

@@ -201,11 +201,15 @@ const loaderStyles = `
 }
 `;
 
-export default function GoogleLoader() {
+export default function GoogleLoader({ darkMode = false }: { darkMode?: boolean }) {
+  const bg = darkMode ? '#050505' : '#F8FAFC';
+  const wordColor = darkMode ? '#ffffff' : '#202124';
+  const labelColor = darkMode ? 'rgb(150, 150, 150)' : '#5f6368';
+
   return (
     <>
         <style>{loaderStyles}</style>
-        <div className="google-loader-container">
+        <div className="google-loader-container" style={{ backgroundColor: bg }}>
             <div className="visual-container">
                 <div className="balls-wrapper">
                     <div className="ball-pos pos-blue"><div className="ball blue"></div></div>
@@ -220,16 +224,16 @@ export default function GoogleLoader() {
                 </div>
             </div>
             <div className="card">
-                <div className="loader">
+                <div className="loader" style={{ color: labelColor }}>
                     <p>Carregando</p>
-                    <div className="words">
-                        <span className="word">E-mail</span>
-                        <span className="word">Agenda</span>
-                        <span className="word">Planilhas</span>
-                        <span className="word">Documentos</span>
-                        <span className="word">Drive</span>
-                        <span className="word">Apresentações</span>
-                        <span className="word">Meet</span>
+                    <div className="words" style={{ ['--loader-bg' as any]: bg }}>
+                        <span className="word" style={{ color: wordColor }}>E-mail</span>
+                        <span className="word" style={{ color: wordColor }}>Agenda</span>
+                        <span className="word" style={{ color: wordColor }}>Planilhas</span>
+                        <span className="word" style={{ color: wordColor }}>Documentos</span>
+                        <span className="word" style={{ color: wordColor }}>Drive</span>
+                        <span className="word" style={{ color: wordColor }}>Apresentações</span>
+                        <span className="word" style={{ color: wordColor }}>Meet</span>
                     </div>
                 </div>
             </div>

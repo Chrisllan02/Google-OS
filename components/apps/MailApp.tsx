@@ -31,6 +31,7 @@ interface MailAppProps {
   onUpdateTasks?: (tasks: any[]) => void;
   onUpdateNotes?: (notes: any[]) => void;
   showToast?: (msg: string) => void;
+  isDarkMode?: boolean;
 }
 
 // --- HELPERS ---
@@ -46,13 +47,13 @@ const fileToBase64 = (file: File): Promise<string> => {
 const Toggle = ({ checked, onChange }: { checked: boolean, onChange: (val: boolean) => void }) => (
     <button 
         onClick={() => onChange(!checked)}
-        className={`w-10 h-5 rounded-full relative transition-colors duration-200 ${checked ? 'bg-blue-600' : 'bg-white/20'}`}
+        className={`w-10 h-5 rounded-full relative transition-colors duration-200 ${checked ? 'bg-blue-600' : 'bg-gray-400/40'}`}
     >
         <div className={`absolute top-1 bottom-1 w-3 h-3 rounded-full bg-white transition-all duration-200 ${checked ? 'left-6' : 'left-1'}`}></div>
     </button>
 );
 
-const ContactInput = ({ placeholder, value, onChange, onSelect }: { placeholder: string, value: string, onChange: (val: string) => void, onSelect?: (email: string) => void }) => {
+const ContactInput = ({ placeholder, value, onChange, onSelect, isDarkMode = false }: { placeholder: string, value: string, onChange: (val: string) => void, onSelect?: (email: string) => void, isDarkMode?: boolean }) => {
     const [suggestions, setSuggestions] = useState<any[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const wrapperRef = useRef<HTMLDivElement>(null);
@@ -87,25 +88,25 @@ const ContactInput = ({ placeholder, value, onChange, onSelect }: { placeholder:
             <input 
                 type="text" 
                 placeholder={placeholder} 
-                className="w-full bg-transparent p-2 text-sm text-white outline-none" 
+                className={`w-full bg-transparent p-2 text-sm outline-none ${isDarkMode ? 'text-white' : 'text-gray-800'}`} 
                 value={value} 
                 onChange={(e) => onChange(e.target.value)} 
                 onFocus={() => value.length > 1 && setShowSuggestions(true)}
             />
             {showSuggestions && (
-                <div className="absolute top-full left-0 w-full bg-[#2d2e30] border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden mt-1 max-h-48 overflow-y-auto custom-scrollbar">
+                <div className={`absolute top-full left-0 w-full border rounded-lg shadow-xl z-50 overflow-hidden mt-1 max-h-48 overflow-y-auto custom-scrollbar ${isDarkMode ? 'bg-[#2d2e30] border-white/10' : 'bg-white border-gray-200'}`}>
                     {suggestions.map((s, i) => (
                         <div 
                             key={i} 
                             onClick={() => { onChange(s.email); setShowSuggestions(false); if(onSelect) onSelect(s.email); }}
-                            className="flex items-center gap-3 p-2 hover:bg-white/10 cursor-pointer"
+                            className={`flex items-center gap-3 p-2 cursor-pointer ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}
                         >
                             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white shrink-0">
                                 {s.avatar || s.name[0]}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm text-white font-medium truncate">{s.name}</p>
-                                <p className="text-xs text-white/50 truncate">{s.email}</p>
+                                <p className={`text-sm font-medium truncate ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{s.name}</p>
+                                <p className={`text-xs truncate ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>{s.email}</p>
                             </div>
                         </div>
                     ))}
@@ -115,32 +116,32 @@ const ContactInput = ({ placeholder, value, onChange, onSelect }: { placeholder:
     );
 };
 
-const ComposerToolbar = ({ onFormat, onAiWrite }: { onFormat: (cmd: string, val?: string) => void, onAiWrite: () => void }) => (
-    <div className="flex items-center gap-1 border-b border-white/10 pb-2 mb-2 sticky top-0 bg-[#1E1E1E] z-10 pt-1">
-        <button onMouseDown={(e) => {e.preventDefault(); onFormat('bold')}} className="p-1.5 hover:bg-white/10 rounded text-white/70 hover:text-white transition-colors" title="Negrito"><Bold size={16}/></button>
-        <button onMouseDown={(e) => {e.preventDefault(); onFormat('italic')}} className="p-1.5 hover:bg-white/10 rounded text-white/70 hover:text-white transition-colors" title="Itálico"><Italic size={16}/></button>
-        <button onMouseDown={(e) => {e.preventDefault(); onFormat('underline')}} className="p-1.5 hover:bg-white/10 rounded text-white/70 hover:text-white transition-colors" title="Sublinhado"><Underline size={16}/></button>
-        <div className="w-[1px] h-4 bg-white/10 mx-1"></div>
-        <button onMouseDown={(e) => {e.preventDefault(); onFormat('insertUnorderedList')}} className="p-1.5 hover:bg-white/10 rounded text-white/70 hover:text-white transition-colors" title="Lista com marcadores"><ListIcon size={16}/></button>
-        <button onMouseDown={(e) => {e.preventDefault(); onFormat('insertOrderedList')}} className="p-1.5 hover:bg-white/10 rounded text-white/70 hover:text-white transition-colors" title="Lista numerada"><ListOrdered size={16}/></button>
-        <div className="w-[1px] h-4 bg-white/10 mx-1"></div>
-        <button onMouseDown={(e) => {e.preventDefault(); onFormat('removeFormat')}} className="p-1.5 hover:bg-white/10 rounded text-white/70 hover:text-white transition-colors" title="Limpar formatação"><RemoveFormatting size={16}/></button>
+const ComposerToolbar = ({ onFormat, onAiWrite, isDarkMode = false }: { onFormat: (cmd: string, val?: string) => void, onAiWrite: () => void, isDarkMode?: boolean }) => (
+    <div className={`flex items-center gap-1 border-b pb-2 mb-2 sticky top-0 z-10 pt-1 ${isDarkMode ? 'border-white/10 bg-[#1E1E1E]' : 'border-gray-200 bg-white'}`}>
+        <button onMouseDown={(e) => {e.preventDefault(); onFormat('bold')}} className={`p-1.5 rounded transition-colors ${isDarkMode ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'}`} title="Negrito"><Bold size={16}/></button>
+        <button onMouseDown={(e) => {e.preventDefault(); onFormat('italic')}} className={`p-1.5 rounded transition-colors ${isDarkMode ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'}`} title="Itálico"><Italic size={16}/></button>
+        <button onMouseDown={(e) => {e.preventDefault(); onFormat('underline')}} className={`p-1.5 rounded transition-colors ${isDarkMode ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'}`} title="Sublinhado"><Underline size={16}/></button>
+        <div className={`w-[1px] h-4 mx-1 ${isDarkMode ? 'bg-white/10' : 'bg-gray-200'}`}></div>
+        <button onMouseDown={(e) => {e.preventDefault(); onFormat('insertUnorderedList')}} className={`p-1.5 rounded transition-colors ${isDarkMode ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'}`} title="Lista com marcadores"><ListIcon size={16}/></button>
+        <button onMouseDown={(e) => {e.preventDefault(); onFormat('insertOrderedList')}} className={`p-1.5 rounded transition-colors ${isDarkMode ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'}`} title="Lista numerada"><ListOrdered size={16}/></button>
+        <div className={`w-[1px] h-4 mx-1 ${isDarkMode ? 'bg-white/10' : 'bg-gray-200'}`}></div>
+        <button onMouseDown={(e) => {e.preventDefault(); onFormat('removeFormat')}} className={`p-1.5 rounded transition-colors ${isDarkMode ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'}`} title="Limpar formatação"><RemoveFormatting size={16}/></button>
         <div className="flex-1"></div>
-        <button onClick={onAiWrite} className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-blue-600/20 to-purple-600/20 text-blue-300 rounded-full text-xs font-medium hover:from-blue-600/30 hover:to-purple-600/30 transition-all border border-white/5" title="Ajude-me a escrever"><Sparkles size={14}/> Help me write</button>
+        <button onClick={onAiWrite} className={`flex items-center gap-1 px-2.5 py-1 bg-gradient-to-r from-blue-600/15 to-purple-600/15 rounded-full text-xs font-medium hover:from-blue-600/25 hover:to-purple-600/25 transition-all border ${isDarkMode ? 'text-blue-300 border-white/5' : 'text-blue-700 border-blue-200'}`} title="Ajude-me a escrever"><Sparkles size={14}/> Help me write</button>
     </div>
 );
 
-const Checkbox = ({ checked, onChange, className }: { checked: boolean, onChange: (e:any) => void, className?: string }) => (
+const Checkbox = ({ checked, onChange, className, isDarkMode = false }: { checked: boolean, onChange: (e:any) => void, className?: string, isDarkMode?: boolean }) => (
     <div 
         onClick={(e) => { e.stopPropagation(); onChange(e); }} 
-        className={`w-5 h-5 rounded-[4px] border-2 flex items-center justify-center cursor-pointer transition-all ${checked ? 'bg-blue-500 border-blue-500' : 'border-white/40 hover:border-white/60'} ${className}`}
+        className={`w-5 h-5 rounded-[4px] border-2 flex items-center justify-center cursor-pointer transition-all ${checked ? 'bg-blue-500 border-blue-500' : isDarkMode ? 'border-white/40 hover:border-white/60' : 'border-gray-400 hover:border-gray-600'} ${className}`}
         title={checked ? "Desmarcar" : "Marcar"}
     >
-        {checked && <Check size={14} className="text-black" strokeWidth={3} />}
+        {checked && <Check size={14} className="text-white" strokeWidth={3} />}
     </div>
 );
 
-const AdvancedFilterPanel = ({ isOpen, onClose, onApply, setFolder, currentFolder, customLabels, filterCriteria, setFilterCriteria, onCreateLabel }: any) => {
+const AdvancedFilterPanel = ({ isOpen, onClose, onApply, setFolder, currentFolder, customLabels, filterCriteria, setFilterCriteria, onCreateLabel, isDarkMode = false }: any) => {
     const [isCreatingLabel, setIsCreatingLabel] = useState(false);
     const [newLabelName, setNewLabelName] = useState('');
 
@@ -153,42 +154,42 @@ const AdvancedFilterPanel = ({ isOpen, onClose, onApply, setFolder, currentFolde
 
     if (!isOpen) return null;
     return (
-        <div className="absolute top-[130px] left-4 w-[340px] bg-[#2d2e30] border border-white/10 rounded-xl shadow-2xl p-4 z-50 animate-in fade-in zoom-in duration-200 backdrop-blur-xl">
-            <div className="mb-4 pb-4 border-b border-white/10 space-y-2">
+        <div className={`absolute top-[130px] left-4 w-[340px] border rounded-xl shadow-2xl p-4 z-50 animate-in fade-in zoom-in duration-200 backdrop-blur-xl ${isDarkMode ? 'bg-[#2d2e30] border-white/10' : 'bg-white border-gray-200'}`}>
+            <div className={`mb-4 pb-4 border-b space-y-2 ${isDarkMode ? 'border-white/10' : 'border-gray-100'}`}>
                 <div className="flex justify-between items-center mb-2">
-                    <p className="text-[10px] text-white/40 uppercase font-bold px-1">Critérios de Busca</p>
-                    <button onClick={onClose} className="text-white/40 hover:text-white"><X size={14}/></button>
+                    <p className={`text-[10px] uppercase font-bold px-1 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>Critérios de Busca</p>
+                    <button onClick={onClose} className={isDarkMode ? "text-white/40 hover:text-white" : "text-gray-400 hover:text-gray-700"}><X size={14}/></button>
                 </div>
                 <input 
                     type="text" 
                     placeholder="De (Remetente)" 
-                    className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-blue-500 transition-colors"
+                    className={`w-full border rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500 transition-colors ${isDarkMode ? 'bg-black/20 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'}`}
                     value={filterCriteria?.from || ''}
                     onChange={(e) => setFilterCriteria && setFilterCriteria({...filterCriteria, from: e.target.value})}
                 />
                 <input 
                     type="text" 
                     placeholder="Assunto" 
-                    className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-blue-500 transition-colors"
+                    className={`w-full border rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500 transition-colors ${isDarkMode ? 'bg-black/20 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'}`}
                     value={filterCriteria?.subject || ''}
                     onChange={(e) => setFilterCriteria && setFilterCriteria({...filterCriteria, subject: e.target.value})}
                 />
                 <div className="flex items-center gap-2 pt-1 cursor-pointer hover:opacity-80" onClick={() => setFilterCriteria && setFilterCriteria({...filterCriteria, hasAttachment: !filterCriteria?.hasAttachment})}>
-                    <Checkbox checked={filterCriteria?.hasAttachment || false} onChange={() => {}} />
-                    <span className="text-xs text-white/70">Contém anexos</span>
+                    <Checkbox checked={filterCriteria?.hasAttachment || false} onChange={() => {}} isDarkMode={isDarkMode} />
+                    <span className={`text-xs ${isDarkMode ? 'text-white/70' : 'text-gray-600'}`}>Contém anexos</span>
                 </div>
             </div>
-            <div className="mb-4 pb-4 border-b border-white/10">
+            <div className={`mb-4 pb-4 border-b ${isDarkMode ? 'border-white/10' : 'border-gray-100'}`}>
                 <div className="flex justify-between items-center mb-2 px-1">
-                    <p className="text-[10px] text-white/40 uppercase font-bold">Marcadores</p>
-                    <button onClick={() => setIsCreatingLabel(!isCreatingLabel)} className="text-[10px] text-blue-400 hover:underline">Novo +</button>
+                    <p className={`text-[10px] uppercase font-bold ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>Marcadores</p>
+                    <button onClick={() => setIsCreatingLabel(!isCreatingLabel)} className="text-[10px] text-blue-500 hover:underline">Novo +</button>
                 </div>
                 
                 {isCreatingLabel && (
                     <div className="flex gap-2 mb-3">
                         <input 
                             type="text" 
-                            className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-1 text-xs text-white outline-none focus:border-blue-500" 
+                            className={`flex-1 border rounded px-2 py-1 text-xs outline-none focus:border-blue-500 ${isDarkMode ? 'bg-black/20 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'}`} 
                             placeholder="Nome do marcador"
                             value={newLabelName}
                             onChange={(e) => setNewLabelName(e.target.value)}
@@ -203,7 +204,7 @@ const AdvancedFilterPanel = ({ isOpen, onClose, onApply, setFolder, currentFolde
                         <button 
                             key={label.id}
                             onClick={() => { setFolder(label.id); onClose(); }}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${currentFolder === label.id ? 'bg-blue-600/20 border-blue-500 text-blue-400' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'}`}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${currentFolder === label.id ? 'bg-blue-600/20 border-blue-500 text-blue-500' : isDarkMode ? 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}
                         >
                             <Tag size={12} className={label.colorClass} />
                             {label.name}
@@ -212,7 +213,7 @@ const AdvancedFilterPanel = ({ isOpen, onClose, onApply, setFolder, currentFolde
                 </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-                <button onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs text-white/70 hover:bg-white/5 font-medium">Cancelar</button>
+                <button onClick={onClose} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${isDarkMode ? 'text-white/70 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'}`}>Cancelar</button>
                 <button onClick={onApply} className="px-4 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-500 shadow-lg shadow-blue-900/20">Aplicar Filtros</button>
             </div>
         </div>
@@ -311,8 +312,8 @@ const eventColors = [
     { id: '11', color: 'bg-[#D50000]', name: 'Tomato' }
 ];
 
-export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks, onUpdateNotes, showToast }: MailAppProps) {
-  const appHeaderClass = "h-20 px-6 flex items-center justify-between shrink-0 border-b border-white/5 backdrop-blur-xl z-20";
+export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks, onUpdateNotes, showToast, isDarkMode = false }: MailAppProps) {
+  const appHeaderClass = `h-20 px-6 flex items-center justify-between shrink-0 border-b backdrop-blur-xl z-20 ${isDarkMode ? 'border-white/5 bg-black/20' : 'border-black/10 bg-white'}`;
 
   // --- ESTADOS ---
   const [emails, setEmails] = useState<any[]>([]);
@@ -872,76 +873,68 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
   };
 
   // --- RENDER & FILTER ---
-  const displayedEmails = emails.filter(e => {
+  const displayedEmails = emails.filter(() => {
       return true;
   }).sort((a, b) => (a.read !== b.read ? (a.read ? 1 : -1) : 0));
-
-  const hours24 = Array.from({ length: 24 }, (_, i) => i);
-  // Expand events based on view
-  const expandedEvents = expandEvents(calendarEvents, viewDate, calendarViewMode === 'day' ? 'day' : calendarViewMode === 'week' ? 'week' : 'month');
-  
-  // Arrange Day View Events
-  const dayEvents = calendarViewMode === 'day' ? arrangeEvents(expandedEvents.filter(ev => new Date(ev.start).getDate() === viewDate.getDate())) : [];
 
   const primaryFolders = [ { id: 'inbox', label: 'Entrada', icon: Inbox }, { id: 'drafts', label: 'Rascunhos', icon: FileIcon }, { id: 'spam', label: 'Spam', icon: AlertOctagon }, { id: 'trash', label: 'Lixeira', icon: Trash2 }, ];
 
   return (
-    <div className="flex flex-col h-full bg-[#191919] relative text-white" onContextMenu={(e) => e.preventDefault()}>
+    <div className={`flex flex-col h-full relative transition-colors ${isDarkMode ? 'bg-[#191919] text-white' : 'bg-[#F0F2F5] text-[#202124]'}`} onContextMenu={(e) => e.preventDefault()}>
         {/* Header */}
         <div className={appHeaderClass}>
             <div className="flex items-center gap-4 w-72">
                 <div className="flex items-center gap-3">
                     <GoogleIcons.Gmail className="w-9 h-9 hover:-translate-y-0.5 transition-transform drop-shadow-md" />
-                    <span className="text-white text-xl font-light">Email & Calendário</span>
+                    <span className={`text-xl font-light ${isDarkMode ? 'text-white' : 'text-[#202124]'}`}>Email & Calendário</span>
                 </div>
             </div>
             <div className="flex items-center gap-4 w-64 justify-end">
-                <button onClick={() => setActivePane('settings')} className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${activePane === 'settings' ? 'bg-white/20' : 'bg-white/5 hover:bg-white/10'}`}>
-                    <Settings size={20} className="text-white/80" />
+                <button onClick={() => setActivePane('settings')} className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${activePane === 'settings' ? (isDarkMode ? 'bg-white/20' : 'bg-blue-100 text-blue-700') : (isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white/80' : 'bg-gray-100 hover:bg-gray-200 text-gray-700')}`}>
+                    <Settings size={20} />
                 </button>
-                <div className="h-8 w-[1px] bg-white/10"></div>
-                <div className="p-2 hover:bg-white/10 rounded-full cursor-pointer text-white/80" onClick={onClose}><X size={24} /></div>
+                <div className={`h-8 w-[1px] ${isDarkMode ? 'bg-white/10' : 'bg-gray-200'}`}></div>
+                <div className={`p-2 rounded-full cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-white/10 text-white/80' : 'hover:bg-gray-100 text-gray-600'}`} onClick={onClose}><X size={24} /></div>
             </div>
         </div>
 
         <div className="flex-1 flex overflow-hidden relative p-3 gap-3">
             {/* Left Panel (Mail List) */}
-            <div className="flex-1 flex flex-col bg-[#1E1E1E] rounded-[24px] border border-white/5 overflow-hidden relative">
-                {/* ... (Search & List rendering code remains same) ... */}
-                <div className="flex flex-col border-b border-white/5 bg-[#1E1E1E] shrink-0">
+            <div className={`flex-1 flex flex-col rounded-[24px] border overflow-hidden relative shadow-sm ${isDarkMode ? 'bg-[#1E1E1E] border-white/5' : 'bg-white border-gray-200'}`}>
+                <div className={`flex flex-col border-b shrink-0 ${isDarkMode ? 'border-white/5 bg-[#1E1E1E]' : 'border-gray-100 bg-white'}`}>
                     <div className="flex items-center gap-2 px-4 pt-3 pb-1">
-                         <div className="flex-1 bg-white/5 border border-white/10 rounded-xl h-10 flex items-center px-3 relative focus-within:bg-black/20 focus-within:border-blue-500/50 transition-all">
-                             <Search size={16} className="text-white/40"/>
+                         <div className={`flex-1 border rounded-xl h-10 flex items-center px-3 relative focus-within:border-blue-500/50 transition-all ${isDarkMode ? 'bg-white/5 border-white/10 focus-within:bg-black/20' : 'bg-gray-100 border-gray-200 focus-within:bg-white'}`}>
+                             <Search size={16} className={isDarkMode ? "text-white/40" : "text-gray-400"}/>
                              <input 
                                 type="text" 
                                 placeholder="Filtrar emails (Enter para buscar)" 
-                                className="bg-transparent border-none outline-none flex-1 ml-2 text-sm text-white placeholder:text-white/30"
+                                className={`bg-transparent border-none outline-none flex-1 ml-2 text-sm ${isDarkMode ? 'text-white placeholder:text-white/30' : 'text-gray-800 placeholder:text-gray-400'}`}
                                 value={localSearch}
                                 onChange={(e) => setLocalSearch(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && executeSearch()}
                              />
-                             <button onClick={() => setShowFilterPanel(!showFilterPanel)} className={`p-1.5 rounded-lg transition-colors ${showFilterPanel ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-white/60'}`} title="Filtros Avançados">
+                             <button onClick={() => setShowFilterPanel(!showFilterPanel)} className={`p-1.5 rounded-lg transition-colors ${showFilterPanel ? 'bg-blue-500/20 text-blue-500' : isDarkMode ? 'hover:bg-white/10 text-white/60' : 'hover:bg-gray-200 text-gray-500'}`} title="Filtros Avançados">
                                  <SlidersHorizontal size={16}/>
                              </button>
                          </div>
                          <button onClick={() => setShowNewMenu(!showNewMenu)} className="bg-[#C2E7FF] text-[#001D35] h-10 w-10 rounded-xl flex items-center justify-center hover:shadow-lg transition-all hover:scale-105 active:scale-95"><Plus size={24}/></button>
                          
                          {showNewMenu && (
-                            <div className="absolute top-[60px] right-4 w-48 bg-[#2d2e30] border border-white/10 rounded-xl shadow-2xl py-1 z-50">
-                                <button onClick={() => { setActivePane('compose'); setIsComposerMinimized(false); setShowNewMenu(false); }} className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-white/5"><Mail size={16}/><span className="text-sm">Novo E-mail</span></button>
-                                <button onClick={() => { setActiveEvent({ title: '', start: new Date(), end: new Date() }); setActivePane('event-create'); setShowNewMenu(false); }} className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-white/5"><CalendarIcon size={16}/><span className="text-sm">Novo Evento</span></button>
+                            <div className={`absolute top-[60px] right-4 w-48 border rounded-xl shadow-2xl py-1 z-50 ${isDarkMode ? 'bg-[#2d2e30] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-800'}`}>
+                                <button onClick={() => { setActivePane('compose'); setIsComposerMinimized(false); setShowNewMenu(false); }} className={`w-full text-left flex items-center gap-3 px-4 py-3 ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-100'}`}><Mail size={16}/><span className="text-sm">Novo E-mail</span></button>
+                                <button onClick={() => { setActiveEvent({ title: '', start: new Date(), end: new Date() }); setActivePane('event-create'); setShowNewMenu(false); }} className={`w-full text-left flex items-center gap-3 px-4 py-3 ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-100'}`}><CalendarIcon size={16}/><span className="text-sm">Novo Evento</span></button>
                             </div>
                         )}
                     </div>
 
                     <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar px-4 py-3 mask-linear-fade">
                         {primaryFolders.map(folder => (
-                            <button key={folder.id} onClick={() => setMailFolder(folder.id as any)} className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap ${mailFolder === folder.id ? 'bg-white/10 text-white border border-white/10' : 'text-white/60 hover:bg-white/5'}`}>
+                            <button key={folder.id} onClick={() => setMailFolder(folder.id as any)} className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap border ${mailFolder === folder.id ? (isDarkMode ? 'bg-white/10 text-white border-white/10' : 'bg-blue-50 text-blue-700 border-blue-200') : (isDarkMode ? 'text-white/60 border-transparent hover:bg-white/5' : 'text-gray-600 border-transparent hover:bg-gray-100')}`}>
                                 <folder.icon size={14}/> {folder.label}
                             </button>
                         ))}
-                        <div className="w-[1px] h-6 bg-white/10 mx-1 shrink-0"></div>
-                        <button onClick={() => setActivePane('settings')} className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap ${activePane === 'settings' ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5'}`}>
+                        <div className={`w-[1px] h-6 mx-1 shrink-0 ${isDarkMode ? 'bg-white/10' : 'bg-gray-200'}`}></div>
+                        <button onClick={() => setActivePane('settings')} className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap ${activePane === 'settings' ? (isDarkMode ? 'bg-white/10 text-white' : 'bg-blue-50 text-blue-700') : (isDarkMode ? 'text-white/60 hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100')}`}>
                             <Settings size={14}/> Config
                         </button>
                     </div>
@@ -956,16 +949,17 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
                         filterCriteria={filterCriteria}
                         setFilterCriteria={setFilterCriteria}
                         onCreateLabel={handleCreateLabel}
+                        isDarkMode={isDarkMode}
                     />
                 </div>
 
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 relative bg-[#191919]">
+                <div className={`flex-1 overflow-y-auto custom-scrollbar p-4 relative ${isDarkMode ? 'bg-[#191919]' : 'bg-gray-50/60'}`}>
                     <div className="flex flex-col gap-1">
                         {displayedEmails.map((email: any) => (
                             <div key={email.id} className="relative group mb-2">
-                                <div className={`relative z-10 ${!email.read ? 'bg-white/10 border-l-4 border-blue-500' : 'bg-white/5'} hover:bg-[#2A2A2A] rounded-2xl transition-all duration-200 py-4 px-4 flex items-start gap-3 cursor-pointer`} onClick={() => handleEmailClick(email)}>
+                                <div className={`relative z-10 rounded-2xl transition-all duration-200 py-4 px-4 flex items-start gap-3 cursor-pointer border ${!email.read ? (isDarkMode ? 'bg-white/10 border-l-4 border-l-blue-500 border-white/5' : 'bg-white border-l-4 border-l-blue-600 border-gray-200 shadow-xs') : (isDarkMode ? 'bg-white/5 border-transparent hover:bg-[#2A2A2A]' : 'bg-white/70 border-gray-100 hover:bg-white')}`} onClick={() => handleEmailClick(email)}>
                                     <div className="absolute left-0 top-0 bottom-0 w-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                        <div onClick={(e) => handleEmailSelection(e, email.id)} className={`w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer ${selectedEmailIds.has(email.id) ? 'bg-blue-500 border-blue-500' : 'border-white/20'}`}>
+                                        <div onClick={(e) => handleEmailSelection(e, email.id)} className={`w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer ${selectedEmailIds.has(email.id) ? 'bg-blue-500 border-blue-500' : isDarkMode ? 'border-white/20' : 'border-gray-300'}`}>
                                             {selectedEmailIds.has(email.id) && <Check size={14} className="text-white"/>}
                                         </div>
                                     </div>
@@ -973,22 +967,22 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
                                         {email.senderInit || email.sender[0]}
                                     </div>
                                     <div className="flex-1 min-w-0 ml-2">
-                                        <div className="flex justify-between items-start mb-0.5 relative h-5"><span className={`text-sm ${!email.read ? 'text-white font-bold' : 'text-white/70 font-medium'}`}>{email.sender}</span><span className="text-[10px] text-white/40">{email.time}</span></div>
+                                        <div className="flex justify-between items-start mb-0.5 relative h-5"><span className={`text-sm ${!email.read ? (isDarkMode ? 'text-white font-bold' : 'text-gray-900 font-bold') : (isDarkMode ? 'text-white/70 font-medium' : 'text-gray-600 font-medium')}`}>{email.sender}</span><span className={`text-[10px] ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>{email.time}</span></div>
                                         <div className="flex items-center gap-2 mb-1">
-                                            {email.hasAttachment && <PaperclipIcon size={12} className="text-white/60"/>}
-                                            {email.labels?.map((l:any) => <span key={l} className="text-[9px] bg-white/10 px-1 rounded text-white/60">{customLabels.find((c:any)=>c.id===l)?.name || l}</span>)}
-                                            <h4 className={`text-xs truncate flex-1 ${!email.read ? 'text-white font-bold' : 'text-white/70 font-medium'}`}>{email.subject}</h4>
+                                            {email.hasAttachment && <PaperclipIcon size={12} className={isDarkMode ? "text-white/60" : "text-gray-400"}/>}
+                                            {email.labels?.map((l:any) => <span key={l} className={`text-[9px] px-1.5 py-0.5 rounded ${isDarkMode ? 'bg-white/10 text-white/60' : 'bg-blue-50 text-blue-700'}`}>{customLabels.find((c:any)=>c.id===l)?.name || l}</span>)}
+                                            <h4 className={`text-xs truncate flex-1 ${!email.read ? (isDarkMode ? 'text-white font-bold' : 'text-gray-900 font-bold') : (isDarkMode ? 'text-white/70 font-medium' : 'text-gray-600 font-medium')}`}>{email.subject}</h4>
                                         </div>
-                                        <p className={`text-[11px] truncate ${!email.read ? 'text-white/60' : 'text-white/40'}`}>{email.preview}</p>
+                                        <p className={`text-[11px] truncate ${!email.read ? (isDarkMode ? 'text-white/60' : 'text-gray-600') : (isDarkMode ? 'text-white/40' : 'text-gray-400')}`}>{email.preview}</p>
                                     </div>
                                 </div>
                             </div>
                         ))}
                         {displayedEmails.length === 0 && (
-                            <div className="flex flex-col items-center justify-center h-64 text-white/30">
+                            <div className={`flex flex-col items-center justify-center h-64 ${isDarkMode ? 'text-white/30' : 'text-gray-400'}`}>
                                 <Search size={32} className="mb-2 opacity-50"/>
                                 <p className="text-sm">Nenhum e-mail encontrado</p>
-                                <button onClick={() => { setLocalSearch(""); executeSearch(); }} className="mt-2 text-blue-400 text-xs">Limpar busca</button>
+                                <button onClick={() => { setLocalSearch(""); executeSearch(); }} className="mt-2 text-blue-500 text-xs">Limpar busca</button>
                             </div>
                         )}
                     </div>
@@ -999,7 +993,7 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
                             <button 
                                 onClick={handleLoadMore}
                                 disabled={loadingMore}
-                                className="text-xs text-white/50 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full disabled:opacity-50 flex items-center gap-2"
+                                className={`text-xs transition-colors px-4 py-2 rounded-full disabled:opacity-50 flex items-center gap-2 ${isDarkMode ? 'text-white/50 hover:text-white bg-white/5' : 'text-gray-600 hover:text-gray-900 bg-white border border-gray-200 shadow-xs'}`}
                             >
                                 {loadingMore ? <Loader2 size={12} className="animate-spin"/> : null}
                                 Carregar mais antigos
@@ -1010,27 +1004,27 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
             </div>
 
             {/* Right Panel */}
-            <div className={`flex flex-col bg-[#1E1E1E] rounded-[24px] border border-white/5 overflow-hidden relative transition-all duration-0 ease-linear`} style={{ width: rightPanelWidth }}>
-                <div className="h-14 flex items-center justify-between px-6 border-b border-white/5 shrink-0 bg-[#1E1E1E] z-20 relative">
+            <div className={`flex flex-col rounded-[24px] border overflow-hidden relative transition-all duration-0 ease-linear shadow-sm ${isDarkMode ? 'bg-[#1E1E1E] border-white/5' : 'bg-white border-gray-200'}`} style={{ width: rightPanelWidth }}>
+                <div className={`h-14 flex items-center justify-between px-6 border-b shrink-0 z-20 relative ${isDarkMode ? 'border-white/5 bg-[#1E1E1E]' : 'border-gray-100 bg-white'}`}>
                     {/* Batch Actions Toolbar */}
                     {selectedEmailIds.size > 0 ? (
                         <div className="flex items-center w-full gap-4 animate-in fade-in slide-in-from-top-2">
                             <div className="flex items-center gap-2">
-                                <button onClick={() => setSelectedEmailIds(new Set())} className="p-1 hover:bg-white/10 rounded"><X size={16}/></button>
+                                <button onClick={() => setSelectedEmailIds(new Set())} className={`p-1 rounded ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}><X size={16}/></button>
                                 <span className="text-sm font-medium">{selectedEmailIds.size} selecionados</span>
                             </div>
-                            <div className="h-6 w-[1px] bg-white/10 mx-2"></div>
+                            <div className={`h-6 w-[1px] mx-2 ${isDarkMode ? 'bg-white/10' : 'bg-gray-200'}`}></div>
                             <div className="flex items-center gap-1">
-                                <button onClick={() => handleBatchAction('archive')} className="p-2 hover:bg-white/10 rounded text-white/70 hover:text-white" title="Arquivar"><Archive size={18}/></button>
-                                <button onClick={() => handleBatchAction('trash')} className="p-2 hover:bg-white/10 rounded text-white/70 hover:text-red-400" title="Excluir"><Trash2 size={18}/></button>
-                                <button onClick={() => handleBatchAction('read')} className="p-2 hover:bg-white/10 rounded text-white/70 hover:text-white" title="Marcar como lida"><MailOpen size={18}/></button>
-                                <button onClick={() => handleBatchAction('spam')} className="p-2 hover:bg-white/10 rounded text-white/70 hover:text-white" title="Reportar Spam"><AlertOctagon size={18}/></button>
+                                <button onClick={() => handleBatchAction('archive')} className={`p-2 rounded ${isDarkMode ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'}`} title="Arquivar"><Archive size={18}/></button>
+                                <button onClick={() => handleBatchAction('trash')} className={`p-2 rounded ${isDarkMode ? 'hover:bg-white/10 text-white/70 hover:text-red-400' : 'hover:bg-gray-100 text-gray-600 hover:text-red-600'}`} title="Excluir"><Trash2 size={18}/></button>
+                                <button onClick={() => handleBatchAction('read')} className={`p-2 rounded ${isDarkMode ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'}`} title="Marcar como lida"><MailOpen size={18}/></button>
+                                <button onClick={() => handleBatchAction('spam')} className={`p-2 rounded ${isDarkMode ? 'hover:bg-white/10 text-white/70 hover:text-white' : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'}`} title="Reportar Spam"><AlertOctagon size={18}/></button>
                             </div>
                         </div>
                     ) : (
-                        <div className="flex bg-white/5 backdrop-blur-xl border border-white/10 p-1 rounded-[99px] h-[40px] items-center gap-1 w-full overflow-x-auto custom-scrollbar">
+                        <div className={`flex backdrop-blur-xl border p-1 rounded-[99px] h-[40px] items-center gap-1 w-full overflow-x-auto custom-scrollbar ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-200'}`}>
                             {['email', 'agenda', 'tasks', 'keep'].map((tab: any) => (
-                                <button key={tab} onClick={() => setActivePane(tab)} className={`flex-1 min-w-[70px] h-full rounded-full text-xs font-medium transition-all flex items-center justify-center gap-2 ${activePane.includes(tab) ? 'bg-white/10 text-white shadow-sm border border-white/5' : 'text-white/50 hover:bg-white/5 hover:text-white'}`}>
+                                <button key={tab} onClick={() => setActivePane(tab)} className={`flex-1 min-w-[70px] h-full rounded-full text-xs font-medium transition-all flex items-center justify-center gap-2 ${activePane.includes(tab) ? (isDarkMode ? 'bg-white/10 text-white shadow-sm border border-white/5' : 'bg-white text-gray-900 shadow-xs border border-gray-200/80') : (isDarkMode ? 'text-white/50 hover:bg-white/5 hover:text-white' : 'text-gray-500 hover:bg-white/60 hover:text-gray-900')}`}>
                                     {tab === 'email' && <GoogleIcons.Gmail className="w-3.5 h-3.5" />} {tab === 'agenda' && <GoogleIcons.Calendar className="w-3.5 h-3.5" />} {tab === 'tasks' && <GoogleIcons.Tasks className="w-3.5 h-3.5" />} {tab === 'keep' && <GoogleIcons.Keep className="w-3.5 h-3.5" />}
                                     <span className="capitalize hidden md:inline">{tab === 'email' ? 'Leitura' : tab}</span>
                                 </button>
@@ -1040,41 +1034,42 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
                 </div>
 
                 {/* SETTINGS VIEW */}
-                <div className={`absolute inset-0 top-14 bottom-0 w-full bg-[#1E1E1E] transition-opacity duration-300 ${activePane === 'settings' ? 'opacity-100 z-50' : 'opacity-0 z-0 pointer-events-none'}`}>
-                     {/* ... Settings Content (omitted for brevity, same as previous) ... */}
+                <div className={`absolute inset-0 top-14 bottom-0 w-full transition-opacity duration-300 ${isDarkMode ? 'bg-[#1E1E1E]' : 'bg-white'} ${activePane === 'settings' ? 'opacity-100 z-50' : 'opacity-0 z-0 pointer-events-none'}`}>
+                     <div className="p-6 flex flex-col gap-4">
+                         <h3 className="text-lg font-medium">Configurações de E-mail</h3>
+                         <p className={`text-sm ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>Assinatura e respostas automáticas sincronizadas com o Workspace.</p>
+                     </div>
                 </div>
 
                 {/* EMAIL READING PANE */}
-                <div className={`absolute inset-0 top-14 bottom-0 w-full bg-[#1E1E1E] transition-opacity duration-300 ${activePane === 'email' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
-                     {/* Reader content ... */}
+                <div className={`absolute inset-0 top-14 bottom-0 w-full transition-opacity duration-300 ${isDarkMode ? 'bg-[#1E1E1E]' : 'bg-white'} ${activePane === 'email' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
                      {activeEmail ? (
                         <div className="flex flex-col h-full">
-                            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 shrink-0">
+                            <div className={`flex items-center justify-between px-6 py-4 border-b shrink-0 ${isDarkMode ? 'border-white/5' : 'border-gray-100'}`}>
                                 <div className="flex items-center gap-4">
-                                    <button onClick={() => setActivePane('agenda')} className="p-2 hover:bg-white/10 rounded-full text-white/60 md:hidden"><ChevronLeft size={20}/></button>
-                                    <h2 className="text-lg font-medium text-white truncate max-w-md">{activeEmail.subject}</h2>
-                                    {activeEmail.labels?.map((l:any) => <span key={l} className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-white/60 border border-white/10">{customLabels.find((c:any)=>c.id===l)?.name || l}</span>)}
+                                    <button onClick={() => setActivePane('agenda')} className={`p-2 rounded-full md:hidden ${isDarkMode ? 'hover:bg-white/10 text-white/60' : 'hover:bg-gray-100 text-gray-600'}`}><ChevronLeft size={20}/></button>
+                                    <h2 className={`text-lg font-medium truncate max-w-md ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{activeEmail.subject}</h2>
+                                    {activeEmail.labels?.map((l:any) => <span key={l} className={`text-[10px] px-2 py-0.5 rounded border ${isDarkMode ? 'bg-white/10 text-white/60 border-white/10' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>{customLabels.find((c:any)=>c.id===l)?.name || l}</span>)}
                                 </div>
-                                <div className="flex items-center gap-2 text-white/60">
+                                <div className={`flex items-center gap-2 ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>
                                     {/* SNOOZE BUTTON */}
                                     <div className="relative">
-                                        <button onClick={() => setShowSnoozeMenu(!showSnoozeMenu)} className="p-2 hover:bg-white/10 rounded-full" title="Adiar"><Clock size={18}/></button>
+                                        <button onClick={() => setShowSnoozeMenu(!showSnoozeMenu)} className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`} title="Adiar"><Clock size={18}/></button>
                                         {showSnoozeMenu && (
-                                            <div className="absolute top-full right-0 mt-2 w-56 bg-[#2d2e30] border border-white/10 rounded-lg shadow-xl z-50 py-2">
-                                                <div className="px-4 py-2 text-xs text-white/50 font-bold uppercase">Adiar até...</div>
-                                                <button onClick={() => handleSnooze('today')} className="w-full text-left px-4 py-2 hover:bg-white/10 text-sm text-white flex justify-between"><span>Mais tarde</span><span className="text-white/50">18:00</span></button>
-                                                <button onClick={() => handleSnooze('tomorrow')} className="w-full text-left px-4 py-2 hover:bg-white/10 text-sm text-white flex justify-between"><span>Amanhã</span><span className="text-white/50">08:00</span></button>
-                                                <button onClick={() => handleSnooze('nextWeek')} className="w-full text-left px-4 py-2 hover:bg-white/10 text-sm text-white flex justify-between"><span>Próxima semana</span><span className="text-white/50">Seg 08:00</span></button>
+                                            <div className={`absolute top-full right-0 mt-2 w-56 border rounded-lg shadow-xl z-50 py-2 ${isDarkMode ? 'bg-[#2d2e30] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-800'}`}>
+                                                <div className={`px-4 py-2 text-xs font-bold uppercase ${isDarkMode ? 'text-white/50' : 'text-gray-400'}`}>Adiar até...</div>
+                                                <button onClick={() => handleSnooze('today')} className={`w-full text-left px-4 py-2 text-sm flex justify-between ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}><span>Mais tarde</span><span className="opacity-50">18:00</span></button>
+                                                <button onClick={() => handleSnooze('tomorrow')} className={`w-full text-left px-4 py-2 text-sm flex justify-between ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}><span>Amanhã</span><span className="opacity-50">08:00</span></button>
+                                                <button onClick={() => handleSnooze('nextWeek')} className={`w-full text-left px-4 py-2 text-sm flex justify-between ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}><span>Próxima semana</span><span className="opacity-50">Seg 08:00</span></button>
                                             </div>
                                         )}
                                     </div>
-                                    <button className="p-2 hover:bg-white/10 rounded-full" onClick={handleCreateTaskFromEmail} title="Adicionar às Tarefas"><CheckSquare size={18}/></button>
-                                    <button className="p-2 hover:bg-white/10 rounded-full" title="Arquivar"><Archive size={18}/></button>
-                                    <button className="p-2 hover:bg-white/10 rounded-full" title="Spam"><AlertOctagon size={18}/></button>
-                                    <button className="p-2 hover:bg-white/10 rounded-full hover:text-red-400" title="Excluir"><Trash2 size={18}/></button>
+                                    <button className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`} onClick={handleCreateTaskFromEmail} title="Adicionar às Tarefas"><CheckSquare size={18}/></button>
+                                    <button className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`} title="Arquivar"><Archive size={18}/></button>
+                                    <button className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`} title="Spam"><AlertOctagon size={18}/></button>
+                                    <button className={`p-2 rounded-full hover:text-red-500 ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`} title="Excluir"><Trash2 size={18}/></button>
                                 </div>
                             </div>
-                            {/* ... Thread content ... */}
                             <div className="flex-1 overflow-y-auto custom-scrollbar p-6 pb-20">
                                 {loadingThread ? (
                                     <div className="flex items-center justify-center h-40">
@@ -1083,27 +1078,27 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
                                 ) : (
                                     <div className="space-y-6">
                                         {activeThreadMessages.length > 0 ? activeThreadMessages.map((msg: any, i: number) => (
-                                            <div key={i} className={`rounded-xl border border-white/10 p-4 ${i === activeThreadMessages.length - 1 ? 'bg-white/5' : 'bg-transparent'}`}>
+                                            <div key={i} className={`rounded-xl border p-4 ${isDarkMode ? 'border-white/10' : 'border-gray-200'} ${i === activeThreadMessages.length - 1 ? (isDarkMode ? 'bg-white/5' : 'bg-gray-50/70') : 'bg-transparent'}`}>
                                                 <div className="flex items-center justify-between mb-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white bg-blue-600`}>
+                                                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white bg-blue-600">
                                                             {msg.senderInit || msg.from[0]}
                                                         </div>
                                                         <div>
-                                                            <span className="text-sm font-bold text-white block">{msg.from}</span>
-                                                            <span className="text-xs text-white/40">para {msg.to}</span>
+                                                            <span className={`text-sm font-bold block ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{msg.from}</span>
+                                                            <span className={`text-xs ${isDarkMode ? 'text-white/40' : 'text-gray-500'}`}>para {msg.to}</span>
                                                         </div>
                                                     </div>
-                                                    <span className="text-xs text-white/40">{msg.date}</span>
+                                                    <span className={`text-xs ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>{msg.date}</span>
                                                 </div>
-                                                <div className="text-sm text-white/90 leading-relaxed whitespace-pre-wrap font-light" dangerouslySetInnerHTML={{__html: msg.body || msg.plainBody}}></div>
+                                                <div className={`text-sm leading-relaxed whitespace-pre-wrap font-light ${isDarkMode ? 'text-white/90' : 'text-gray-800'}`} dangerouslySetInnerHTML={{__html: msg.body || msg.plainBody}}></div>
                                                 {msg.attachments && msg.attachments.length > 0 && (
                                                     <div className="flex gap-2 mt-4 overflow-x-auto">
                                                         {msg.attachments.map((att:any, idx:number) => (
                                                             <button 
                                                                 key={idx} 
                                                                 onClick={() => handleDownloadAttachment(msg.id, att.id, att.name)}
-                                                                className="bg-white/10 hover:bg-white/20 transition-colors rounded px-2 py-1 flex items-center gap-2 text-xs text-white cursor-pointer border border-white/10"
+                                                                className={`transition-colors rounded px-2 py-1 flex items-center gap-2 text-xs cursor-pointer border ${isDarkMode ? 'bg-white/10 hover:bg-white/20 text-white border-white/10' : 'bg-white hover:bg-gray-100 text-gray-700 border-gray-200'}`}
                                                             >
                                                                 <PaperclipIcon size={12}/> {att.name} <span className="opacity-50">({att.size})</span>
                                                             </button>
@@ -1112,25 +1107,25 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
                                                 )}
                                             </div>
                                         )) : (
-                                            <div className="text-white/50 text-center">Nenhuma mensagem carregada.</div>
+                                            <div className={`text-center ${isDarkMode ? 'text-white/50' : 'text-gray-400'}`}>Nenhuma mensagem carregada.</div>
                                         )}
                                         
                                         {/* INLINE QUICK REPLY */}
-                                        <div className="bg-black/20 border border-white/10 rounded-xl p-4 flex flex-col gap-3 mt-6">
+                                        <div className={`border rounded-xl p-4 flex flex-col gap-3 mt-6 ${isDarkMode ? 'bg-black/20 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
                                             <div className="flex items-start gap-3">
                                                 <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold text-white mt-1">E</div>
                                                 <textarea 
-                                                    className="flex-1 bg-transparent text-sm text-white placeholder:text-white/40 outline-none resize-none min-h-[60px]"
+                                                    className={`flex-1 bg-transparent text-sm outline-none resize-none min-h-[60px] ${isDarkMode ? 'text-white placeholder:text-white/40' : 'text-gray-800 placeholder:text-gray-400'}`}
                                                     placeholder="Responder a todos..."
                                                     value={quickReplyText}
                                                     onChange={(e) => setQuickReplyText(e.target.value)}
                                                 />
                                             </div>
-                                            <div className="flex justify-between items-center pt-2 border-t border-white/5">
-                                                <div className="flex gap-2 text-white/40">
-                                                    <button className="p-1.5 hover:bg-white/10 rounded transition-colors"><PaperclipIcon size={16}/></button>
-                                                    <button className="p-1.5 hover:bg-white/10 rounded transition-colors"><ImageIcon size={16}/></button>
-                                                    <button className="p-1.5 hover:bg-white/10 rounded transition-colors"><Smile size={16}/></button>
+                                            <div className={`flex justify-between items-center pt-2 border-t ${isDarkMode ? 'border-white/5' : 'border-gray-200'}`}>
+                                                <div className={`flex gap-2 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>
+                                                    <button className={`p-1.5 rounded transition-colors ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-200'}`}><PaperclipIcon size={16}/></button>
+                                                    <button className={`p-1.5 rounded transition-colors ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-200'}`}><ImageIcon size={16}/></button>
+                                                    <button className={`p-1.5 rounded transition-colors ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-200'}`}><Smile size={16}/></button>
                                                 </div>
                                                 <button 
                                                     onClick={handleQuickReply} 
@@ -1146,7 +1141,7 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
                             </div>
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-white/30">
+                        <div className={`flex flex-col items-center justify-center h-full ${isDarkMode ? 'text-white/30' : 'text-gray-400'}`}>
                             <Mail size={48} className="mb-4 opacity-50"/>
                             <p>Selecione um e-mail para ler</p>
                         </div>
@@ -1155,38 +1150,43 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
 
                 {/* AGENDA PANE */}
                 <div className={`absolute inset-0 top-14 bottom-0 w-full transition-opacity duration-300 ${activePane === 'agenda' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
-                   {/* ... Calendar content (reused from previous implementation) ... */}
-                   {/* ... Calendar logic ... */}
-                   {/* ... For brevity, assuming the calendar logic is present here ... */}
-                   {/* Placeholder for Calendar Grid */}
-                   <div className="flex-1 flex flex-col h-full bg-[#1E1E1E] p-4 text-center justify-center text-white/40">
-                       <CalendarIcon size={48} className="mb-4 mx-auto"/>
-                       <p>Agenda View (See CalendarApp for full implementation)</p>
+                   <div className={`flex-1 flex flex-col h-full p-4 text-center justify-center ${isDarkMode ? 'bg-[#1E1E1E] text-white/40' : 'bg-white text-gray-400'}`}>
+                       <CalendarIcon size={48} className="mb-4 mx-auto opacity-50"/>
+                       <p className="text-sm">Selecione um e-mail à esquerda para leitura ou crie uma nova mensagem.</p>
                    </div>
                 </div>
 
                 {/* TASKS & KEEP PANES */}
-                {/* ... (Same as previous) ... */}
+                {activePane === 'tasks' && (
+                    <div className="absolute inset-0 top-14 bottom-0 w-full z-20">
+                        <TasksApp onClose={() => setActivePane('agenda')} data={{ tasks }} onUpdate={handleUpdateTasks} showToast={toast} isDarkMode={isDarkMode} />
+                    </div>
+                )}
+                {activePane === 'keep' && (
+                    <div className="absolute inset-0 top-14 bottom-0 w-full z-20">
+                        <KeepApp onClose={() => setActivePane('agenda')} data={{ notes }} onUpdate={handleUpdateNotes} showToast={toast} isDarkMode={isDarkMode} />
+                    </div>
+                )}
 
                 {/* COMPOSER WITH AI & SCHEDULE SEND */}
-                <div className={`absolute inset-0 top-14 bottom-0 w-full bg-[#1E1E1E] transition-opacity duration-300 ${activePane === 'compose' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+                <div className={`absolute inset-0 top-14 bottom-0 w-full transition-opacity duration-300 ${isDarkMode ? 'bg-[#1E1E1E]' : 'bg-white'} ${activePane === 'compose' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
                      <div className="flex flex-col h-full p-6 relative">
                          {/* AI Writer Overlay */}
                          {showAiWriter && (
-                             <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[400px] bg-[#2d2e30] border border-white/10 rounded-xl shadow-2xl p-4 z-50 animate-in fade-in zoom-in duration-200">
+                             <div className={`absolute top-20 left-1/2 -translate-x-1/2 w-[400px] border rounded-xl shadow-2xl p-4 z-50 animate-in fade-in zoom-in duration-200 ${isDarkMode ? 'bg-[#2d2e30] border-white/10' : 'bg-white border-gray-200'}`}>
                                  <div className="flex items-center gap-2 mb-3">
-                                     <Sparkles size={16} className="text-blue-400"/>
-                                     <span className="text-sm font-medium text-white">Help me write</span>
+                                     <Sparkles size={16} className="text-blue-500"/>
+                                     <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Help me write</span>
                                  </div>
                                  <textarea 
-                                     className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-white text-sm outline-none resize-none h-24 mb-3 focus:border-blue-500 transition-colors"
+                                     className={`w-full border rounded-lg p-3 text-sm outline-none resize-none h-24 mb-3 focus:border-blue-500 transition-colors ${isDarkMode ? 'bg-black/20 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-800'}`}
                                      placeholder="Ex: Peça um dia de folga para o chefe..."
                                      value={aiWritePrompt}
                                      onChange={(e) => setAiWritePrompt(e.target.value)}
                                      autoFocus
                                  />
                                  <div className="flex justify-end gap-2">
-                                     <button onClick={() => setShowAiWriter(false)} className="px-3 py-1.5 text-xs text-white/60 hover:text-white rounded hover:bg-white/5 transition-colors">Cancelar</button>
+                                     <button onClick={() => setShowAiWriter(false)} className={`px-3 py-1.5 text-xs rounded transition-colors ${isDarkMode ? 'text-white/60 hover:text-white hover:bg-white/5' : 'text-gray-600 hover:bg-gray-100'}`}>Cancelar</button>
                                      <button onClick={handleAiWrite} disabled={!aiWritePrompt.trim() || isAiWriting} className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-full flex items-center gap-2 transition-colors disabled:opacity-50">
                                          {isAiWriting ? <Loader2 size={12} className="animate-spin"/> : <Wand2 size={12}/>} Criar
                                      </button>
@@ -1194,25 +1194,25 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
                              </div>
                          )}
 
-                         <div className="flex items-center justify-between mb-4"><h2 className="text-lg font-medium text-white">Nova Mensagem</h2><button onClick={handleCloseComposer} className="p-2 hover:bg-white/10 rounded-full text-white/70"><X size={18}/></button></div>
+                         <div className="flex items-center justify-between mb-4"><h2 className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Nova Mensagem</h2><button onClick={handleCloseComposer} className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-white/10 text-white/70' : 'hover:bg-gray-100 text-gray-600'}`}><X size={18}/></button></div>
                          <div className="space-y-1 mb-4">
-                             <div className="flex items-center bg-white/5 border-b border-white/10 pr-2 transition-colors focus-within:bg-black/20 focus-within:border-blue-500"><input type="text" placeholder="Para" className="flex-1 bg-transparent p-2 text-sm text-white outline-none" value={composeTo} onChange={(e) => setComposeTo(e.target.value)} /></div>
-                             <div className="flex items-center border-b border-white/10 group focus-within:border-white/30 transition-colors relative"><input type="text" placeholder="Assunto" className="flex-1 bg-transparent py-2 text-sm text-white outline-none placeholder:text-white/60" value={composeSubject} onChange={(e) => setComposeSubject(e.target.value)} /><div className="flex gap-3 text-xs text-white/60 absolute right-0"><button onClick={() => setShowCcBcc(!showCcBcc)} className="hover:text-white hover:underline">Cc</button><button onClick={() => setShowCcBcc(!showCcBcc)} className="hover:text-white hover:underline">Cco</button></div></div>
-                             {showCcBcc && (<><div className="flex items-center border-b border-white/10 group focus-within:border-white/30 transition-colors animate-in slide-in-from-top-1"><span className="text-sm text-white/60 w-10 shrink-0">Cc</span><input type="text" className="flex-1 bg-transparent py-2 text-sm text-white outline-none" value={composeCc} onChange={(e) => setComposeCc(e.target.value)}/></div><div className="flex items-center border-b border-white/10 group focus-within:border-white/30 transition-colors animate-in slide-in-from-top-1"><span className="text-sm text-white/60 w-10 shrink-0">Cco</span><input type="text" className="flex-1 bg-transparent py-2 text-sm text-white outline-none" value={composeBcc} onChange={(e) => setComposeBcc(e.target.value)}/></div></>)}
+                             <div className={`flex items-center border-b pr-2 transition-colors focus-within:border-blue-500 ${isDarkMode ? 'bg-white/5 border-white/10 focus-within:bg-black/20' : 'bg-gray-50 border-gray-200 focus-within:bg-white'}`}><input type="text" placeholder="Para" className={`flex-1 bg-transparent p-2 text-sm outline-none ${isDarkMode ? 'text-white' : 'text-gray-800'}`} value={composeTo} onChange={(e) => setComposeTo(e.target.value)} /></div>
+                             <div className={`flex items-center border-b group transition-colors relative ${isDarkMode ? 'border-white/10 focus-within:border-white/30' : 'border-gray-200 focus-within:border-blue-500'}`}><input type="text" placeholder="Assunto" className={`flex-1 bg-transparent py-2 text-sm outline-none ${isDarkMode ? 'text-white placeholder:text-white/60' : 'text-gray-800 placeholder:text-gray-400'}`} value={composeSubject} onChange={(e) => setComposeSubject(e.target.value)} /><div className={`flex gap-3 text-xs absolute right-0 ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}><button onClick={() => setShowCcBcc(!showCcBcc)} className="hover:underline">Cc</button><button onClick={() => setShowCcBcc(!showCcBcc)} className="hover:underline">Cco</button></div></div>
+                             {showCcBcc && (<><div className={`flex items-center border-b transition-colors animate-in slide-in-from-top-1 ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}><span className={`text-sm w-10 shrink-0 ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>Cc</span><input type="text" className={`flex-1 bg-transparent py-2 text-sm outline-none ${isDarkMode ? 'text-white' : 'text-gray-800'}`} value={composeCc} onChange={(e) => setComposeCc(e.target.value)}/></div><div className={`flex items-center border-b transition-colors animate-in slide-in-from-top-1 ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}><span className={`text-sm w-10 shrink-0 ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>Cco</span><input type="text" className={`flex-1 bg-transparent py-2 text-sm outline-none ${isDarkMode ? 'text-white' : 'text-gray-800'}`} value={composeBcc} onChange={(e) => setComposeBcc(e.target.value)}/></div></>)}
                          </div>
-                         <ComposerToolbar onFormat={(cmd, val) => { document.execCommand(cmd, false, val); editorRef.current?.focus(); }} onAiWrite={() => setShowAiWriter(!showAiWriter)} />
-                         <div ref={editorRef} contentEditable className="flex-1 bg-transparent w-full outline-none text-white/90 text-sm leading-relaxed custom-scrollbar overflow-y-auto p-2 border border-transparent focus:border-white/10 rounded-lg"></div>
+                         <ComposerToolbar isDarkMode={isDarkMode} onFormat={(cmd, val) => { document.execCommand(cmd, false, val); editorRef.current?.focus(); }} onAiWrite={() => setShowAiWriter(!showAiWriter)} />
+                         <div ref={editorRef} contentEditable className={`flex-1 bg-transparent w-full outline-none text-sm leading-relaxed custom-scrollbar overflow-y-auto p-2 border border-transparent rounded-lg ${isDarkMode ? 'text-white/90 focus:border-white/10' : 'text-gray-800 focus:border-gray-200'}`}></div>
                          {composeAttachments.length > 0 && (
                              <div className="flex flex-wrap gap-2 mb-2 p-2">
                                  {composeAttachments.map((att, i) => (
-                                     <div key={i} className="flex items-center gap-2 bg-white/10 rounded px-2 py-1 text-xs">
+                                     <div key={i} className={`flex items-center gap-2 rounded px-2 py-1 text-xs ${isDarkMode ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-700'}`}>
                                          <PaperclipIcon size={12}/> {att.name} <span className="opacity-50">({att.size})</span>
                                          <button onClick={() => setComposeAttachments(prev => prev.filter((_, idx) => idx !== i))}><X size={12}/></button>
                                      </div>
                                  ))}
                              </div>
                          )}
-                         <div className="flex justify-between items-center mt-2 border-t border-white/10 pt-2">
+                         <div className={`flex justify-between items-center mt-2 border-t pt-2 ${isDarkMode ? 'border-white/10' : 'border-gray-100'}`}>
                              <div className="flex gap-2">
                                  {/* SCHEDULE SEND BUTTON */}
                                  <div className="flex items-center bg-blue-600 rounded-full relative group">
@@ -1221,18 +1221,18 @@ export default function MailApp({ onClose, data, searchQuery = '', onUpdateTasks
                                     <button onClick={() => setShowScheduleSendMenu(!showScheduleSendMenu)} className="pl-2 pr-3 py-2 hover:bg-blue-500 rounded-r-full"><ChevronDown size={14} className="text-white"/></button>
                                     
                                     {showScheduleSendMenu && (
-                                        <div className="absolute bottom-full left-0 mb-2 w-64 bg-[#2d2e30] border border-white/10 rounded-lg shadow-xl z-50 py-2">
-                                             <div className="px-4 py-2 text-xs text-white/50 font-bold uppercase">Agendar envio</div>
-                                             <button onClick={() => handleScheduleSend('tomorrow')} className="w-full text-left px-4 py-2 hover:bg-white/10 text-sm text-white flex justify-between"><span>Amanhã de manhã</span><span className="text-white/50">08:00</span></button>
-                                             <button onClick={() => handleScheduleSend('afternoon')} className="w-full text-left px-4 py-2 hover:bg-white/10 text-sm text-white flex justify-between"><span>Amanhã à tarde</span><span className="text-white/50">13:00</span></button>
-                                             <button onClick={() => handleScheduleSend('monday')} className="w-full text-left px-4 py-2 hover:bg-white/10 text-sm text-white flex justify-between"><span>Segunda-feira de manhã</span><span className="text-white/50">08:00</span></button>
+                                        <div className={`absolute bottom-full left-0 mb-2 w-64 border rounded-lg shadow-xl z-50 py-2 ${isDarkMode ? 'bg-[#2d2e30] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-800'}`}>
+                                             <div className={`px-4 py-2 text-xs font-bold uppercase ${isDarkMode ? 'text-white/50' : 'text-gray-400'}`}>Agendar envio</div>
+                                             <button onClick={() => handleScheduleSend('tomorrow')} className={`w-full text-left px-4 py-2 text-sm flex justify-between ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}><span>Amanhã de manhã</span><span className="opacity-50">08:00</span></button>
+                                             <button onClick={() => handleScheduleSend('afternoon')} className={`w-full text-left px-4 py-2 text-sm flex justify-between ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}><span>Amanhã à tarde</span><span className="opacity-50">13:00</span></button>
+                                             <button onClick={() => handleScheduleSend('monday')} className={`w-full text-left px-4 py-2 text-sm flex justify-between ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}><span>Segunda-feira de manhã</span><span className="opacity-50">08:00</span></button>
                                         </div>
                                     )}
                                 </div>
-                                 <button onClick={() => handleMinimizeComposer()} className="p-2 hover:bg-white/10 rounded text-white/70" title="Minimizar"><Minimize2 size={18}/></button>
+                                 <button onClick={() => handleMinimizeComposer()} className={`p-2 rounded ${isDarkMode ? 'hover:bg-white/10 text-white/70' : 'hover:bg-gray-100 text-gray-600'}`} title="Minimizar"><Minimize2 size={18}/></button>
                              </div>
                              <div className="relative">
-                                 <button onClick={() => fileInputRef.current?.click()} className="p-2 hover:bg-white/10 rounded text-white/70"><PaperclipIcon size={18}/></button>
+                                 <button onClick={() => fileInputRef.current?.click()} className={`p-2 rounded ${isDarkMode ? 'hover:bg-white/10 text-white/70' : 'hover:bg-gray-100 text-gray-600'}`}><PaperclipIcon size={18}/></button>
                                  <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleAttachmentUpload} />
                              </div>
                          </div>

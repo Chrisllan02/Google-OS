@@ -1,22 +1,20 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
-  ChevronLeft, ChevronRight, Search, Settings, HelpCircle, 
-  Menu, Plus, Calendar as CalendarIcon, MapPin, Users, 
-  Video, X, Clock, AlignLeft, Check, MoreVertical, RotateCw, Eye, EyeOff, Bell,
-  Globe, Video as VideoIcon, Trash2, Pencil, CheckCircle
+  ChevronLeft, ChevronRight, 
+  Plus, MapPin, 
+  X, Clock, Video as VideoIcon, Trash2, Pencil
 } from 'lucide-react';
 import { GoogleIcons } from '../GoogleIcons';
-import { bridge, CalendarEvent, CalendarListEntry, EventGuest } from '../../utils/GASBridge';
+import { bridge, CalendarEvent, CalendarListEntry } from '../../utils/GASBridge';
 
 interface CalendarAppProps {
   onClose: () => void;
   data: any;
   onOpenApp?: (type: string, data?: any) => void;
   showToast?: (msg: string) => void;
+  isDarkMode?: boolean;
 }
 
-// FIX: Define an internal event type with Date objects to avoid type conflicts.
 interface InternalCalendarEvent extends Omit<CalendarEvent, 'start' | 'end'> {
   start: Date;
   end: Date;
@@ -56,11 +54,11 @@ const arrangeEventsForDay = (events: InternalCalendarEvent[]) => {
 };
 
 
-export default function CalendarApp({ onClose, data, onOpenApp, showToast }: CalendarAppProps) {
+export default function CalendarApp({ onClose, data, onOpenApp, showToast, isDarkMode = false }: CalendarAppProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<'day' | 'week' | 'month'>('week');
   const [events, setEvents] = useState<InternalCalendarEvent[]>([]);
-  const [calendars, setCalendars] = useState<CalendarListEntry[]>([]);
+  const [, setCalendars] = useState<CalendarListEntry[]>([]);
   const [visibleCalendars, setVisibleCalendars] = useState<Set<string>>(new Set());
   
   const [editingEvent, setEditingEvent] = useState<InternalCalendarEvent | null>(null);
@@ -68,7 +66,6 @@ export default function CalendarApp({ onClose, data, onOpenApp, showToast }: Cal
 
   const [isCreating, setIsCreating] = useState(false);
   const [newEvent, setNewEvent] = useState<Partial<InternalCalendarEvent>>({});
-  const [guestInput, setGuestInput] = useState('');
 
   const toast = (msg: string) => showToast && showToast(msg);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -77,7 +74,6 @@ export default function CalendarApp({ onClose, data, onOpenApp, showToast }: Cal
     if (data?.event) {
         const initialEvent: InternalCalendarEvent = { ...data.event, start: new Date(data.event.start), end: new Date(data.event.end) };
         setCurrentDate(initialEvent.start);
-        // We can't set a target, so we just open the editor directly
         setEditingEvent(initialEvent);
     }
   }, [data?.event]);
@@ -171,7 +167,7 @@ export default function CalendarApp({ onClose, data, onOpenApp, showToast }: Cal
   const handleNext = () => {
     const d = new Date(currentDate);
     if (view === 'day') d.setDate(d.getDate() + 1);
-    else if (view === 'week') d.setDate(d.getDate() - 7);
+    else if (view === 'week') d.setDate(d.getDate() + 7);
     else d.setMonth(d.getMonth() + 1);
     setCurrentDate(d);
   };
@@ -208,13 +204,13 @@ export default function CalendarApp({ onClose, data, onOpenApp, showToast }: Cal
     return (
         <div 
             onClick={(e) => { e.stopPropagation(); setViewingEvent({event, target: e.currentTarget as HTMLElement}); }}
-            className={`absolute rounded p-1.5 text-white text-xs overflow-hidden cursor-pointer border-l-4`}
+            className="absolute rounded p-1.5 text-white text-xs overflow-hidden cursor-pointer border-l-4"
             style={{
                 top: `${top}px`,
                 height: `${height}px`,
                 left: `${left}%`,
                 width: `calc(${width}% - 2px)`,
-                backgroundColor: 'rgba(66, 133, 244, 0.8)',
+                backgroundColor: 'rgba(66, 133, 244, 0.85)',
                 borderColor: 'rgb(66, 133, 244)',
             }}
         >
@@ -224,29 +220,35 @@ export default function CalendarApp({ onClose, data, onOpenApp, showToast }: Cal
     );
   };
 
+  const borderCol = isDarkMode ? 'border-white/10' : 'border-gray-200';
+  const subBorderCol = isDarkMode ? 'border-white/5' : 'border-gray-100';
+
   const renderDayOrWeekView = () => {
     const days = view === 'day' ? [currentDate] : weekDays;
 
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex shrink-0 border-b border-gray-200">
+            <div className={`flex shrink-0 border-b ${borderCol}`}>
                 <div className="w-14 shrink-0"></div>
-                {days.map(day => (
-                    <div key={day.toISOString()} className="flex-1 border-l border-gray-200 p-2 text-center">
-                        <span className={`text-xs ${day.toDateString() === new Date().toDateString() ? 'text-blue-600' : 'text-gray-500'}`}>{day.toLocaleDateString('pt-BR', {weekday: 'short'})}</span>
-                        <p className={`text-2xl ${day.toDateString() === new Date().toDateString() ? 'text-blue-600 font-bold bg-blue-100 rounded-full w-10 h-10 flex items-center justify-center mx-auto' : 'text-gray-800'}`}>{day.getDate()}</p>
-                    </div>
-                ))}
+                {days.map(day => {
+                    const isToday = day.toDateString() === new Date().toDateString();
+                    return (
+                        <div key={day.toISOString()} className={`flex-1 border-l ${borderCol} p-2 text-center`}>
+                            <span className={`text-xs ${isToday ? 'text-blue-500 font-semibold' : isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>{day.toLocaleDateString('pt-BR', {weekday: 'short'})}</span>
+                            <p className={`text-2xl ${isToday ? 'text-white font-bold bg-blue-600 rounded-full w-10 h-10 flex items-center justify-center mx-auto' : isDarkMode ? 'text-white/90' : 'text-gray-800'}`}>{day.getDate()}</p>
+                        </div>
+                    );
+                })}
             </div>
             <div className="flex-1 overflow-y-auto custom-scrollbar">
                 <div className="flex h-full min-h-[1440px] relative">
                     <div className="w-14 shrink-0 -mt-2.5">
-                        {hours.map(h => h > 0 && <div key={h} className="h-[60px] text-right pr-2 text-xs text-gray-400 relative pt-2.5">{h}:00</div>)}
+                        {hours.map(h => h > 0 && <div key={h} className={`h-[60px] text-right pr-2 text-xs relative pt-2.5 ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>{h}:00</div>)}
                     </div>
                     <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}>
                         {days.map((day, dayIndex) => (
-                            <div key={dayIndex} className="relative border-l border-gray-200">
-                                {hours.map(h => <div key={h} className="h-[60px] border-b border-gray-100"></div>)}
+                            <div key={dayIndex} className={`relative border-l ${borderCol}`}>
+                                {hours.map(h => <div key={h} className={`h-[60px] border-b ${subBorderCol}`}></div>)}
                                 {arrangeEventsForDay(events.filter(e => e.start.toDateString() === day.toDateString())).map(ev => <EventComponent key={ev.id} event={ev} />)}
                             </div>
                         ))}
@@ -270,69 +272,72 @@ export default function CalendarApp({ onClose, data, onOpenApp, showToast }: Cal
   }, [viewingEvent]);
 
   return (
-    <div className="flex flex-col h-full bg-white text-[#3c4043] font-sans relative overflow-hidden">
-        <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 shrink-0">
+    <div className={`flex flex-col h-full font-sans relative overflow-hidden transition-colors ${isDarkMode ? 'bg-[#191919] text-[#E3E3E3]' : 'bg-white text-[#3c4043]'}`}>
+        <div className={`h-16 flex items-center justify-between px-4 border-b shrink-0 ${borderCol}`}>
             <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2"><GoogleIcons.Calendar className="w-6 h-6"/><span className="text-xl text-gray-600 tracking-tight hidden md:inline">Agenda</span></div>
-                <button onClick={handleToday} className="px-3 py-1.5 border border-gray-300 rounded-[4px] text-sm font-medium hover:bg-gray-50 transition-colors ml-4">Hoje</button>
-                <div className="flex items-center gap-1"><button onClick={handlePrev} className="p-1 rounded-full hover:bg-gray-100"><ChevronLeft size={20}/></button><button onClick={handleNext} className="p-1 rounded-full hover:bg-gray-100"><ChevronRight size={20}/></button></div>
-                <h2 className="text-xl text-gray-800 font-normal capitalize ml-2">{getMonthName()}</h2>
+                <div className="flex items-center gap-2"><GoogleIcons.Calendar className="w-6 h-6"/><span className={`text-xl tracking-tight hidden md:inline ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>Agenda</span></div>
+                <button onClick={handleToday} className={`px-3 py-1.5 border rounded-[4px] text-sm font-medium transition-colors ml-4 ${isDarkMode ? 'border-white/20 hover:bg-white/10 text-white' : 'border-gray-300 hover:bg-gray-50 text-gray-700'}`}>Hoje</button>
+                <div className="flex items-center gap-1">
+                    <button onClick={handlePrev} className={`p-1 rounded-full ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}><ChevronLeft size={20}/></button>
+                    <button onClick={handleNext} className={`p-1 rounded-full ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}><ChevronRight size={20}/></button>
+                </div>
+                <h2 className={`text-xl font-normal capitalize ml-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{getMonthName()}</h2>
             </div>
             <div className="flex items-center gap-3">
-                <div className="bg-gray-100 rounded-[4px] p-0.5 flex border border-gray-200">
-                    <button onClick={() => setView('day')} className={`px-3 py-1 text-sm rounded-[2px] transition-colors ${view === 'day' ? 'bg-white shadow-sm font-medium' : 'hover:bg-gray-200'}`}>Dia</button>
-                    <button onClick={() => setView('week')} className={`px-3 py-1 text-sm rounded-[2px] transition-colors ${view === 'week' ? 'bg-white shadow-sm font-medium' : 'hover:bg-gray-200'}`}>Semana</button>
-                    <button onClick={() => setView('month')} className={`px-3 py-1 text-sm rounded-[2px] transition-colors ${view === 'month' ? 'bg-white shadow-sm font-medium' : 'hover:bg-gray-200'}`}>Mês</button>
+                <div className={`rounded-[4px] p-0.5 flex border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-200'}`}>
+                    <button onClick={() => setView('day')} className={`px-3 py-1 text-sm rounded-[2px] transition-colors ${view === 'day' ? (isDarkMode ? 'bg-white/20 text-white font-medium' : 'bg-white shadow-sm font-medium') : (isDarkMode ? 'hover:bg-white/10 text-white/70' : 'hover:bg-gray-200')}`}>Dia</button>
+                    <button onClick={() => setView('week')} className={`px-3 py-1 text-sm rounded-[2px] transition-colors ${view === 'week' ? (isDarkMode ? 'bg-white/20 text-white font-medium' : 'bg-white shadow-sm font-medium') : (isDarkMode ? 'hover:bg-white/10 text-white/70' : 'hover:bg-gray-200')}`}>Semana</button>
+                    <button onClick={() => setView('month')} className={`px-3 py-1 text-sm rounded-[2px] transition-colors ${view === 'month' ? (isDarkMode ? 'bg-white/20 text-white font-medium' : 'bg-white shadow-sm font-medium') : (isDarkMode ? 'hover:bg-white/10 text-white/70' : 'hover:bg-gray-200')}`}>Mês</button>
                 </div>
-                <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full text-gray-600"><X size={24}/></button>
+                <button onClick={onClose} className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-white/10 text-white/80' : 'hover:bg-gray-100 text-gray-600'}`}><X size={24}/></button>
             </div>
         </div>
 
         <div className="flex-1 flex overflow-hidden relative">
-            <div className="w-64 border-r border-gray-200 p-3 hidden md:flex flex-col gap-4 overflow-y-auto bg-gray-50">
-                <button onClick={() => { setIsCreating(true); setNewEvent({}); }} className="flex items-center gap-3 pl-3 pr-6 py-3 bg-white hover:bg-gray-50 rounded-full shadow-[0_1px_2px_0_rgba(60,64,67,0.3),0_1px_3px_1px_rgba(60,64,67,0.15)] hover:shadow-lg transition-all w-fit"><Plus size={24} /><span className="font-medium text-sm">Criar</span></button>
+            <div className={`w-64 border-r p-3 hidden md:flex flex-col gap-4 overflow-y-auto ${borderCol} ${isDarkMode ? 'bg-white/[0.02]' : 'bg-gray-50'}`}>
+                <button onClick={() => { setIsCreating(true); setNewEvent({}); }} className={`flex items-center gap-3 pl-3 pr-6 py-3 rounded-full shadow-md hover:shadow-lg transition-all w-fit ${isDarkMode ? 'bg-[#303134] hover:bg-[#3c4043] text-white border border-white/10' : 'bg-white hover:bg-gray-50 text-gray-800'}`}><Plus size={24} /><span className="font-medium text-sm">Criar</span></button>
             </div>
             {view === 'month' ? (
                 <div className="flex-1 grid grid-cols-7 grid-rows-6">
-                    {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => <div key={day} className="text-center text-xs font-medium text-gray-500 py-2 border-b border-gray-200">{day}</div>)}
+                    {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => <div key={day} className={`text-center text-xs font-medium py-2 border-b ${borderCol} ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>{day}</div>)}
                     {monthGrid.map((day, i) => (
-                        <div key={i} className="border-l border-b border-gray-100 p-1 overflow-hidden">
-                           {day && <span className={`text-xs ${day.toDateString() === new Date().toDateString() ? 'text-blue-600 font-bold' : 'text-gray-600'}`}>{day.getDate()}</span>}
-                           {day && events.filter(e => e.start.toDateString() === day.toDateString()).map(e => <div key={e.id} className="bg-blue-100 text-blue-800 text-[10px] rounded px-1 truncate mt-1">{e.title}</div>)}
+                        <div key={i} className={`border-l border-b ${subBorderCol} p-1 overflow-hidden`}>
+                           {day && <span className={`text-xs ${day.toDateString() === new Date().toDateString() ? 'text-blue-500 font-bold' : isDarkMode ? 'text-white/70' : 'text-gray-600'}`}>{day.getDate()}</span>}
+                           {day && events.filter(e => e.start.toDateString() === day.toDateString()).map(e => <div key={e.id} className="bg-blue-500/20 text-blue-500 text-[10px] rounded px-1 truncate mt-1 font-medium">{e.title}</div>)}
                         </div>
                     ))}
                 </div>
             ) : renderDayOrWeekView()}
 
             {viewingEvent && (
-                <div ref={popoverRef} style={popoverStyle} className="absolute z-40 w-80 bg-white rounded-lg shadow-2xl border border-gray-200 p-4 animate-in fade-in zoom-in duration-200 flex flex-col gap-3">
+                <div ref={popoverRef} style={popoverStyle} className={`absolute z-40 w-80 rounded-lg shadow-2xl border p-4 animate-in fade-in zoom-in duration-200 flex flex-col gap-3 ${isDarkMode ? 'bg-[#2d2e30] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-800'}`}>
                     <div className="flex justify-between items-start">
-                        <h3 className="text-xl font-medium text-gray-800">{viewingEvent.event.title}</h3>
+                        <h3 className="text-xl font-medium">{viewingEvent.event.title}</h3>
                         <div className="flex gap-1">
-                            <button onClick={() => { setEditingEvent(viewingEvent.event); setViewingEvent(null); }} className="p-2 hover:bg-gray-100 rounded-full text-gray-500"><Pencil size={18}/></button>
-                            <button onClick={() => handleDeleteEvent(viewingEvent.event.id)} className="p-2 hover:bg-gray-100 rounded-full text-gray-500"><Trash2 size={18}/></button>
-                            <button onClick={() => setViewingEvent(null)} className="p-2 hover:bg-gray-100 rounded-full text-gray-500"><X size={18}/></button>
+                            <button onClick={() => { setEditingEvent(viewingEvent.event); setViewingEvent(null); }} className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-white/10 text-white/60' : 'hover:bg-gray-100 text-gray-500'}`}><Pencil size={18}/></button>
+                            <button onClick={() => handleDeleteEvent(viewingEvent.event.id)} className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-white/10 text-white/60' : 'hover:bg-gray-100 text-gray-500'}`}><Trash2 size={18}/></button>
+                            <button onClick={() => setViewingEvent(null)} className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-white/10 text-white/60' : 'hover:bg-gray-100 text-gray-500'}`}><X size={18}/></button>
                         </div>
                     </div>
-                    <div className="text-sm text-gray-600 flex items-center gap-2"><Clock size={16}/> {viewingEvent.event.start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - {viewingEvent.event.end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
-                    {viewingEvent.event.meetLink && <div className="text-sm text-blue-600 flex items-center gap-2"><VideoIcon size={16}/> Participar com Google Meet</div>}
-                    {viewingEvent.event.location && <div className="text-sm text-gray-600 flex items-center gap-2"><MapPin size={16}/> {viewingEvent.event.location}</div>}
+                    <div className={`text-sm flex items-center gap-2 ${isDarkMode ? 'text-white/70' : 'text-gray-600'}`}><Clock size={16}/> {viewingEvent.event.start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - {viewingEvent.event.end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                    {viewingEvent.event.meetLink && <div className="text-sm text-blue-500 flex items-center gap-2"><VideoIcon size={16}/> Participar com Google Meet</div>}
+                    {viewingEvent.event.location && <div className={`text-sm flex items-center gap-2 ${isDarkMode ? 'text-white/70' : 'text-gray-600'}`}><MapPin size={16}/> {viewingEvent.event.location}</div>}
                 </div>
             )}
         </div>
         
         {(isCreating || editingEvent) && (
-             <div className="absolute inset-0 bg-black/30 z-50 flex items-center justify-center backdrop-blur-sm" onClick={() => {setIsCreating(false); setEditingEvent(null)}}>
-                <div className="bg-white rounded-lg shadow-2xl w-[500px] overflow-hidden animate-in zoom-in" onClick={e => e.stopPropagation()}>
-                    <div className="p-4 flex justify-end gap-2 bg-gray-50 border-b">
-                        {!isCreating && editingEvent && <button className="p-2 hover:bg-gray-200 rounded-full text-gray-500" onClick={() => handleDeleteEvent(editingEvent.id, editingEvent.calendarId)}><Trash2 size={18}/></button>}
-                        <button className="p-2 hover:bg-gray-200 rounded-full text-gray-500" onClick={() => {setIsCreating(false); setEditingEvent(null)}}><X size={18}/></button>
+             <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm" onClick={() => {setIsCreating(false); setEditingEvent(null)}}>
+                <div className={`rounded-xl shadow-2xl w-[500px] overflow-hidden animate-in zoom-in border ${isDarkMode ? 'bg-[#2d2e30] border-white/10 text-white' : 'bg-white border-gray-200 text-gray-800'}`} onClick={e => e.stopPropagation()}>
+                    <div className={`p-4 flex justify-end gap-2 border-b ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                        {!isCreating && editingEvent && <button className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-white/10 text-white/60' : 'hover:bg-gray-200 text-gray-500'}`} onClick={() => handleDeleteEvent(editingEvent.id, editingEvent.calendarId)}><Trash2 size={18}/></button>}
+                        <button className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-white/10 text-white/60' : 'hover:bg-gray-200 text-gray-500'}`} onClick={() => {setIsCreating(false); setEditingEvent(null)}}><X size={18}/></button>
                     </div>
                     <div className="p-6 space-y-4">
-                        <input type="text" placeholder="Adicionar título" className="text-2xl w-full outline-none" value={(isCreating ? newEvent.title : editingEvent?.title) || ''} onChange={e => isCreating ? setNewEvent({...newEvent, title: e.target.value}) : editingEvent && setEditingEvent({...editingEvent, title: e.target.value})}/>
+                        <input type="text" placeholder="Adicionar título" className={`text-2xl w-full outline-none bg-transparent ${isDarkMode ? 'text-white placeholder:text-white/40' : 'text-gray-800 placeholder:text-gray-400'}`} value={(isCreating ? newEvent.title : editingEvent?.title) || ''} onChange={e => isCreating ? setNewEvent({...newEvent, title: e.target.value}) : editingEvent && setEditingEvent({...editingEvent, title: e.target.value})}/>
                     </div>
-                    <div className="p-4 bg-gray-50 border-t flex justify-end">
-                        <button onClick={handleCreateOrUpdateEvent} className="bg-blue-600 text-white px-6 py-2 rounded text-sm font-medium hover:bg-blue-700">Salvar</button>
+                    <div className={`p-4 border-t flex justify-end ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                        <button onClick={handleCreateOrUpdateEvent} className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">Salvar</button>
                     </div>
                 </div>
              </div>

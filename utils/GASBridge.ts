@@ -8,6 +8,14 @@ export interface DashboardData {
   tasks: TaskItem[]; taskLists?: TaskList[]; notes: NoteItem[];
 }
 
+export interface ChatMessage {
+    id: string;
+    sender: string;
+    avatar: string;
+    text: string;
+    time: string;
+}
+
 export interface NoteItem {
     id: number;
     title: string;
@@ -16,7 +24,15 @@ export interface NoteItem {
     pinned: boolean;
     date: string;
     images?: string[]; 
-    labels?: string[]; 
+    labels?: string[];
+    status?: 'completed' | 'in_progress' | 'upcoming';
+    badgeType?: 'plus' | 'brain' | 'media' | 'lock' | 'chat';
+    connectedTo?: number[];
+    linkedTaskId?: string;
+    linkedEventId?: string;
+    participants?: Array<{ name: string; avatar: string }>;
+    chatMessages?: ChatMessage[];
+    durationLabel?: string;
 }
 
 export interface TaskList {
@@ -187,12 +203,120 @@ const MOCK_EMAILS = [
   { id: '5', threadId: 't5', sender: 'Carlos Eduardo', senderInit: 'C', senderEmail: 'carlos@example.com',  subject: 'Relatório Q1 2026 aprovado ✓',                  preview: 'O relatório foi aprovado pela diretoria. Parabéns ao time pelo excelente trabalho!',time: '08 abr', color: 'bg-green-600',  body: '<p>Pessoal,</p><p>O relatório Q1 foi aprovado pela diretoria. Excelente trabalho!</p>' },
 ];
 
+const AVATARS = {
+  gabriel: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+  ana:     'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80',
+  pedro:   'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
+  carlos:  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80',
+  marina:  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80',
+};
+
 const MOCK_EVENTS: CalendarEvent[] = [
-  { id: 'e1', title: 'Daily Stand-up',              start: _fmt(_at(_d0,      9,  0)), end: _fmt(_at(_d0,       9, 30)), calendarId: 'primary', color: '#039BE5', meetLink: 'https://meet.google.com/abc-defg-hij' },
-  { id: 'e2', title: 'Design Review — Sprint 12',   start: _fmt(_at(_d0,     14,  0)), end: _fmt(_at(_d0,      15, 30)), calendarId: 'primary', color: '#8E24AA', description: 'Revisão dos entregáveis do Sprint 12', location: 'Sala Aurora' },
-  { id: 'e3', title: 'Sprint Planning',             start: _fmt(_at(_days(1), 10,  0)), end: _fmt(_at(_days(1), 11, 30)), calendarId: 'primary', color: '#33B679', description: 'Planejamento do Sprint 13 — backlog refinement' },
-  { id: 'e4', title: 'Almoço de equipe 🍕',         start: _fmt(_at(_days(3), 12, 30)), end: _fmt(_at(_days(3), 14,  0)), calendarId: 'primary', color: '#F6BF26', location: 'Restaurante Central' },
-  { id: 'e5', title: 'Demo para Stakeholders',      start: _fmt(_at(_days(4), 15,  0)), end: _fmt(_at(_days(4), 16,  0)), calendarId: 'primary', color: '#E67C73', description: 'Demonstração para investidores', meetLink: 'https://meet.google.com/demo-link' },
+  {
+    id: 'e0',
+    title: 'Planejamento & Foco Matinal',
+    start: _fmt(_at(_d0, 8, 0)),
+    end: _fmt(_at(_d0, 8, 45)),
+    calendarId: 'primary',
+    color: '#039BE5',
+    description: 'Revisão de prioridades do dia e caixa de entrada',
+    location: 'Workspace Pessoal',
+    guests: [
+      { name: 'Chrisllan Franco', email: 'chrisllan@workspace.os', avatar: AVATARS.pedro, responseStatus: 'accepted', organizer: true }
+    ]
+  },
+  {
+    id: 'e1',
+    title: 'Daily Stand-up · Produto',
+    start: _fmt(_at(_d0, 9, 30)),
+    end: _fmt(_at(_d0, 10, 15)),
+    calendarId: 'primary',
+    color: '#2563EB',
+    description: 'Google Meet · Alinhar entregas prioritárias da equipe para o dia',
+    location: 'Google Meet',
+    meetLink: 'https://meet.google.com/abc-defg-hij',
+    guests: [
+      { name: 'Gabriel Silva', email: 'gabriel@example.com', avatar: AVATARS.gabriel, responseStatus: 'accepted' },
+      { name: 'Ana Lima', email: 'ana@example.com', avatar: AVATARS.ana, responseStatus: 'accepted' },
+      { name: 'Pedro Moreira', email: 'pedro@example.com', avatar: AVATARS.pedro, responseStatus: 'accepted' },
+      { name: 'Marina Costa', email: 'marina@example.com', avatar: AVATARS.marina, responseStatus: 'tentative' }
+    ]
+  },
+  {
+    id: 'e2',
+    title: 'Design Review — Sprint 12',
+    start: _fmt(_at(_d0, 14, 0)),
+    end: _fmt(_at(_d0, 15, 30)),
+    calendarId: 'primary',
+    color: '#8E24AA',
+    description: 'Validação de protótipos Apple Glass e fluxos da Home',
+    location: 'Sala Aurora · Meet',
+    meetLink: 'https://meet.google.com/dsg-revw-s12',
+    guests: [
+      { name: 'Ana Lima', email: 'ana@example.com', avatar: AVATARS.ana, responseStatus: 'accepted' },
+      { name: 'Carlos Eduardo', email: 'carlos@example.com', avatar: AVATARS.carlos, responseStatus: 'accepted' },
+      { name: 'Marina Costa', email: 'marina@example.com', avatar: AVATARS.marina, responseStatus: 'accepted' }
+    ]
+  },
+  {
+    id: 'e6',
+    title: 'Check-in de Métricas Q2',
+    start: _fmt(_at(_d0, 16, 30)),
+    end: _fmt(_at(_d0, 17, 15)),
+    calendarId: 'primary',
+    color: '#33B679',
+    description: 'Análise de conversão, retenção e metas semanais com liderança',
+    location: 'Sala Executiva',
+    guests: [
+      { name: 'Gabriel Silva', email: 'gabriel@example.com', avatar: AVATARS.gabriel, responseStatus: 'accepted' },
+      { name: 'Carlos Eduardo', email: 'carlos@example.com', avatar: AVATARS.carlos, responseStatus: 'accepted' }
+    ]
+  },
+  {
+    id: 'e3',
+    title: 'Sprint Planning',
+    start: _fmt(_at(_days(1), 10, 0)),
+    end: _fmt(_fmt(_at(_days(1), 11, 30)) ? _at(_days(1), 11, 30) : _d0),
+    calendarId: 'primary',
+    color: '#33B679',
+    description: 'Planejamento do Sprint 13 — priorização do backlog com o time',
+    meetLink: 'https://meet.google.com/spr-plan-13',
+    guests: [
+      { name: 'Pedro Moreira', email: 'pedro@example.com', avatar: AVATARS.pedro, responseStatus: 'accepted' },
+      { name: 'Ana Lima', email: 'ana@example.com', avatar: AVATARS.ana, responseStatus: 'accepted' },
+      { name: 'Gabriel Silva', email: 'gabriel@example.com', avatar: AVATARS.gabriel, responseStatus: 'accepted' }
+    ]
+  },
+  {
+    id: 'e4',
+    title: 'Almoço de Equipe',
+    start: _fmt(_at(_days(2), 12, 30)),
+    end: _fmt(_at(_days(2), 14, 0)),
+    calendarId: 'primary',
+    color: '#F6BF26',
+    description: 'Celebração de entrega da release trimestral',
+    location: 'Restaurante Central',
+    guests: [
+      { name: 'Ana Lima', email: 'ana@example.com', avatar: AVATARS.ana, responseStatus: 'accepted' },
+      { name: 'Carlos Eduardo', email: 'carlos@example.com', avatar: AVATARS.carlos, responseStatus: 'accepted' },
+      { name: 'Marina Costa', email: 'marina@example.com', avatar: AVATARS.marina, responseStatus: 'accepted' },
+      { name: 'Pedro Moreira', email: 'pedro@example.com', avatar: AVATARS.pedro, responseStatus: 'accepted' }
+    ]
+  },
+  {
+    id: 'e5',
+    title: 'Demo para Stakeholders',
+    start: _fmt(_at(_days(-1), 15, 0)),
+    end: _fmt(_at(_days(-1), 16, 0)),
+    calendarId: 'primary',
+    color: '#E67C73',
+    description: 'Demonstração executiva dos resultados do trimestre',
+    meetLink: 'https://meet.google.com/demo-link',
+    guests: [
+      { name: 'Carlos Eduardo', email: 'carlos@example.com', avatar: AVATARS.carlos, responseStatus: 'accepted' },
+      { name: 'Gabriel Silva', email: 'gabriel@example.com', avatar: AVATARS.gabriel, responseStatus: 'accepted' }
+    ]
+  },
 ];
 
 const MOCK_FILES: DriveItem[] = [
@@ -214,10 +338,92 @@ const MOCK_TASKS: TaskItem[] = [
 ];
 
 const MOCK_NOTES: NoteItem[] = [
-  { id: 1, title: 'Ideias para o produto',  content: '• Modo offline\n• Atalhos de teclado globais\n• Templates de documentos\n• Integração com Slack',                            color: 'green',  pinned: true,  date: _fmt(_d0)      },
-  { id: 2, title: 'TODO esta semana',       content: '✅ Daily stand-up\n⬜ Design review\n⬜ Sprint planning\n⬜ Enviar relatório',                                               color: 'yellow', pinned: true,  date: _fmt(_d0)      },
-  { id: 3, title: 'Feedback do produto',    content: '"A interface é muito mais limpa que o Gmail original. Adoro a integração com o Gemini!" — Ana Lima',                         color: 'teal',   pinned: false, date: _fmt(_days(-1)) },
-  { id: 4, title: 'Links úteis',            content: 'Figma: figma.com/file/...\nStorybook: storybook.workspace.os\nAPI Docs: docs.workspace.os/api',                              color: 'blue',   pinned: false, date: _fmt(_days(-2)) },
+  {
+    id: 1,
+    title: 'Arquitetura Workspace OS',
+    content: 'Definir padrões visuais Apple Glass, sincronia de estado global e fluxo de dados em tempo real.',
+    color: 'default',
+    pinned: true,
+    date: _fmt(_d0),
+    status: 'completed',
+    badgeType: 'plus',
+    connectedTo: [2, 3],
+    linkedTaskId: 'tk2',
+    linkedEventId: 'e0',
+    labels: ['Arquitetura', 'Core'],
+    chatMessages: [
+      { id: 'm1', sender: 'Gabriel Silva', avatar: AVATARS.gabriel, text: 'Padrão Apple Glass validado em todos os módulos!', time: '09:12' },
+      { id: 'm2', sender: 'Ana Lima', avatar: AVATARS.ana, text: 'Excelente! Já sincronizei com a revisão da Sprint 12.', time: '09:18' }
+    ]
+  },
+  {
+    id: 2,
+    title: 'Dashboard & Métricas Q2',
+    content: 'Estruturar indicadores executivos de conversão, retenção e alertas automáticos conectados ao Tasks.',
+    color: 'green',
+    pinned: true,
+    date: _fmt(_d0),
+    status: 'completed',
+    badgeType: 'brain',
+    connectedTo: [4],
+    linkedTaskId: 'tk1',
+    linkedEventId: 'e6',
+    labels: ['KPIs', 'Q2'],
+    chatMessages: [
+      { id: 'm3', sender: 'Carlos Eduardo', avatar: AVATARS.carlos, text: 'Os dados de retenção já estão prontos na planilha.', time: '10:05' }
+    ]
+  },
+  {
+    id: 3,
+    title: 'Design System & Interações',
+    content: 'Protótipo colaborativo com feedback sonoro, timeline animada e mural modular de post-its.',
+    color: 'purple',
+    pinned: true,
+    date: _fmt(_d0),
+    status: 'in_progress',
+    badgeType: 'media',
+    durationLabel: 'Em foco · 14:00',
+    connectedTo: [4, 5],
+    linkedEventId: 'e2',
+    participants: [
+      { name: 'Gabriel Silva', avatar: AVATARS.gabriel },
+      { name: 'Ana Lima', avatar: AVATARS.ana },
+      { name: 'Marina Costa', avatar: AVATARS.marina }
+    ],
+    labels: ['Design', 'Google Chat'],
+    chatMessages: [
+      { id: 'm4', sender: 'Ana Lima', avatar: AVATARS.ana, text: 'Abri esta thread no Google Chat para alinharmos os detalhes do Canvas!', time: '11:20' },
+      { id: 'm5', sender: 'Marina Costa', avatar: AVATARS.marina, text: 'Adorei as conexões tracejadas entre as notas e as tarefas.', time: '11:24' }
+    ]
+  },
+  {
+    id: 4,
+    title: 'Governança & Segurança Zero-Trust',
+    content: 'Validar políticas de MFA, permissões granulares de compartilhamento e auditoria de sessão.',
+    color: 'yellow',
+    pinned: false,
+    date: _fmt(_days(1)),
+    status: 'upcoming',
+    badgeType: 'lock',
+    connectedTo: [],
+    linkedTaskId: 'tk3',
+    linkedEventId: 'e3',
+    labels: ['Segurança', 'Compliance']
+  },
+  {
+    id: 5,
+    title: 'Onboarding & Documentação API',
+    content: 'Mapear endpoints do GASBridge, guias de configuração do ambiente e boas-vindas ao novo dev.',
+    color: 'teal',
+    pinned: false,
+    date: _fmt(_days(2)),
+    status: 'upcoming',
+    badgeType: 'lock',
+    connectedTo: [],
+    linkedTaskId: 'tk5',
+    linkedEventId: 'e4',
+    labels: ['Onboarding', 'Docs']
+  },
 ];
 
 const MOCK_CALENDARS: CalendarListEntry[] = [
@@ -361,6 +567,7 @@ class GASBridge {
   
   // --- KEEP ---
   async addNote(note: NoteItem): Promise<boolean> { return Promise.resolve(true); }
+  async updateNote(note: Partial<NoteItem>): Promise<boolean> { return Promise.resolve(true); }
   async deleteNote(id: number | string): Promise<boolean> { return Promise.resolve(true); }
   async uploadKeepImage(base64: string, mime: string): Promise<{success: boolean, id?: string, url?: string}> { return Promise.resolve({success:true, id: 'mock_img_id', url: 'https://source.unsplash.com/random/200x200'}); }
 

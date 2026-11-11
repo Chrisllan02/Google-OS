@@ -16,6 +16,7 @@ uniform float uAmplitude;
 uniform vec3 uColorStops[3];
 uniform vec2 uResolution;
 uniform float uBlend;
+uniform float uDarkMode;
 
 out vec4 fragColor;
 
@@ -69,13 +70,22 @@ void main() {
   colors[2] = ColorStop(uColorStops[2], 1.0);
   vec3 rampColor;
   COLOR_RAMP(colors, uv.x, rampColor);
-  float height = snoise(vec2(uv.x * 2.0 + uTime * 0.1, uTime * 0.25)) * 0.5 * uAmplitude;
-  height = exp(height);
-  height = (uv.y * 2.0 - height + 0.2);
-  float intensity = 0.6 * height;
+
+  float n = snoise(vec2(uv.x * 2.0 + uTime * 0.1, uTime * 0.25)) * 0.5 * uAmplitude;
+  float height = exp(n);
+  height = (uv.y * 2.0 - height + 0.25);
+  float intensity = 0.7 * height;
+
   float midPoint = 0.20;
   float auroraAlpha = smoothstep(midPoint - uBlend * 0.5, midPoint + uBlend * 0.5, intensity);
-  vec3 auroraColor = intensity * rampColor;
+  auroraAlpha = clamp(auroraAlpha, 0.0, 1.0);
+
+  // No modo escuro (uDarkMode = 1.0), o tom base que se mistura à onda é preto (vec3(0.0)).
+  // No modo claro (uDarkMode = 0.0), o tom base vira branco puro (vec3(1.0)).
+  vec3 baseTone = mix(vec3(1.0), vec3(0.0), uDarkMode);
+  float colorMix = clamp(intensity, 0.0, 1.0);
+  vec3 auroraColor = mix(baseTone, rampColor, colorMix);
+
   fragColor = vec4(auroraColor * auroraAlpha, auroraAlpha);
 }
 `;
@@ -86,18 +96,67 @@ interface AuroraProps {
   blend?: number;
   time?: number;
   speed?: number;
+  darkMode?: boolean;
 }
 
-export default function Aurora(props: AuroraProps) {
-  const { colorStops = ['#4285F4', '#34A853', '#EA4335'], amplitude = 1.0, blend = 0.5 } = props;
-  const propsRef = useRef(props);
-  propsRef.current = props;
+const DEFAULT_COLOR_STOPS = ['#4285F4', '#34A853', '#EA4335'];
+
+function parseColorStops(stops: string[]): number[][] {
+  return stops.slice(0, 3).map((hex) => {
+    const c = new Color(hex);
+    return [c.r, c.g, c.b];
+  });
+}
+
+const Aurora = React.memo(function Aurora(props: AuroraProps) {
+  const {
+    colorStops = DEFAULT_COLOR_STOPS,
+    amplitude = 1.0,
+    blend = 0.5,
+    speed = 1.0,
+    darkMode = false,
+  } = props;
+
   const ctnDom = useRef<HTMLDivElement>(null);
+
+  // Store mutable animation targets in a ref so React state/prop updates
+  // never trigger WebGL context recreation or per-frame heap allocations.
+  const stateRef = useRef({
+    amplitude,
+    blend,
+    speed,
+    time: props.time,
+    darkMode: darkMode ? 1.0 : 0.0,
+    colorStopsKey: colorStops.join(','),
+    parsedStops: parseColorStops(colorStops),
+    stopsDirty: false,
+  });
+
+  // Update ref targets synchronously on prop change without re-running WebGL effect
+  const nextStopsKey = colorStops.join(',');
+  if (stateRef.current.colorStopsKey !== nextStopsKey) {
+    stateRef.current.colorStopsKey = nextStopsKey;
+    stateRef.current.parsedStops = parseColorStops(colorStops);
+    stateRef.current.stopsDirty = true;
+  }
+  stateRef.current.amplitude = amplitude;
+  stateRef.current.blend = blend;
+  stateRef.current.speed = speed;
+  stateRef.current.time = props.time;
+  stateRef.current.darkMode = darkMode ? 1.0 : 0.0;
 
   useEffect(() => {
     const ctn = ctnDom.current;
     if (!ctn) return;
-    const renderer = new Renderer({ alpha: true, premultipliedAlpha: true, antialias: true });
+
+    const renderer = new Renderer({
+      alpha: true,
+      premultipliedAlpha: true,
+      antialias: false,
+      dpr: Math.min(window.devicePixelRatio || 1, 1.5),
+      powerPreference: 'high-performance',
+    });
+
     const gl = renderer.gl;
     gl.clearColor(0, 0, 0, 0);
     gl.enable(gl.BLEND);
@@ -105,65 +164,133 @@ export default function Aurora(props: AuroraProps) {
     gl.canvas.style.backgroundColor = 'transparent';
     gl.canvas.style.width = '100%';
     gl.canvas.style.height = '100%';
-    let program: any;
-
-    function resize() {
-      if (!ctn) return;
-      const width = ctn.offsetWidth;
-      const height = ctn.offsetHeight;
-      renderer.setSize(width, height);
-      if (program) program.uniforms.uResolution.value = [width, height];
-    }
-    window.addEventListener('resize', resize);
+    gl.canvas.style.display = 'block';
 
     const geometry = new Triangle(gl);
     if (geometry.attributes.uv) delete geometry.attributes.uv;
 
-    const colorStopsArray = colorStops.map(hex => {
-      const c = new Color(hex);
-      return [c.r, c.g, c.b];
-    });
+    const resolutionBuffer = new Float32Array([ctn.offsetWidth || 1, ctn.offsetHeight || 1]);
 
-    program = new Program(gl, {
+    const program = new Program(gl, {
       vertex: VERT,
       fragment: FRAG,
+      depthTest: false,
+      depthWrite: false,
       uniforms: {
         uTime: { value: 0 },
-        uAmplitude: { value: amplitude },
-        uColorStops: { value: colorStopsArray },
-        uResolution: { value: [ctn.offsetWidth, ctn.offsetHeight] },
-        uBlend: { value: blend }
-      }
+        uAmplitude: { value: stateRef.current.amplitude },
+        uColorStops: { value: stateRef.current.parsedStops },
+        uResolution: { value: resolutionBuffer },
+        uBlend: { value: stateRef.current.blend },
+        uDarkMode: { value: stateRef.current.darkMode },
+      },
     });
 
     const mesh = new Mesh(gl, { geometry, program });
     ctn.appendChild(gl.canvas);
 
-    let animateId = 0;
-    const update = (t: number) => {
-      animateId = requestAnimationFrame(update);
-      const { time = t * 0.01, speed = 1.0 } = propsRef.current;
-      program.uniforms.uTime.value = time * speed * 0.1;
-      program.uniforms.uAmplitude.value = propsRef.current.amplitude ?? 1.0;
-      program.uniforms.uBlend.value = propsRef.current.blend ?? blend;
-      const stops = propsRef.current.colorStops ?? colorStops;
-      program.uniforms.uColorStops.value = stops.map((hex: string) => {
-        const c = new Color(hex);
-        return [c.r, c.g, c.b];
-      });
-      renderer.render({ scene: mesh });
+    let lastWidth = 0;
+    let lastHeight = 0;
+    const resize = () => {
+      if (!ctn) return;
+      const width = ctn.offsetWidth;
+      const height = ctn.offsetHeight;
+      if (width === 0 || height === 0 || (width === lastWidth && height === lastHeight)) return;
+      lastWidth = width;
+      lastHeight = height;
+      renderer.setSize(width, height);
+      resolutionBuffer[0] = width;
+      resolutionBuffer[1] = height;
     };
-    animateId = requestAnimationFrame(update);
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(resize)
+      : null;
+    if (resizeObserver) {
+      resizeObserver.observe(ctn);
+    } else {
+      window.addEventListener('resize', resize, { passive: true });
+    }
     resize();
 
+    let animateId = 0;
+    let isRunning = !document.hidden;
+    let currentDark = stateRef.current.darkMode;
+    let currentAmplitude = stateRef.current.amplitude;
+    let currentBlend = stateRef.current.blend;
+    let accumulatedTime = 0;
+    let lastFrameTime = performance.now();
+
+    const update = (now: number) => {
+      if (!isRunning) return;
+      animateId = requestAnimationFrame(update);
+
+      const dt = Math.min(0.05, Math.max(0.001, (now - lastFrameTime) * 0.001));
+      lastFrameTime = now;
+
+      const s = stateRef.current;
+
+      // Smooth exponential interpolation for theme, amplitude, and blend
+      const smoothFactor = 1.0 - Math.exp(-dt * 8.0);
+      currentDark += (s.darkMode - currentDark) * smoothFactor;
+      if (Math.abs(s.darkMode - currentDark) < 0.0005) currentDark = s.darkMode;
+
+      currentAmplitude += (s.amplitude - currentAmplitude) * smoothFactor;
+      currentBlend += (s.blend - currentBlend) * smoothFactor;
+
+      if (s.time !== undefined) {
+        accumulatedTime = s.time * s.speed * 0.1;
+      } else {
+        accumulatedTime += dt * s.speed;
+      }
+
+      program.uniforms.uTime.value = accumulatedTime;
+      program.uniforms.uAmplitude.value = currentAmplitude;
+      program.uniforms.uBlend.value = currentBlend;
+      program.uniforms.uDarkMode.value = currentDark;
+
+      if (s.stopsDirty) {
+        program.uniforms.uColorStops.value = s.parsedStops;
+        s.stopsDirty = false;
+      }
+
+      renderer.render({ scene: mesh });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        isRunning = false;
+        cancelAnimationFrame(animateId);
+      } else if (!isRunning) {
+        isRunning = true;
+        lastFrameTime = performance.now();
+        animateId = requestAnimationFrame(update);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    if (isRunning) {
+      animateId = requestAnimationFrame(update);
+    }
+
     return () => {
+      isRunning = false;
       cancelAnimationFrame(animateId);
-      window.removeEventListener('resize', resize);
-      if (ctn && gl.canvas.parentNode === ctn) ctn.removeChild(gl.canvas);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      } else {
+        window.removeEventListener('resize', resize);
+      }
+      if (ctn && gl.canvas.parentNode === ctn) {
+        ctn.removeChild(gl.canvas);
+      }
       const ext = gl.getExtension('WEBGL_lose_context');
       if (ext) ext.loseContext();
     };
-  }, [amplitude]);
+  }, []);
 
-  return <div ref={ctnDom} className="w-full h-full" />;
-}
+  return <div ref={ctnDom} className="w-full h-full will-change-transform" />;
+});
+
+export default Aurora;

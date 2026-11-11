@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   X, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight,
-  List, ListOrdered, Save, Loader2, Plus, ChevronLeft, ChevronRight, Trash2,
-  Layout, Palette
+  List, ListOrdered, Loader2, Plus, ChevronLeft, ChevronRight, Trash2,
+  Palette
 } from 'lucide-react';
 import { GoogleIcons } from '../GoogleIcons';
 import { bridge } from '../../utils/GASBridge';
@@ -11,9 +11,9 @@ interface EditorAppProps {
   onClose: () => void;
   type: string;
   data: any;
+  isDarkMode?: boolean;
 }
 
-// --- Slide type ---
 interface DemoSlide {
   id: string;
   bg: string;
@@ -38,34 +38,31 @@ const getFileIcon = (type: string) => {
   }
 };
 
-const ToolbarBtn = ({ children, active, onClick, title }: any) => (
+const ToolbarBtn = ({ children, active, onClick, title, isDarkMode }: any) => (
   <button
     onClick={onClick}
     title={title}
-    className={`p-1.5 rounded-md transition-colors ${active ? 'bg-black/10 text-gray-800' : 'text-gray-500 hover:bg-black/5 hover:text-gray-700'}`}
+    className={`p-1.5 rounded-md transition-colors ${active ? (isDarkMode ? 'bg-white/20 text-white' : 'bg-black/10 text-gray-800') : (isDarkMode ? 'text-white/60 hover:bg-white/10 hover:text-white' : 'text-gray-500 hover:bg-black/5 hover:text-gray-700')}`}
   >
     {children}
   </button>
 );
 
-const Divider = () => <div className="w-[1px] h-5 bg-gray-300 mx-1 self-center" />;
+const Divider = ({ isDarkMode }: { isDarkMode?: boolean }) => <div className={`w-[1px] h-5 mx-1 self-center ${isDarkMode ? 'bg-white/15' : 'bg-gray-300'}`} />;
 
-export default function EditorApp({ onClose, type, data }: EditorAppProps) {
+export default function EditorApp({ onClose, type, data, isDarkMode = false }: EditorAppProps) {
   const [title, setTitle]             = useState(data?.name || (type === 'doc' ? 'Documento sem título' : type === 'sheet' ? 'Planilha sem título' : 'Apresentação sem título'));
   const [saved, setSaved]             = useState(true);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
 
-  // Doc state
   const [isBold, setIsBold]           = useState(false);
   const [isItalic, setIsItalic]       = useState(false);
   const [isUnderline, setIsUnderline] = useState(false);
 
-  // Sheet state
   const [cellData, setCellData]       = useState<{ [key: string]: string }>({});
   const [selectedCell, setSelectedCell] = useState<{ r: number; c: number } | null>({ r: 0, c: 0 });
   const [formulaValue, setFormulaValue] = useState('');
 
-  // Slide state
   const [slides, setSlides] = useState<DemoSlide[]>(() => [
     { id: '1', bg: SLIDE_THEMES[0].bg, title: data?.name || 'Título da Apresentação', body: 'Clique para adicionar um subtítulo' },
     { id: '2', bg: SLIDE_THEMES[1].bg, title: 'Agenda',     body: '• Introdução ao projeto\n• Resultados do período\n• Próximos passos' },
@@ -76,7 +73,6 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
 
   const editorRef      = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Refs always hold the latest state so the debounced save never captures stale values
   const slidesRef   = useRef(slides);
   const cellDataRef = useRef(cellData);
   useEffect(() => { slidesRef.current   = slides;   }, [slides]);
@@ -162,12 +158,11 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
   const fg  = currentTheme.fg;
   const sub = currentTheme.sub;
 
-  // ---- RENDER ----
   return (
-    <div className="flex flex-col h-full bg-[#F9FBFD] font-sans">
+    <div className={`flex flex-col h-full font-sans transition-colors ${isDarkMode ? 'bg-[#191919] text-white' : 'bg-[#F9FBFD] text-gray-800'}`}>
 
       {/* Header */}
-      <div className="h-16 px-4 flex items-center justify-between bg-white z-20 shrink-0 border-b border-gray-200">
+      <div className={`h-16 px-4 flex items-center justify-between z-20 shrink-0 border-b ${isDarkMode ? 'bg-[#202124] border-white/10' : 'bg-white border-gray-200'}`}>
         <div className="flex items-center gap-3">
           {getFileIcon(type)}
           <div>
@@ -175,40 +170,40 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              className="text-lg outline-none border border-transparent hover:border-black/20 focus:border-blue-500 rounded px-1"
+              className={`text-lg outline-none border border-transparent focus:border-blue-500 rounded px-1 bg-transparent ${isDarkMode ? 'text-white hover:border-white/20' : 'text-gray-800 hover:border-black/20'}`}
             />
-            <div className="text-xs text-gray-400">{saved ? 'Salvo no Drive' : 'Salvando...'}</div>
+            <div className={`text-xs ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>{saved ? 'Salvo no Drive' : 'Salvando...'}</div>
           </div>
         </div>
-        <button onClick={onClose} className="p-2 hover:bg-red-50 text-gray-400 rounded-full transition-colors">
+        <button onClick={onClose} className={`p-2 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-white/60' : 'hover:bg-red-50 text-gray-400'}`}>
           <X size={22} />
         </button>
       </div>
 
       {/* Toolbar — context-aware */}
-      <div className="bg-[#EDF2FA] mx-3 my-2 rounded-full flex items-center px-4 py-1.5 gap-1 shrink-0">
+      <div className={`mx-3 my-2 rounded-full flex items-center px-4 py-1.5 gap-1 shrink-0 ${isDarkMode ? 'bg-[#282a2d]' : 'bg-[#EDF2FA]'}`}>
         {type === 'doc' && (
           <>
-            <ToolbarBtn onClick={() => handleFormat('bold')}      active={isBold}      title="Negrito"><Bold size={15}/></ToolbarBtn>
-            <ToolbarBtn onClick={() => handleFormat('italic')}    active={isItalic}    title="Itálico"><Italic size={15}/></ToolbarBtn>
-            <ToolbarBtn onClick={() => handleFormat('underline')} active={isUnderline} title="Sublinhado"><Underline size={15}/></ToolbarBtn>
-            <Divider />
-            <ToolbarBtn onClick={() => handleFormat('justifyLeft')}   title="Esquerda"><AlignLeft size={15}/></ToolbarBtn>
-            <ToolbarBtn onClick={() => handleFormat('justifyCenter')} title="Centro"><AlignCenter size={15}/></ToolbarBtn>
-            <ToolbarBtn onClick={() => handleFormat('justifyRight')}  title="Direita"><AlignRight size={15}/></ToolbarBtn>
-            <Divider />
-            <ToolbarBtn onClick={() => handleFormat('insertUnorderedList')} title="Lista"><List size={15}/></ToolbarBtn>
-            <ToolbarBtn onClick={() => handleFormat('insertOrderedList')}   title="Lista numerada"><ListOrdered size={15}/></ToolbarBtn>
+            <ToolbarBtn isDarkMode={isDarkMode} onClick={() => handleFormat('bold')}      active={isBold}      title="Negrito"><Bold size={15}/></ToolbarBtn>
+            <ToolbarBtn isDarkMode={isDarkMode} onClick={() => handleFormat('italic')}    active={isItalic}    title="Itálico"><Italic size={15}/></ToolbarBtn>
+            <ToolbarBtn isDarkMode={isDarkMode} onClick={() => handleFormat('underline')} active={isUnderline} title="Sublinhado"><Underline size={15}/></ToolbarBtn>
+            <Divider isDarkMode={isDarkMode} />
+            <ToolbarBtn isDarkMode={isDarkMode} onClick={() => handleFormat('justifyLeft')}   title="Esquerda"><AlignLeft size={15}/></ToolbarBtn>
+            <ToolbarBtn isDarkMode={isDarkMode} onClick={() => handleFormat('justifyCenter')} title="Centro"><AlignCenter size={15}/></ToolbarBtn>
+            <ToolbarBtn isDarkMode={isDarkMode} onClick={() => handleFormat('justifyRight')}  title="Direita"><AlignRight size={15}/></ToolbarBtn>
+            <Divider isDarkMode={isDarkMode} />
+            <ToolbarBtn isDarkMode={isDarkMode} onClick={() => handleFormat('insertUnorderedList')} title="Lista"><List size={15}/></ToolbarBtn>
+            <ToolbarBtn isDarkMode={isDarkMode} onClick={() => handleFormat('insertOrderedList')}   title="Lista numerada"><ListOrdered size={15}/></ToolbarBtn>
           </>
         )}
         {type === 'sheet' && (
           <>
-            <span className="text-xs text-gray-500 px-2">
+            <span className={`text-xs px-2 ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>
               {selectedCell ? `${String.fromCharCode(65 + selectedCell.c)}${selectedCell.r + 1}` : ''}
             </span>
-            <Divider />
+            <Divider isDarkMode={isDarkMode} />
             <input
-              className="flex-1 bg-white border border-gray-300 rounded px-2 py-0.5 text-sm outline-none focus:border-blue-400"
+              className={`flex-1 border rounded px-2 py-0.5 text-sm outline-none focus:border-blue-400 ${isDarkMode ? 'bg-[#191919] border-white/15 text-white' : 'bg-white border-gray-300 text-gray-800'}`}
               placeholder="Fórmula ou valor"
               value={formulaValue}
               onChange={e => handleCellChange(e.target.value)}
@@ -217,17 +212,17 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
         )}
         {type === 'slide' && (
           <>
-            <button onClick={addSlide} className="flex items-center gap-1 text-xs text-gray-600 hover:bg-white px-2 py-1 rounded-full transition-colors">
+            <button onClick={addSlide} className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full transition-colors ${isDarkMode ? 'text-white/80 hover:bg-white/10' : 'text-gray-600 hover:bg-white'}`}>
               <Plus size={14}/> Slide
             </button>
-            <Divider />
+            <Divider isDarkMode={isDarkMode} />
             <button
               onClick={() => setShowThemePicker(v => !v)}
-              className="flex items-center gap-1 text-xs text-gray-600 hover:bg-white px-2 py-1 rounded-full transition-colors relative"
+              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full transition-colors relative ${isDarkMode ? 'text-white/80 hover:bg-white/10' : 'text-gray-600 hover:bg-white'}`}
             >
               <Palette size={14}/> Tema
               {showThemePicker && (
-                <div className="absolute top-8 left-0 bg-white border border-gray-200 rounded-xl shadow-xl p-2 flex gap-2 z-50">
+                <div className={`absolute top-8 left-0 border rounded-xl shadow-xl p-2 flex gap-2 z-50 ${isDarkMode ? 'bg-[#2d2e30] border-white/10' : 'bg-white border-gray-200'}`}>
                   {SLIDE_THEMES.map((t, i) => (
                     <button
                       key={i}
@@ -240,16 +235,16 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
                 </div>
               )}
             </button>
-            <Divider />
-            <button onClick={() => setCurrentSlide(p => Math.max(0, p - 1))} className="p-1 hover:bg-white rounded-full text-gray-500" disabled={currentSlide === 0}>
+            <Divider isDarkMode={isDarkMode} />
+            <button onClick={() => setCurrentSlide(p => Math.max(0, p - 1))} className={`p-1 rounded-full ${isDarkMode ? 'hover:bg-white/10 text-white/60' : 'hover:bg-white text-gray-500'}`} disabled={currentSlide === 0}>
               <ChevronLeft size={16}/>
             </button>
-            <span className="text-xs text-gray-500 px-1">{currentSlide + 1} / {slides.length}</span>
-            <button onClick={() => setCurrentSlide(p => Math.min(slides.length - 1, p + 1))} className="p-1 hover:bg-white rounded-full text-gray-500" disabled={currentSlide === slides.length - 1}>
+            <span className={`text-xs px-1 ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>{currentSlide + 1} / {slides.length}</span>
+            <button onClick={() => setCurrentSlide(p => Math.min(slides.length - 1, p + 1))} className={`p-1 rounded-full ${isDarkMode ? 'hover:bg-white/10 text-white/60' : 'hover:bg-white text-gray-500'}`} disabled={currentSlide === slides.length - 1}>
               <ChevronRight size={16}/>
             </button>
-            <Divider />
-            <button onClick={() => removeSlide(currentSlide)} className="p-1 hover:bg-red-100 text-gray-400 hover:text-red-500 rounded-full transition-colors" disabled={slides.length <= 1} title="Remover slide">
+            <Divider isDarkMode={isDarkMode} />
+            <button onClick={() => removeSlide(currentSlide)} className={`p-1 rounded-full transition-colors ${isDarkMode ? 'hover:bg-red-500/20 text-white/50 hover:text-red-400' : 'hover:bg-red-100 text-gray-400 hover:text-red-500'}`} disabled={slides.length <= 1} title="Remover slide">
               <Trash2 size={14}/>
             </button>
           </>
@@ -257,7 +252,7 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
       </div>
 
       {/* Content area */}
-      <div className="flex-1 overflow-hidden bg-[#F0F2F5]">
+      <div className={`flex-1 overflow-hidden ${isDarkMode ? 'bg-[#121212]' : 'bg-[#F0F2F5]'}`}>
         {isLoadingContent ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="animate-spin text-blue-500" size={32}/>
@@ -283,9 +278,9 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
             <table className="border-collapse text-sm">
               <thead>
                 <tr>
-                  <th className="sticky top-0 left-0 z-20 bg-gray-100 border border-gray-300 p-2 min-w-[40px]" />
+                  <th className={`sticky top-0 left-0 z-20 border p-2 min-w-[40px] ${isDarkMode ? 'bg-[#202124] border-white/15' : 'bg-gray-100 border-gray-300'}`} />
                   {Array.from({ length: 26 }).map((_, i) => (
-                    <th key={i} className="sticky top-0 z-10 bg-gray-100 border border-gray-300 px-3 py-1 text-xs font-medium text-gray-600 min-w-[100px]">
+                    <th key={i} className={`sticky top-0 z-10 border px-3 py-1 text-xs font-medium min-w-[100px] ${isDarkMode ? 'bg-[#202124] border-white/15 text-white/70' : 'bg-gray-100 border-gray-300 text-gray-600'}`}>
                       {String.fromCharCode(65 + i)}
                     </th>
                   ))}
@@ -294,12 +289,12 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
               <tbody>
                 {Array.from({ length: 100 }).map((_, r) => (
                   <tr key={r}>
-                    <td className="sticky left-0 z-10 bg-gray-100 border border-gray-300 px-2 py-1 text-xs text-center text-gray-500 font-medium">{r + 1}</td>
+                    <td className={`sticky left-0 z-10 border px-2 py-1 text-xs text-center font-medium ${isDarkMode ? 'bg-[#202124] border-white/15 text-white/50' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>{r + 1}</td>
                     {Array.from({ length: 26 }).map((_, c) => (
                       <td
                         key={c}
                         onClick={() => handleCellClick(r, c)}
-                        className={`border border-gray-200 p-0 ${selectedCell?.r === r && selectedCell?.c === c ? 'outline outline-2 outline-blue-500 z-10 relative' : ''}`}
+                        className={`border p-0 ${isDarkMode ? 'border-white/10 bg-[#191919] text-white' : 'border-gray-200 bg-white text-gray-800'} ${selectedCell?.r === r && selectedCell?.c === c ? 'outline outline-2 outline-blue-500 z-10 relative' : ''}`}
                         contentEditable
                         suppressContentEditableWarning
                         onFocus={() => handleCellClick(r, c)}
@@ -314,10 +309,10 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
               </tbody>
             </table>
           </div>
-        ) : /* type === 'slide' */ (
+        ) : (
           <div className="flex h-full">
             {/* Thumbnails panel */}
-            <div className="w-48 bg-[#E8EAF6] border-r border-gray-200 overflow-y-auto p-3 space-y-3 shrink-0">
+            <div className={`w-48 border-r overflow-y-auto p-3 space-y-3 shrink-0 ${isDarkMode ? 'bg-[#202124] border-white/10' : 'bg-[#E8EAF6] border-gray-200'}`}>
               {slides.map((slide, idx) => (
                 <div
                   key={slide.id}
@@ -340,24 +335,22 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
               ))}
               <button
                 onClick={addSlide}
-                className="w-full py-2 text-xs text-gray-500 hover:bg-white rounded-lg flex items-center justify-center gap-1 transition-colors border-2 border-dashed border-gray-300 hover:border-blue-400"
+                className={`w-full py-2 text-xs rounded-lg flex items-center justify-center gap-1 transition-colors border-2 border-dashed ${isDarkMode ? 'text-white/60 hover:bg-white/5 border-white/20 hover:border-blue-400' : 'text-gray-500 hover:bg-white border-gray-300 hover:border-blue-400'}`}
               >
                 <Plus size={12} /> Adicionar slide
               </button>
             </div>
 
             {/* Main canvas */}
-            <div className="flex-1 flex items-center justify-center bg-[#ECEFF1] p-8 overflow-hidden">
+            <div className={`flex-1 flex items-center justify-center p-8 overflow-hidden ${isDarkMode ? 'bg-[#121212]' : 'bg-[#ECEFF1]'}`}>
               {slides[currentSlide] && (
                 <div
                   className="shadow-2xl rounded-lg overflow-hidden relative"
                   style={{ background: slides[currentSlide].bg, aspectRatio: '16/9', width: '100%', maxWidth: 900 }}
                 >
-                  {/* Accent bar */}
                   <div className="absolute left-0 top-0 bottom-0 w-1.5 opacity-60" style={{ background: fg === '#fff' ? 'rgba(255,255,255,0.5)' : 'rgba(66,133,244,0.5)' }} />
 
                   <div className="absolute inset-0 flex flex-col justify-center items-center px-16 py-12 gap-6">
-                    {/* Title */}
                     <div
                       contentEditable
                       suppressContentEditableWarning
@@ -368,7 +361,6 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
                       {slides[currentSlide].title}
                     </div>
 
-                    {/* Body */}
                     <div
                       contentEditable
                       suppressContentEditableWarning
@@ -380,7 +372,6 @@ export default function EditorApp({ onClose, type, data }: EditorAppProps) {
                     </div>
                   </div>
 
-                  {/* Slide number */}
                   <div className="absolute bottom-4 right-5 text-xs" style={{ color: fg === '#fff' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.25)' }}>
                     {currentSlide + 1} / {slides.length}
                   </div>

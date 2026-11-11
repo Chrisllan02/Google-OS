@@ -6,7 +6,7 @@ type HistoryItem = { role: 'user' | 'assistant'; text: string };
 type GeminiInput = { task: Task; prompt: string; history: HistoryItem[]; tool: Tool };
 type GeminiResult = { status: number; body: object };
 
-const MODEL = 'gemini-3.5-flash';
+const MODEL = 'gemini-3.8-flash';
 const MAX_TEXT = 4000;
 const MAX_HISTORY = 20;
 const RATE_LIMIT = 20;
@@ -108,7 +108,12 @@ export async function handleGeminiRequest(
         sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [],
       },
     };
-  } catch {
+  } catch (err: any) {
+    const msg = err?.message ?? '';
+    if (msg.includes('API key not valid') || msg.includes('API_KEY_INVALID') || err?.status === 400 || err?.status === 403) {
+      return { status: 503, body: { error: 'Para interagir com o Gemini, configure a variável GEMINI_API_KEY no ambiente.' } };
+    }
     return { status: 502, body: { error: 'Não foi possível responder agora.' } };
   }
 }
+

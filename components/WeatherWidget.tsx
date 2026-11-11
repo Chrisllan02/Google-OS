@@ -141,15 +141,10 @@ export default function WeatherWidget({ darkMode, textColor, fallbackTemp }: Wea
     const displayTemp = currentTemp || fallbackTemp || '--°';
     const wmo = getWmo(currentCode);
 
-    const pillClass = `flex items-center gap-2 px-3.5 h-10 backdrop-blur-2xl border rounded-full text-xs font-medium transition-all cursor-pointer select-none ${
-        darkMode
-            ? 'bg-white/5 border-white/10 hover:bg-white/10'
-            : 'bg-black/5 border-black/5 hover:bg-black/10'
-    } ${textColor}`;
+    const pillClass = `flex items-center gap-2 px-3.5 h-10 glass-control rounded-full text-xs font-medium transition-all cursor-pointer select-none ${textColor}`;
 
-    const subColor = darkMode ? 'text-white/40' : 'text-black/40';
-    const panelBg  = darkMode ? 'bg-[#1e1e1e]/95 border-white/10' : 'bg-white/95 border-black/10';
-    const rowHover = darkMode ? 'hover:bg-white/5' : 'hover:bg-black/5';
+    const subColor = darkMode ? 'text-white/50' : 'text-black/50';
+    const rowHover = darkMode ? 'hover:bg-white/5' : 'hover:bg-white/60';
 
     return (
         <div className="relative hidden md:block" ref={panelRef}>
@@ -170,7 +165,7 @@ export default function WeatherWidget({ darkMode, textColor, fallbackTemp }: Wea
             {/* Expanded forecast panel */}
             {isOpen && (
                 <div
-                    className={`absolute top-12 right-0 w-[300px] ${panelBg} backdrop-blur-xl border rounded-2xl shadow-2xl p-4 z-50 animate-in fade-in zoom-in-95 duration-200`}
+                    className="absolute top-12 right-0 w-[300px] glass-popover rounded-3xl p-4 z-50 animate-in fade-in zoom-in-95 duration-200"
                 >
                     {/* Panel header */}
                     <div className="flex items-center justify-between mb-3">

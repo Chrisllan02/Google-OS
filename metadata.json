@@ -1,0 +1,8 @@
+{
+  "name": "Google OS",
+  "description": "Painel unificado inspirado no Google Workspace, com Drive, Gmail, Agenda e Gemini AI.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

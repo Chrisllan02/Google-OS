@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Video, Mic, MicOff, VideoOff, Hand, MonitorUp, MoreVertical, PhoneOff, 
-  MessageSquare, Users, X, Send, Smile, Presentation, Layout, Info, Clock, ShieldCheck,
-  Settings, Sparkles, Volume2, Keyboard, Link as LinkIcon, Calendar as CalendarIcon, Plus, ChevronLeft,
-  Subtitles, Grip, Maximize, PenTool, AlertCircle, Pin, PinOff, MoreHorizontal, LayoutGrid, Check, Copy
+  Video, Mic, MicOff, VideoOff, Hand, PhoneOff, 
+  MessageSquare, Users, X, Send, Smile,
+  Keyboard, Plus, Copy
 } from 'lucide-react';
 import { GoogleIcons } from '../GoogleIcons';
 import { bridge } from '../../utils/GASBridge';
@@ -13,9 +12,9 @@ interface MeetAppProps {
   onClose: () => void;
   data: any;
   showToast?: (msg: string) => void;
+  isDarkMode?: boolean;
 }
 
-// Interface para Participante Remoto
 interface RemoteParticipant {
     id: string;
     stream?: MediaStream;
@@ -34,7 +33,6 @@ interface ChatMessage {
     isSelf: boolean;
 }
 
-// Componente de Vídeo Remoto Isolado para Performance
 const RemoteVideo: React.FC<{ peer: RemoteParticipant }> = ({ peer }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     
@@ -60,7 +58,6 @@ const RemoteVideo: React.FC<{ peer: RemoteParticipant }> = ({ peer }) => {
                 </span>
             </div>
 
-            {/* Indicadores de Status */}
             <div className="absolute top-3 right-3 flex flex-col gap-2">
                 {!peer.mic && <div className="bg-black/60 p-1.5 rounded-full backdrop-blur-sm"><MicOff size={14} className="text-red-500"/></div>}
             </div>
@@ -74,26 +71,21 @@ const RemoteVideo: React.FC<{ peer: RemoteParticipant }> = ({ peer }) => {
     );
 };
 
-export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
-  // Navigation State
+export default function MeetApp({ onClose, data, showToast, isDarkMode = false }: MeetAppProps) {
   const [view, setView] = useState<'home' | 'lobby' | 'call'>('home');
 
-  // Home State
   const [meetingInput, setMeetingInput] = useState('');
   const [showNewMeetingMenu, setShowNewMeetingMenu] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   
-  // Connection State
   const [myPeerId, setMyPeerId] = useState<string>('');
   const [meetingId, setMeetingId] = useState<string>('');
   const [isHost, setIsHost] = useState(false);
   const [remoteParticipants, setRemoteParticipants] = useState<RemoteParticipant[]>([]);
   
-  // Call State
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [handRaised, setHandRaised] = useState(false);
-  const [screenSharing, setScreenSharing] = useState(false);
   const [sidePanel, setSidePanel] = useState<'none' | 'chat' | 'people' | 'info' | 'activities'>('none');
   const [chatMessage, setChatMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -101,13 +93,11 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
   const [floatingEmojis, setFloatingEmojis] = useState<{id: number, emoji: string, left: number}[]>([]);
   const [volumeLevel, setVolumeLevel] = useState(0); 
   
-  // Refs
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const localStream = useRef<MediaStream | null>(null);
   const peerRef = useRef<Peer | null>(null);
   const connectionsRef = useRef<Map<string, { call?: MediaConnection, conn?: DataConnection }>>(new Map());
   
-  // Audio Refs
   const audioContext = useRef<AudioContext | null>(null);
   const analyser = useRef<AnalyserNode | null>(null);
   const dataArray = useRef<Uint8Array | null>(null);
@@ -118,7 +108,6 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
 
   const toast = (msg: string) => showToast ? showToast(msg) : console.log(msg);
 
-  // --- 1. PEER JS SETUP ---
   useEffect(() => {
       const peer = new Peer();
       peerRef.current = peer;
@@ -127,7 +116,6 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
           setMyPeerId(id);
       });
 
-      // Receber chamadas de mídia
       peer.on('call', (call) => {
           if (localStream.current) {
               call.answer(localStream.current);
@@ -135,7 +123,6 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
           }
       });
       
-      // Receber conexões de dados (Chat/Estado)
       peer.on('connection', (conn) => {
           handleDataConnection(conn);
       });
@@ -151,10 +138,7 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
       };
   }, []);
 
-  // --- 2. HANDLERS P2P ---
-
   const handleMediaCall = (call: MediaConnection) => {
-      // Salvar referencia
       const existing = connectionsRef.current.get(call.peer) || {};
       connectionsRef.current.set(call.peer, { ...existing, call });
 
@@ -181,8 +165,7 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
       connectionsRef.current.set(conn.peer, { ...existing, conn });
 
       conn.on('open', () => {
-          // Enviar nosso estado inicial
-          conn.send({ type: 'status', mic: micOn, cam: camOn, handRaised, name: data.user.name });
+          conn.send({ type: 'status', mic: micOn, cam: camOn, handRaised, name: data?.user?.name || 'Usuário' });
       });
 
       conn.on('data', (data: any) => {
@@ -194,30 +177,30 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
       });
   };
 
-  const handleIncomingData = (peerId: string, data: any) => {
-      switch(data.type) {
+  const handleIncomingData = (peerId: string, incoming: any) => {
+      switch(incoming.type) {
           case 'chat':
               setMessages(prev => [...prev, { 
                   id: Date.now().toString() + Math.random(),
-                  sender: data.senderName || 'Convidado', 
-                  text: data.message, 
+                  sender: incoming.senderName || 'Convidado', 
+                  text: incoming.message, 
                   time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
                   isSelf: false
               }]);
-              if (sidePanel !== 'chat') toast(`Nova mensagem de ${data.senderName}`);
+              if (sidePanel !== 'chat') toast(`Nova mensagem de ${incoming.senderName}`);
               break;
           case 'emoji':
-              triggerReaction(data.emoji, true);
+              triggerReaction(incoming.emoji, true);
               break;
           case 'status':
               setRemoteParticipants(prev => prev.map(p => {
                   if (p.id === peerId) {
                       return { 
                           ...p, 
-                          mic: data.mic !== undefined ? data.mic : p.mic,
-                          cam: data.cam !== undefined ? data.cam : p.cam,
-                          handRaised: data.handRaised !== undefined ? data.handRaised : p.handRaised,
-                          name: data.name || p.name
+                          mic: incoming.mic !== undefined ? incoming.mic : p.mic,
+                          cam: incoming.cam !== undefined ? incoming.cam : p.cam,
+                          handRaised: incoming.handRaised !== undefined ? incoming.handRaised : p.handRaised,
+                          name: incoming.name || p.name
                       };
                   }
                   return p;
@@ -236,17 +219,12 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
 
   const connectToPeer = (remoteId: string) => {
       if (!peerRef.current || !localStream.current) return;
-      
-      // 1. Media Call
       const call = peerRef.current.call(remoteId, localStream.current);
       handleMediaCall(call);
-
-      // 2. Data Connection
       const conn = peerRef.current.connect(remoteId);
       handleDataConnection(conn);
   };
 
-  // --- 3. MEDIA & AUDIO ---
   const startCamera = async () => {
       try {
           if (localStream.current) localStream.current.getTracks().forEach(track => track.stop());
@@ -315,14 +293,13 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
       if (newState) toast("Você levantou a mão");
   };
 
-  // --- 4. MEETING LOGIC ---
   const createMeeting = async () => {
-      const code = myPeerId; // Use PeerID as room code for P2P MVP
+      const code = myPeerId;
       setMeetingId(code);
       setIsHost(true);
       setView('lobby');
       setShowNewMeetingMenu(false);
-      await bridge.registerMeeting(code, myPeerId); // Optional: Save to backend map
+      await bridge.registerMeeting(code, myPeerId);
   };
 
   const joinMeeting = async () => {
@@ -360,7 +337,7 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
       };
       setMessages(prev => [...prev, msg]);
       setChatMessage('');
-      broadcastData({ type: 'chat', message: text, senderName: data.user.name });
+      broadcastData({ type: 'chat', message: text, senderName: data?.user?.name || 'Usuário' });
   };
 
   const triggerReaction = (emoji: string, isRemote = false) => {
@@ -380,7 +357,6 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
       setSidePanel(sidePanel === panel ? 'none' : panel);
   };
 
-  // --- EFFECTS ---
   useEffect(() => {
       if (view === 'lobby' || view === 'call') startCamera();
       const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -394,7 +370,6 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
       if (chatScrollRef.current) chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
   }, [messages, sidePanel]);
 
-  // Floating Emoji Style
   const floatStyle = `
     @keyframes floatUp {
         0% { transform: translateY(0) scale(0.5); opacity: 0; }
@@ -403,28 +378,26 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
     }
   `;
 
-  // Grid Calculation
-  const totalParticipants = remoteParticipants.length + 1; // +1 for self
+  const totalParticipants = remoteParticipants.length + 1;
   let gridClass = 'grid-cols-1';
   if (totalParticipants === 2) gridClass = 'grid-cols-2';
   if (totalParticipants >= 3) gridClass = 'grid-cols-2 md:grid-cols-3';
   if (totalParticipants >= 5) gridClass = 'grid-cols-3 md:grid-cols-4';
 
-  // --- UI RENDER ---
   if (view === 'home') {
       return (
-        <div className="flex flex-col h-full bg-[#202124] text-white font-sans relative overflow-hidden">
-            <div className="h-16 px-6 flex items-center justify-between z-20">
+        <div className={`flex flex-col h-full font-sans relative overflow-hidden transition-colors ${isDarkMode ? 'bg-[#202124] text-white' : 'bg-white text-[#202124]'}`}>
+            <div className={`h-16 px-6 flex items-center justify-between z-20 border-b ${isDarkMode ? 'border-white/5' : 'border-gray-100'}`}>
                 <div className="flex items-center gap-2">
                     <div className="p-1"><GoogleIcons.Meet className="w-8 h-8"/></div>
-                    <span className="text-[22px] text-white/90 font-medium tracking-tight">Google Meet</span>
+                    <span className={`text-[22px] font-medium tracking-tight ${isDarkMode ? 'text-white/90' : 'text-gray-700'}`}>Google Meet</span>
                 </div>
                 <div className="flex items-center gap-6">
                     <div className="text-right hidden md:block">
-                        <div className="text-lg text-white/90">{currentTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-                        <div className="text-xs text-white/60">{currentTime.toLocaleDateString(undefined, {weekday: 'short', day: 'numeric', month: 'short'})}</div>
+                        <div className={`text-lg ${isDarkMode ? 'text-white/90' : 'text-gray-700'}`}>{currentTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                        <div className={`text-xs ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>{currentTime.toLocaleDateString(undefined, {weekday: 'short', day: 'numeric', month: 'short'})}</div>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-white/70"><X size={24}/></button>
+                    <button onClick={onClose} className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-white/10 text-white/70' : 'hover:bg-gray-100 text-gray-600'}`}><X size={24}/></button>
                 </div>
             </div>
 
@@ -432,33 +405,33 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
                 <div className="flex-1 max-w-lg flex flex-col gap-8 md:pr-12">
                     <div>
                         <h1 className="text-4xl md:text-5xl font-normal mb-6 leading-tight">Videochamadas premium. Agora grátis.</h1>
-                        <p className="text-lg text-white/60 font-light leading-relaxed mb-8">
+                        <p className={`text-lg font-light leading-relaxed mb-8 ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>
                             Conecte-se, colabore e celebre de qualquer lugar com o Google Meet.
                         </p>
                         <div className="flex flex-wrap items-center gap-4">
                             <div className="relative" ref={menuRef}>
-                                <button onClick={() => setShowNewMeetingMenu(!showNewMeetingMenu)} className="flex items-center gap-2 bg-[#8AB4F8] hover:bg-[#AECBFA] text-[#202124] px-4 py-3 rounded-[4px] font-medium transition-colors shadow-sm">
+                                <button onClick={() => setShowNewMeetingMenu(!showNewMeetingMenu)} className={`flex items-center gap-2 px-4 py-3 rounded-[4px] font-medium transition-colors shadow-sm ${isDarkMode ? 'bg-[#8AB4F8] hover:bg-[#AECBFA] text-[#202124]' : 'bg-[#1a73e8] hover:bg-[#1557b0] text-white'}`}>
                                     <Video size={20} /> Nova reunião
                                 </button>
                                 {showNewMeetingMenu && (
-                                    <div className="absolute top-14 left-0 w-80 bg-[#303134] rounded-[4px] shadow-2xl py-2 z-50 animate-in fade-in zoom-in duration-200">
-                                        <button onClick={createMeeting} className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-white/10 text-white/90 text-sm">
-                                            <Plus size={20} className="text-white"/> Iniciar uma reunião instantânea
+                                    <div className={`absolute top-14 left-0 w-80 rounded-[4px] shadow-2xl py-2 z-50 animate-in fade-in zoom-in duration-200 border ${isDarkMode ? 'bg-[#303134] border-white/10' : 'bg-white border-gray-200'}`}>
+                                        <button onClick={createMeeting} className={`w-full text-left flex items-center gap-3 px-4 py-3 text-sm ${isDarkMode ? 'hover:bg-white/10 text-white/90' : 'hover:bg-gray-100 text-gray-800'}`}>
+                                            <Plus size={20}/> Iniciar uma reunião instantânea
                                         </button>
                                     </div>
                                 )}
                             </div>
-                            <div className="flex items-center gap-3 bg-transparent border border-white/30 rounded-[4px] px-3 py-3 focus-within:border-[#8AB4F8] focus-within:ring-1 focus-within:ring-[#8AB4F8] transition-all flex-1 min-w-[240px]">
-                                <Keyboard size={20} className="text-white/60" />
-                                <input type="text" placeholder="Digite um código ou link" className="bg-transparent border-none outline-none text-white placeholder:text-white/60 w-full" value={meetingInput} onChange={(e) => setMeetingInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && joinMeeting()} />
+                            <div className={`flex items-center gap-3 bg-transparent border rounded-[4px] px-3 py-3 focus-within:border-[#1a73e8] focus-within:ring-1 focus-within:ring-[#1a73e8] transition-all flex-1 min-w-[240px] ${isDarkMode ? 'border-white/30' : 'border-gray-300'}`}>
+                                <Keyboard size={20} className={isDarkMode ? "text-white/60" : "text-gray-500"} />
+                                <input type="text" placeholder="Digite um código ou link" className={`bg-transparent border-none outline-none w-full ${isDarkMode ? 'text-white placeholder:text-white/60' : 'text-gray-800 placeholder:text-gray-500'}`} value={meetingInput} onChange={(e) => setMeetingInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && joinMeeting()} />
                             </div>
-                            {meetingInput && <button onClick={joinMeeting} className="text-[#8AB4F8] font-medium text-sm hover:underline">Participar</button>}
+                            {meetingInput && <button onClick={joinMeeting} className="text-blue-600 font-medium text-sm hover:underline">Participar</button>}
                         </div>
                     </div>
                 </div>
                 <div className="flex-1 max-w-md w-full h-[300px] flex items-center justify-center">
-                     <div className="w-64 h-64 bg-blue-500/5 rounded-full flex items-center justify-center border border-white/10">
-                         <Video size={64} className="text-blue-400 opacity-50" />
+                     <div className={`w-64 h-64 rounded-full flex items-center justify-center border ${isDarkMode ? 'bg-blue-500/5 border-white/10' : 'bg-blue-50 border-blue-100'}`}>
+                         <Video size={64} className="text-blue-500 opacity-60" />
                      </div>
                 </div>
             </div>
@@ -468,8 +441,8 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
 
   if (view === 'lobby') {
       return (
-        <div className="flex flex-col h-full bg-[#202124] text-white font-sans items-center justify-center relative overflow-hidden">
-            <div className="absolute top-6 left-6 flex items-center gap-2"><GoogleIcons.Meet className="w-6 h-6"/><span className="text-lg text-white/90 font-medium">Google Meet</span></div>
+        <div className={`flex flex-col h-full font-sans items-center justify-center relative overflow-hidden transition-colors ${isDarkMode ? 'bg-[#202124] text-white' : 'bg-white text-[#202124]'}`}>
+            <div className="absolute top-6 left-6 flex items-center gap-2"><GoogleIcons.Meet className="w-6 h-6"/><span className={`text-lg font-medium ${isDarkMode ? 'text-white/90' : 'text-gray-700'}`}>Google Meet</span></div>
             <div className="flex flex-col md:flex-row gap-8 items-center max-w-6xl w-full px-8 animate-in fade-in zoom-in duration-300">
                 <div className="flex-1 w-full max-w-2xl relative">
                     <div className="aspect-video bg-[#3C4043] rounded-lg overflow-hidden relative shadow-2xl border border-white/5 ring-1 ring-white/10 flex items-center justify-center">
@@ -489,22 +462,20 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
                     </div>
                 </div>
                 <div className="flex-1 w-full max-w-sm flex flex-col items-center text-center space-y-6">
-                    <h1 className="text-3xl font-normal text-[#E3E3E3]">Pronto para participar?</h1>
-                    {isHost && <div className="bg-[#303134] p-3 rounded-lg flex items-center gap-2 border border-white/10 w-full justify-between"><span className="text-sm font-mono text-blue-300 truncate">{meetingId}</span><button onClick={() => navigator.clipboard.writeText(meetingId)} className="p-1.5 hover:bg-white/10 rounded text-white/70"><Copy size={14}/></button></div>}
-                    {!isHost && <p className="text-white/60">Entrando na sala...</p>}
-                    <button onClick={enterCall} className="px-8 py-3 bg-[#8AB4F8] hover:bg-[#AECBFA] text-[#202124] rounded-full font-medium text-sm transition-all shadow-lg w-full">Participar agora</button>
+                    <h1 className={`text-3xl font-normal ${isDarkMode ? 'text-[#E3E3E3]' : 'text-gray-800'}`}>Pronto para participar?</h1>
+                    {isHost && <div className={`p-3 rounded-lg flex items-center gap-2 border w-full justify-between ${isDarkMode ? 'bg-[#303134] border-white/10' : 'bg-gray-100 border-gray-200'}`}><span className="text-sm font-mono text-blue-500 truncate">{meetingId}</span><button onClick={() => navigator.clipboard.writeText(meetingId)} className={`p-1.5 rounded ${isDarkMode ? 'hover:bg-white/10 text-white/70' : 'hover:bg-gray-200 text-gray-600'}`}><Copy size={14}/></button></div>}
+                    {!isHost && <p className={isDarkMode ? "text-white/60" : "text-gray-600"}>Entrando na sala...</p>}
+                    <button onClick={enterCall} className="px-8 py-3 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-full font-medium text-sm transition-all shadow-lg w-full">Participar agora</button>
                 </div>
             </div>
         </div>
       );
   }
 
-  // --- CALL SCREEN ---
   return (
     <div className="flex flex-col h-full bg-[#202124] relative overflow-hidden text-white font-sans animate-in fade-in duration-500">
         <style>{floatStyle}</style>
         
-        {/* Floating Emojis Overlay */}
         <div className="absolute inset-0 pointer-events-none z-50 overflow-hidden">
             {floatingEmojis.map(e => (
                 <div key={e.id} className="absolute bottom-24 text-4xl" style={{ left: `${e.left}%`, animation: 'floatUp 2s ease-out forwards' }}>{e.emoji}</div>
@@ -512,11 +483,9 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
         </div>
 
         <div className="flex-1 flex overflow-hidden p-3 gap-3 pb-20 relative">
-            {/* Main Stage */}
             <div className={`flex-1 flex flex-col transition-all duration-300 relative ${sidePanel !== 'none' ? 'mr-0' : ''}`}>
                 
                 <div className={`grid gap-3 h-full w-full ${gridClass} content-center`}>
-                    {/* Self Video */}
                     <div className={`bg-[#3C4043] rounded-xl relative overflow-hidden flex items-center justify-center group border-2 w-full h-full ${micOn ? 'border-transparent' : 'border-red-500/30'}`}>
                         <video ref={localVideoRef} autoPlay muted playsInline className={`w-full h-full object-cover transform scale-x-[-1] transition-opacity duration-300 ${camOn ? 'opacity-100' : 'opacity-0'}`} />
                         {!camOn && <div className="absolute inset-0 flex items-center justify-center"><div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-2xl font-bold">V</div></div>}
@@ -524,7 +493,6 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
                         {handRaised && <div className="absolute top-3 left-3 bg-[#FBBC04] p-1.5 rounded-full shadow-lg animate-bounce text-black"><Hand size={14}/></div>}
                     </div>
 
-                    {/* Remote Videos */}
                     {remoteParticipants.map(peer => (
                         <div key={peer.id} className="w-full h-full">
                             <RemoteVideo peer={peer} />
@@ -540,7 +508,6 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
                 </div>
             </div>
 
-            {/* Side Panel */}
             {sidePanel === 'chat' && (
                 <div className="w-[340px] bg-white rounded-2xl flex flex-col shadow-2xl animate-in slide-in-from-right-10 duration-300 overflow-hidden shrink-0 h-full">
                     <div className="h-14 flex items-center justify-between px-5 border-b border-gray-100 bg-white">
@@ -575,7 +542,6 @@ export default function MeetApp({ onClose, data, showToast }: MeetAppProps) {
             )}
         </div>
 
-        {/* Bottom Controls */}
         <div className="h-20 bg-[#202124] flex items-center justify-between px-6 pb-4 shrink-0 fixed bottom-0 left-0 right-0 z-50">
             <div className="w-1/4 text-white text-base font-medium flex items-center gap-4">
                 <span className="hidden md:block">{currentTime.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
