@@ -37,8 +37,8 @@ interface PostItBoardProps {
 }
 
 const STORAGE_KEY = 'workspace_postit_board_v4';
-const CARD_WIDTH = 256;
-const CARD_HEIGHT = 206;
+const CARD_WIDTH = 272;
+const CARD_HEIGHT = 212;
 
 const DEFAULT_ROTATIONS = [-1.4, 1.1, -0.8, 1.5, -1.1, 0.9];
 
@@ -87,6 +87,38 @@ export default function PostItBoard({
 }: PostItBoardProps) {
   const boardRef = useRef<HTMLDivElement>(null);
   const [layouts, setLayouts] = useState<LayoutMap>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          const validEntries: LayoutMap = {};
+          for (const [k, v] of Object.entries(parsed)) {
+            const item = v as Partial<PostItLayoutItem>;
+            if (
+              item &&
+              typeof item.x === 'number' &&
+              typeof item.y === 'number' &&
+              typeof item.z === 'number'
+            ) {
+              validEntries[k] = {
+                x: item.x,
+                y: item.y,
+                z: item.z,
+                rotation: typeof item.rotation === 'number' ? item.rotation : 0,
+                stackId: typeof item.stackId === 'string' ? item.stackId : 'stack_master',
+                stackOrder: typeof item.stackOrder === 'number' ? item.stackOrder : 0,
+              };
+            }
+          }
+          if (Object.keys(validEntries).length > 0) {
+            return validEntries;
+          }
+        }
+      }
+    } catch {
+      // Fallback to default stacked layout
+    }
     const targetStackId = 'stack_master';
     const initialMap: LayoutMap = {};
     notes.forEach((n, idx) => {
@@ -103,7 +135,9 @@ export default function PostItBoard({
     return initialMap;
   });
 
-  const [maxZ, setMaxZ] = useState<number>(40);
+  const [maxZ, setMaxZ] = useState<number>(() =>
+    Math.max(40, ...Object.values(layouts).map((item) => (item?.z || 0) + 10))
+  );
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetStackId, setDropTargetStackId] = useState<string | null>(null);
   const [controlsExpanded, setControlsExpanded] = useState<boolean>(false);
@@ -678,7 +712,7 @@ export default function PostItBoard({
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="Título do Post-it..."
-                className={`bg-transparent border-none outline-none text-xs font-bold ${textColor} placeholder:${subTextColor}`}
+                className={`bg-transparent border-none outline-none text-xs font-bold ${textColor} ${darkMode ? 'placeholder:text-white/60' : 'placeholder:text-[#5f6368]'}`}
                 autoFocus
               />
               <textarea
@@ -686,42 +720,48 @@ export default function PostItBoard({
                 onChange={(e) => setNewContent(e.target.value)}
                 placeholder="Escreva sua anotação..."
                 rows={3}
-                className={`bg-transparent border-none outline-none text-xs resize-none flex-1 ${textColor} placeholder:${subTextColor}`}
+                className={`bg-transparent border-none outline-none text-xs resize-none flex-1 ${textColor} ${darkMode ? 'placeholder:text-white/60' : 'placeholder:text-[#5f6368]'}`}
               />
             </div>
             <div className="flex items-center justify-between pt-2 mt-2 border-t border-black/10 dark:border-white/15">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center -ml-1">
                 {(['yellow', 'green', 'teal', 'pink', 'blue'] as const).map((c) => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setNewColor(c)}
-                    className={`w-4 h-4 rounded-full border border-black/20 ${
-                      c === 'yellow'
-                        ? 'bg-[#FBC02D]'
-                        : c === 'green'
-                        ? 'bg-[#7CB342]'
-                        : c === 'teal'
-                        ? 'bg-[#26A69A]'
-                        : c === 'pink'
-                        ? 'bg-[#EC407A]'
-                        : 'bg-[#42A5F5]'
-                    } ${newColor === c ? 'ring-2 ring-offset-1 ring-blue-500 scale-110' : 'opacity-75 hover:opacity-100'}`}
-                  />
+                    title={`Selecionar cor ${c}`}
+                    aria-label={`Selecionar cor ${c}`}
+                    className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                  >
+                    <span
+                      className={`w-4 h-4 rounded-full border border-black/20 ${
+                        c === 'yellow'
+                          ? 'bg-[#FBC02D]'
+                          : c === 'green'
+                          ? 'bg-[#7CB342]'
+                          : c === 'teal'
+                          ? 'bg-[#26A69A]'
+                          : c === 'pink'
+                          ? 'bg-[#EC407A]'
+                          : 'bg-[#42A5F5]'
+                      } ${newColor === c ? 'ring-2 ring-offset-1 ring-blue-500 scale-110' : 'opacity-75 hover:opacity-100'}`}
+                    />
+                  </button>
                 ))}
               </div>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => setIsAdding(false)}
-                  className={`px-2 py-1 rounded-lg text-[11px] ${subTextColor} hover:bg-black/10`}
+                  className={`min-h-[28px] px-2 py-1 rounded-lg text-[11px] ${subTextColor} hover:bg-black/10`}
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   onClick={handleCreatePostIt}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-amber-500 text-black hover:bg-amber-400 transition-colors"
+                  className="min-h-[28px] px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-amber-500 text-black hover:bg-amber-400 transition-colors"
                 >
                   Colar
                 </button>
@@ -829,31 +869,33 @@ export default function PostItBoard({
                         value={note.title || ''}
                         onChange={(e) => onUpdateNote(note.id, { title: e.target.value })}
                         placeholder="Título da nota..."
-                        className={`flex-1 min-w-0 bg-transparent border-none outline-none text-xs font-bold ${textColor} placeholder:${subTextColor} focus:ring-1 focus:ring-black/15 dark:focus:ring-white/20 rounded px-1 -ml-1 py-0.5 select-text`}
+                        className={`flex-1 min-w-0 bg-transparent border-none outline-none text-xs font-bold ${textColor} ${darkMode ? 'placeholder:text-white/60' : 'placeholder:text-[#5f6368]'} focus:ring-1 focus:ring-black/15 dark:focus:ring-white/20 rounded px-1 -ml-1 py-0.5 select-text`}
                       />
                     ) : (
                       <span className={`flex-1 min-w-0 text-xs font-bold ${textColor} truncate`}>
                         {note.title || 'Nota rápida'}
                       </span>
                     )}
-                    <div className="flex items-center gap-0.5 shrink-0">
+                    <div className="flex items-center shrink-0 -mr-1">
                       <button
                         type="button"
                         onClick={(e) => onTogglePin(note.id, e)}
-                        className={`p-1 rounded-md transition-opacity ${
+                        className={`w-7 h-7 flex items-center justify-center rounded-md transition-opacity ${
                           note.pinned
                             ? `${styleObj.accent} opacity-100`
-                            : `${subTextColor} opacity-60 hover:opacity-100`
+                            : `${subTextColor} opacity-65 hover:opacity-100`
                         }`}
                         title={note.pinned ? 'Desafixar Post-it' : 'Fixar Post-it'}
+                        aria-label={note.pinned ? 'Desafixar Post-it' : 'Fixar Post-it'}
                       >
                         <Pin size={12} className={note.pinned ? 'fill-current' : ''} />
                       </button>
                       <button
                         type="button"
                         onClick={(e) => onDeleteNote(note.id, e)}
-                        className={`p-1 rounded-md opacity-60 hover:opacity-100 transition-opacity ${subTextColor} hover:text-red-500`}
+                        className={`w-7 h-7 flex items-center justify-center rounded-md opacity-65 hover:opacity-100 transition-opacity ${subTextColor} hover:text-red-500`}
                         title="Remover Post-it"
+                        aria-label="Remover Post-it"
                       >
                         <Trash2 size={12} />
                       </button>
@@ -869,8 +911,8 @@ export default function PostItBoard({
                         placeholder="Clique para escrever ou editar..."
                         rows={3}
                         className={`w-full flex-1 bg-transparent border-none outline-none text-xs resize-none leading-relaxed ${
-                          darkMode ? 'text-white/95' : 'text-[#202124]'
-                        } placeholder:${subTextColor} focus:ring-1 focus:ring-black/15 dark:focus:ring-white/20 rounded px-1 -mx-1 py-0.5 select-text custom-scrollbar`}
+                          darkMode ? 'text-white/95 placeholder:text-white/60' : 'text-[#202124] placeholder:text-[#5f6368]'
+                        } focus:ring-1 focus:ring-black/15 dark:focus:ring-white/20 rounded px-1 -mx-1 py-0.5 select-text custom-scrollbar`}
                       />
 
                       {/* Quick Add Item/Line inside existing Post-it */}
@@ -888,14 +930,15 @@ export default function PostItBoard({
                             }
                           }}
                           placeholder="+ Adicionar item na nota..."
-                          className={`flex-1 min-w-0 bg-black/[0.06] dark:bg-white/[0.08] rounded-lg px-2 py-1 text-[11px] outline-none ${textColor} placeholder:${subTextColor} select-text`}
+                          className={`flex-1 min-w-0 bg-black/[0.06] dark:bg-white/[0.08] rounded-lg px-2 py-1 text-[11px] outline-none ${textColor} ${darkMode ? 'placeholder:text-white/60' : 'placeholder:text-[#5f6368]'} select-text`}
                         />
                         {(quickLineInputs[noteId] || '').trim().length > 0 && (
                           <button
                             type="button"
                             onClick={() => handleAddQuickLineToNote(note)}
-                            className="w-6 h-6 rounded-lg bg-black/15 dark:bg-white/20 flex items-center justify-center hover:scale-105 transition-transform shrink-0"
+                            className="w-7 h-7 rounded-lg bg-black/15 dark:bg-white/20 flex items-center justify-center hover:scale-105 transition-transform shrink-0"
                             title="Adicionar item"
+                            aria-label="Adicionar item"
                           >
                             <Plus size={12} className={textColor} />
                           </button>
@@ -914,8 +957,8 @@ export default function PostItBoard({
                 </div>
 
                 {/* Footer: Color dots + Stack Controls */}
-                <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-black/10 dark:border-white/10">
-                  <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center justify-between mt-2 pt-1.5 border-t border-black/10 dark:border-white/10 gap-1">
+                  <div className="flex items-center -ml-1">
                     {(['yellow', 'green', 'teal', 'pink', 'blue'] as const).map((c) => (
                       <button
                         key={c}
@@ -926,27 +969,32 @@ export default function PostItBoard({
                           onUpdateNote(note.id, { color: c });
                         }}
                         title={`Mudar cor para ${c}`}
-                        className={`w-3 h-3 rounded-full border border-black/25 transition-transform ${
-                          c === 'yellow'
-                            ? 'bg-[#FBC02D]'
-                            : c === 'green'
-                            ? 'bg-[#7CB342]'
-                            : c === 'teal'
-                            ? 'bg-[#26A69A]'
-                            : c === 'pink'
-                            ? 'bg-[#EC407A]'
-                            : 'bg-[#42A5F5]'
-                        } ${(note.color || 'yellow') === c ? 'scale-125 ring-1 ring-white' : 'opacity-70 hover:opacity-100 hover:scale-110'}`}
-                      />
+                        aria-label={`Mudar cor para ${c}`}
+                        className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                      >
+                        <span
+                          className={`w-3 h-3 rounded-full border border-black/25 transition-transform ${
+                            c === 'yellow'
+                              ? 'bg-[#FBC02D]'
+                              : c === 'green'
+                              ? 'bg-[#7CB342]'
+                              : c === 'teal'
+                              ? 'bg-[#26A69A]'
+                              : c === 'pink'
+                              ? 'bg-[#EC407A]'
+                              : 'bg-[#42A5F5]'
+                          } ${(note.color || 'yellow') === c ? 'scale-125 ring-1 ring-white' : 'opacity-75 hover:opacity-100 hover:scale-110'}`}
+                        />
+                      </button>
                     ))}
                   </div>
 
                   {stackCount > 1 && isTopOfStack ? (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 shrink-0 ml-auto">
                       <button
                         type="button"
                         onClick={(e) => handleCycleStack(stackId, e)}
-                        className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-black/15 dark:bg-white/15 ${textColor} hover:bg-black/25 dark:hover:bg-white/25 transition-colors`}
+                        className={`min-h-[28px] inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-black/15 dark:bg-white/15 ${textColor} hover:bg-black/25 dark:hover:bg-white/25 transition-colors`}
                         title="Passar para o próximo Post-it da pilha"
                       >
                         <Layers size={10} className={styleObj.accent} />
@@ -956,7 +1004,7 @@ export default function PostItBoard({
                       <button
                         type="button"
                         onClick={(e) => handleUnstackGroup(stackId, e)}
-                        className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${subTextColor} hover:${textColor} hover:bg-black/10 dark:hover:bg-white/10 transition-colors`}
+                        className={`min-h-[28px] text-[10px] font-semibold px-2 py-0.5 rounded-md ${subTextColor} ${darkMode ? 'hover:text-white' : 'hover:text-[#202124]'} hover:bg-black/10 dark:hover:bg-white/10 transition-colors`}
                         title="Espalhar esta pilha no mural"
                       >
                         Espalhar

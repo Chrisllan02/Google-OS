@@ -97,9 +97,11 @@ interface AuroraProps {
   time?: number;
   speed?: number;
   darkMode?: boolean;
+  paused?: boolean;
 }
 
 const DEFAULT_COLOR_STOPS = ['#4285F4', '#34A853', '#EA4335'];
+const TARGET_FRAME_MS = 1000 / 30; // Smooth 30 FPS ambient wave cuts GPU/compositor load in half
 
 function parseColorStops(stops: string[]): number[][] {
   return stops.slice(0, 3).map((hex) => {
@@ -115,9 +117,11 @@ const Aurora = React.memo(function Aurora(props: AuroraProps) {
     blend = 0.5,
     speed = 1.0,
     darkMode = false,
+    paused = false,
   } = props;
 
   const ctnDom = useRef<HTMLDivElement>(null);
+  const resumeLoopRef = useRef<(() => void) | null>(null);
 
   // Store mutable animation targets in a ref so React state/prop updates
   // never trigger WebGL context recreation or per-frame heap allocations.
@@ -127,6 +131,7 @@ const Aurora = React.memo(function Aurora(props: AuroraProps) {
     speed,
     time: props.time,
     darkMode: darkMode ? 1.0 : 0.0,
+    paused,
     colorStopsKey: colorStops.join(','),
     parsedStops: parseColorStops(colorStops),
     stopsDirty: false,
@@ -144,6 +149,11 @@ const Aurora = React.memo(function Aurora(props: AuroraProps) {
   stateRef.current.speed = speed;
   stateRef.current.time = props.time;
   stateRef.current.darkMode = darkMode ? 1.0 : 0.0;
+  stateRef.current.paused = paused;
+
+  useEffect(() => {
+    resumeLoopRef.current?.();
+  }, [paused, darkMode, amplitude, blend, speed, nextStopsKey]);
 
   useEffect(() => {
     const ctn = ctnDom.current;
@@ -153,8 +163,8 @@ const Aurora = React.memo(function Aurora(props: AuroraProps) {
       alpha: true,
       premultipliedAlpha: true,
       antialias: false,
-      dpr: Math.min(window.devicePixelRatio || 1, 1.5),
-      powerPreference: 'high-performance',
+      dpr: 1,
+      powerPreference: 'low-power',
     });
 
     const gl = renderer.gl;
@@ -214,24 +224,23 @@ const Aurora = React.memo(function Aurora(props: AuroraProps) {
     resize();
 
     let animateId = 0;
-    let isRunning = !document.hidden;
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let isRunning = false;
     let currentDark = stateRef.current.darkMode;
     let currentAmplitude = stateRef.current.amplitude;
     let currentBlend = stateRef.current.blend;
     let accumulatedTime = 0;
     let lastFrameTime = performance.now();
+    let lastRenderTime = 0;
 
-    const update = (now: number) => {
-      if (!isRunning) return;
-      animateId = requestAnimationFrame(update);
-
-      const dt = Math.min(0.05, Math.max(0.001, (now - lastFrameTime) * 0.001));
-      lastFrameTime = now;
-
+    const renderSingleFrame = (now: number, dt: number) => {
       const s = stateRef.current;
 
       // Smooth exponential interpolation for theme, amplitude, and blend
-      const smoothFactor = 1.0 - Math.exp(-dt * 8.0);
+      const smoothFactor = prefersReducedMotion ? 1.0 : 1.0 - Math.exp(-dt * 8.0);
       currentDark += (s.darkMode - currentDark) * smoothFactor;
       if (Math.abs(s.darkMode - currentDark) < 0.0005) currentDark = s.darkMode;
 
@@ -240,7 +249,7 @@ const Aurora = React.memo(function Aurora(props: AuroraProps) {
 
       if (s.time !== undefined) {
         accumulatedTime = s.time * s.speed * 0.1;
-      } else {
+      } else if (!prefersReducedMotion) {
         accumulatedTime += dt * s.speed;
       }
 
@@ -254,29 +263,58 @@ const Aurora = React.memo(function Aurora(props: AuroraProps) {
         s.stopsDirty = false;
       }
 
+      lastRenderTime = now;
       renderer.render({ scene: mesh });
     };
 
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
+    const update = (now: number) => {
+      if (!isRunning) return;
+      if (document.hidden || stateRef.current.paused || prefersReducedMotion) {
         isRunning = false;
-        cancelAnimationFrame(animateId);
-      } else if (!isRunning) {
+        animateId = 0;
+        return;
+      }
+      animateId = requestAnimationFrame(update);
+      if (now - lastRenderTime < TARGET_FRAME_MS) return;
+
+      const dt = Math.min(0.05, Math.max(0.001, (now - lastFrameTime) * 0.001));
+      lastFrameTime = now;
+      renderSingleFrame(now, dt);
+    };
+
+    const syncLoopState = () => {
+      const shouldRun = !document.hidden && !stateRef.current.paused && !prefersReducedMotion;
+      if (!shouldRun) {
+        if (isRunning) {
+          isRunning = false;
+          cancelAnimationFrame(animateId);
+          animateId = 0;
+        }
+        // Still paint one crisp frame if reduced motion changed theme/colors while visible
+        if (prefersReducedMotion && !document.hidden && !stateRef.current.paused) {
+          renderSingleFrame(performance.now(), 0.016);
+        }
+        return;
+      }
+      if (!isRunning) {
         isRunning = true;
         lastFrameTime = performance.now();
+        lastRenderTime = 0;
         animateId = requestAnimationFrame(update);
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    if (isRunning) {
-      animateId = requestAnimationFrame(update);
-    }
+    resumeLoopRef.current = syncLoopState;
+    renderSingleFrame(performance.now(), 0.016);
+    syncLoopState();
+
+    document.addEventListener('visibilitychange', syncLoopState);
 
     return () => {
+      resumeLoopRef.current = null;
       isRunning = false;
       cancelAnimationFrame(animateId);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('visibilitychange', syncLoopState);
       if (resizeObserver) {
         resizeObserver.disconnect();
       } else {

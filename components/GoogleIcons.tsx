@@ -1,11 +1,10 @@
 import React, { useId } from 'react';
 
-interface IconProps {
+interface IconProps extends React.SVGProps<SVGSVGElement> {
   className?: string;
   stroke?: string;
   size?: number | string;
   glass?: boolean;
-  [key: string]: any;
 }
 
 const useSafeId = (prefix: string) => {

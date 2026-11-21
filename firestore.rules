@@ -1,0 +1,131 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Hardened Global Primitives ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isVerifiedOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Validation Blueprints ---
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'email', 'photoURL', 'createdAt', 'updatedAt'])
+        && data.uid is string
+        && data.uid == userId
+        && data.uid == request.auth.uid
+        && isValidId(data.uid)
+        && data.displayName is string
+        && data.displayName.size() >= 1
+        && data.displayName.size() <= 120
+        && data.email is string
+        && data.email.size() >= 3
+        && data.email.size() <= 254
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1000))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidWorkspaceStore(data, userId, storeKey) {
+      return data.keys().hasAll(['ownerId', 'storeKey', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'storeKey', 'items', 'record', 'textValue', 'createdAt', 'updatedAt'])
+        && data.ownerId is string
+        && data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && isValidId(data.ownerId)
+        && data.storeKey is string
+        && data.storeKey == storeKey
+        && isValidId(data.storeKey)
+        && (!('items' in data) || (data.items is list && data.items.size() <= 250 && (data.items.size() == 0 || data.items[0] is map || data.items[0] is string)))
+        && (!('record' in data) || (data.record is map && data.record.size() <= 100))
+        && (!('textValue' in data) || (data.textValue is string && data.textValue.size() <= 200000))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // --- /users/{userId} (PII strictly isolated to owner) ---
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isVerifiedOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'photoURL', 'updatedAt']);
+
+      allow delete: if isVerifiedOwner(userId) && isValidId(userId);
+
+      // --- /users/{userId}/workspace/{storeKey} (Master Gate + Owner Isolation) ---
+      match /workspace/{storeKey} {
+        allow get: if isOwner(userId)
+          && isValidId(userId)
+          && isValidId(storeKey);
+
+        allow list: if isOwner(userId)
+          && resource.data.ownerId == request.auth.uid;
+
+        allow create: if isVerifiedOwner(userId)
+          && isValidId(userId)
+          && isValidId(storeKey)
+          && isValidWorkspaceStore(incoming(), userId, storeKey)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/users/$(userId));
+
+        allow update: if isVerifiedOwner(userId)
+          && isValidId(userId)
+          && isValidId(storeKey)
+          && isValidWorkspaceStore(incoming(), userId, storeKey)
+          && incoming().ownerId == existing().ownerId
+          && incoming().storeKey == existing().storeKey
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['items', 'record', 'textValue', 'updatedAt'])
+          && exists(/databases/$(database)/documents/users/$(userId));
+
+        allow delete: if isVerifiedOwner(userId)
+          && isValidId(userId)
+          && isValidId(storeKey)
+          && exists(/databases/$(database)/documents/users/$(userId));
+      }
+    }
+  }
+}

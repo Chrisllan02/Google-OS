@@ -226,7 +226,7 @@ export default function GoogleLoader({ darkMode = false }: { darkMode?: boolean 
             <div className="card">
                 <div className="loader" style={{ color: labelColor }}>
                     <p>Carregando</p>
-                    <div className="words" style={{ ['--loader-bg' as any]: bg }}>
+                    <div className="words" style={{ '--loader-bg': bg } as React.CSSProperties}>
                         <span className="word" style={{ color: wordColor }}>E-mail</span>
                         <span className="word" style={{ color: wordColor }}>Agenda</span>
                         <span className="word" style={{ color: wordColor }}>Planilhas</span>

@@ -1,4 +1,9 @@
 import { GoogleGenAI } from '@google/genai';
+import {
+  createSlidingWindowRateLimiter,
+  RequestTimeoutError,
+  withTimeout,
+} from '../../utils/perfUtils';
 
 type Task = 'chat' | 'search' | 'generate';
 type Tool = 'search' | 'maps';
@@ -6,34 +11,52 @@ type HistoryItem = { role: 'user' | 'assistant'; text: string };
 type GeminiInput = { task: Task; prompt: string; history: HistoryItem[]; tool: Tool };
 type GeminiResult = { status: number; body: object };
 
-const MODEL = 'gemini-3.8-flash';
+const MODEL = 'gemini-4-hydrogen';
 const MAX_TEXT = 4000;
 const MAX_HISTORY = 20;
 const RATE_LIMIT = 20;
 const RATE_WINDOW_MS = 60_000;
+const MAX_TRACKED_IPS = 1000;
+const UPSTREAM_TIMEOUT_MS = 25_000;
+const MAX_CACHED_CLIENTS = 4;
 const SYSTEM_INSTRUCTION =
   'Você é um assistente inteligente do Google Workspace OS. Você ajuda o usuário a gerenciar seus e-mails, arquivos do Drive, agenda e tarefas. Seja conciso, útil e amigável. Use formatação Markdown simples quando necessário.';
 
-const GROUNDING_BLOCK_MS = 10 * 60_000;
-const RETRY_DELAY_MS = 800;
+const RETRY_DELAY_MS = 500;
 
-const hits = new Map<string, number[]>();
-let groundingBlockedUntil = 0;
+const rateLimiter = createSlidingWindowRateLimiter(RATE_LIMIT, RATE_WINDOW_MS, MAX_TRACKED_IPS);
+const clientCache = new Map<string, GoogleGenAI>();
+
+function getGeminiClient(apiKey: string): GoogleGenAI {
+  const existing = clientCache.get(apiKey);
+  if (existing) return existing;
+  if (clientCache.size >= MAX_CACHED_CLIENTS) {
+    const oldest = clientCache.keys().next().value;
+    if (oldest !== undefined) clientCache.delete(oldest);
+  }
+  const client = new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      },
+    },
+  });
+  clientCache.set(apiKey, client);
+  return client;
+}
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  for (const [key, times] of hits) {
-    const recent = times.filter((t) => now - t < RATE_WINDOW_MS);
-    if (recent.length) hits.set(key, recent);
-    else hits.delete(key);
-  }
-  const recent = hits.get(ip) ?? [];
-  if (recent.length >= RATE_LIMIT) return true;
-  recent.push(now);
-  hits.set(ip, recent);
-  return false;
+function isAuthError(err: unknown): boolean {
+  const errorObj = err as { message?: string; status?: number } | null;
+  const msg = errorObj?.message ?? '';
+  return (
+    msg.includes('API key not valid') ||
+    msg.includes('API_KEY_INVALID') ||
+    errorObj?.status === 401 ||
+    errorObj?.status === 403
+  );
 }
 
 function cleanText(value: unknown): string | null {
@@ -68,7 +91,7 @@ export async function handleGeminiRequest(
   const parsed = parseInput(input.body);
   if (!parsed) return { status: 400, body: { error: 'Requisição inválida.' } };
   if (!apiKey) return { status: 503, body: { error: 'IA não configurada.' } };
-  if (isRateLimited(input.ip)) {
+  if (rateLimiter.isLimited(input.ip)) {
     return { status: 429, body: { error: 'Muitas requisições. Tente em instantes.' } };
   }
 
@@ -88,16 +111,20 @@ export async function handleGeminiRequest(
     task === 'generate' ? undefined : tool === 'maps' && task === 'search' ? [{ googleMaps: {} }] : [{ googleSearch: {} }];
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = getGeminiClient(apiKey);
     const generate = (withTools: boolean) =>
-      ai.models.generateContent({
-        model: MODEL,
-        contents,
-        config: { systemInstruction, tools: withTools ? tools : undefined },
-      });
-    const useTools = Boolean(tools) && Date.now() > groundingBlockedUntil;
-    const response = await generate(useTools).catch(async () => {
-      if (useTools) groundingBlockedUntil = Date.now() + GROUNDING_BLOCK_MS;
+      withTimeout(
+        ai.models.generateContent({
+          model: MODEL,
+          contents,
+          config: { systemInstruction, tools: withTools ? tools : undefined },
+        }),
+        UPSTREAM_TIMEOUT_MS,
+        'Tempo limite da resposta de IA excedido.',
+      );
+    const useTools = Boolean(tools);
+    const response = await generate(useTools).catch(async (firstErr) => {
+      if (!useTools || isAuthError(firstErr) || firstErr instanceof RequestTimeoutError) throw firstErr;
       await delay(RETRY_DELAY_MS);
       return generate(false);
     });
@@ -108,9 +135,12 @@ export async function handleGeminiRequest(
         sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [],
       },
     };
-  } catch (err: any) {
-    const msg = err?.message ?? '';
-    if (msg.includes('API key not valid') || msg.includes('API_KEY_INVALID') || err?.status === 400 || err?.status === 403) {
+  } catch (err: unknown) {
+    if (err instanceof RequestTimeoutError) {
+      return { status: 504, body: { error: 'A IA demorou demais para responder. Tente novamente.' } };
+    }
+    const errorObj = err as { message?: string; status?: number } | null;
+    if (isAuthError(errorObj) || errorObj?.status === 400) {
       return { status: 503, body: { error: 'Para interagir com o Gemini, configure a variável GEMINI_API_KEY no ambiente.' } };
     }
     return { status: 502, body: { error: 'Não foi possível responder agora.' } };
